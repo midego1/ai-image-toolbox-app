@@ -43,16 +43,32 @@ local.properties
 *.jsbundle
 
 # CocoaPods
-ios/Pods/
+**/ios/Pods/
+AIPhotoEditor/ios/Pods/
 
 # Debug keystore (should be regenerated for production)
-android/app/debug.keystore
+**/android/app/debug.keystore
+AIPhotoEditor/android/app/debug.keystore
 
 # Environment variables
 .env
 .env.local
 .env.*.local
+**/.env
+**/.env.local
+**/.env.*.local
+
+# API keys and secrets (in case they're accidentally added)
+**/app.json.bak
+**/*secret*
+**/*key*.json
 
 # TypeScript
 *.tsbuildinfo
+
+# Additional Expo files
+.expo-shared/
+*.jks
+*.keystore
+!**/android/app/debug.keystore
 
