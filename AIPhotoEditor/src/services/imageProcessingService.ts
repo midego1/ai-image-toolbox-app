@@ -1,0 +1,78 @@
+import { EditMode, EditModeConfig } from '../types/editModes';
+import { TransformResponse } from './aiService';
+import { BaseProcessor } from './processors/baseProcessor';
+import { TransformProcessor } from './processors/transformProcessor';
+import { BackgroundRemovalProcessor } from './processors/backgroundRemovalProcessor';
+
+/**
+ * Image Processing Service
+ * Main router that delegates to appropriate processor based on edit mode
+ */
+export class ImageProcessingService {
+  private static processors: Map<EditMode, BaseProcessor> = new Map();
+
+  /**
+   * Initialize processors (lazy initialization)
+   */
+  private static initializeProcessors(): void {
+    if (this.processors.size === 0) {
+      this.processors.set(EditMode.TRANSFORM, new TransformProcessor());
+      this.processors.set(EditMode.REMOVE_BACKGROUND, new BackgroundRemovalProcessor());
+      // Add more processors as they are implemented
+      // this.processors.set(EditMode.ENHANCE, new EnhanceProcessor());
+      // this.processors.set(EditMode.FILTERS, new FilterProcessor());
+      // this.processors.set(EditMode.REMOVE_OBJECT, new ObjectRemovalProcessor());
+    }
+  }
+
+  /**
+   * Process an image based on edit mode
+   * @param imageUri - URI of the image to process
+   * @param editMode - The edit mode to apply
+   * @param config - Optional configuration for the processor
+   * @returns TransformResponse with processed image
+   */
+  static async processImage(
+    imageUri: string,
+    editMode: EditMode,
+    config?: EditModeConfig
+  ): Promise<TransformResponse> {
+    this.initializeProcessors();
+
+    const processor = this.processors.get(editMode);
+    
+    if (!processor) {
+      return {
+        success: false,
+        error: `Processor not available for edit mode: ${editMode}. This feature may not be implemented yet.`,
+      };
+    }
+
+    try {
+      return await processor.process(imageUri, config);
+    } catch (error: any) {
+      console.error(`ImageProcessingService error for ${editMode}:`, error);
+      return {
+        success: false,
+        error: error.message || 'Failed to process image',
+      };
+    }
+  }
+
+  /**
+   * Check if an edit mode is supported
+   */
+  static isModeSupported(editMode: EditMode): boolean {
+    this.initializeProcessors();
+    return this.processors.has(editMode);
+  }
+
+  /**
+   * Get available edit modes
+   */
+  static getAvailableModes(): EditMode[] {
+    this.initializeProcessors();
+    return Array.from(this.processors.keys());
+  }
+}
+

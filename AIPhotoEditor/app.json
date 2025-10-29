@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "AI Photo Editor",
+    "slug": "aiphotoeditor",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.aiphotoeditor.app"
+    },
+    "android": {
+      "package": "com.aiphotoeditor.app"
+    },
+    "plugins": [
+      "expo-camera",
+      "expo-image-picker",
+      "expo-media-library"
+    ],
+    "extra": {
+      "replicateApiKey": ""
+    }
+  }
+}
