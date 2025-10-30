@@ -21,6 +21,8 @@ export enum EditMode {
   STYLE_TRANSFER = 'style_transfer',
   TEXT_OVERLAY = 'text_overlay',
   CROP_ROTATE = 'crop_rotate',
+  VIRTUAL_TRY_ON = 'virtual_try_on',
+  PROFESSIONAL_HEADSHOTS = 'professional_headshots',
 }
 
 export interface EditModeData {
@@ -31,6 +33,8 @@ export interface EditModeData {
   category: EditModeCategory;
   isPremium?: boolean;
   requiresConfig?: boolean;
+  requiresSubscription?: boolean; // true = subscription-only (no free access)
+  creditCost?: number; // 0 = free (no credits), 0.1 = 10% credit, 1 = full credit
 }
 
 export interface EditModeConfig {

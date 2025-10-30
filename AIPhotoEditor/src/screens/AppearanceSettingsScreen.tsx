@@ -1,33 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Text } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { View, StyleSheet, ScrollView, Text, TouchableOpacity, LayoutAnimation } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { NavigationProp } from '../types/navigation';
-import { SettingsHeader } from '../components/SettingsHeader';
+import { SettingsNavigationProp } from '../types/navigation';
+import { MainHeader } from '../components/MainHeader';
 import { SectionHeader } from '../components/SectionHeader';
-import { SettingItem } from '../components/SettingItem';
+import { Card } from '../components/Card';
 import { useTheme, Theme } from '../theme/ThemeProvider';
 import { ThemeMode } from '../services/themeService';
-import { LanguageService, Language } from '../services/languageService';
+import { LanguageService, Language, LANGUAGES } from '../services/languageService';
 import { haptic } from '../utils/haptics';
+import { Ionicons } from '@expo/vector-icons';
 
 const AppearanceSettingsScreen = () => {
-  const navigation = useNavigation<NavigationProp<'AppearanceSettings'>>();
+  const navigation = useNavigation<SettingsNavigationProp<'AppearanceSettings'>>();
   const { theme, themeMode, setThemeMode } = useTheme();
   const [currentLanguage, setCurrentLanguage] = useState<Language>('automatic');
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
 
   const styles = createStyles(theme);
 
   useEffect(() => {
     loadLanguage();
   }, []);
-
-  // Reload language when screen comes into focus (e.g., returning from language selection)
-  useFocusEffect(
-    React.useCallback(() => {
-      loadLanguage();
-    }, [])
-  );
 
   const loadLanguage = async () => {
     const language = await LanguageService.getLanguage();
@@ -55,7 +50,17 @@ const AppearanceSettingsScreen = () => {
   };
 
   const handleLanguagePress = () => {
-    navigation.navigate('LanguageSelection');
+    haptic.light();
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setShowLanguageDropdown(!showLanguageDropdown);
+  };
+
+  const handleLanguageSelect = async (language: Language) => {
+    haptic.medium();
+    setCurrentLanguage(language);
+    await LanguageService.setLanguage(language);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setShowLanguageDropdown(false);
   };
 
   const getThemeLabel = (mode: ThemeMode): string => {
@@ -86,14 +91,16 @@ const AppearanceSettingsScreen = () => {
     </View>
   );
 
+  const handleBack = () => {
+    navigation.goBack();
+  };
+
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <SettingsHeader
+    <SafeAreaView style={styles.container} edges={[]}>
+      <MainHeader
         title="Appearance"
-        leftAction={{
-          icon: 'chevron-back-outline',
-          onPress: () => navigation.goBack(),
-        }}
+        onBack={handleBack}
+        backgroundColor={theme.colors.backgroundSecondary}
       />
 
       <ScrollView
@@ -105,7 +112,7 @@ const AppearanceSettingsScreen = () => {
         <SectionHeader title="THEME" />
         <View style={styles.sectionContainer}>
           <View style={styles.categoryContainer}>
-            <SettingItem
+            <Card
               icon={<ThemeIcon />}
               title="Appearance"
               subtitle="Match system settings"
@@ -123,16 +130,52 @@ const AppearanceSettingsScreen = () => {
         <SectionHeader title="LANGUAGE" />
         <View style={styles.sectionContainer}>
           <View style={styles.categoryContainer}>
-            <SettingItem
+            <Card
               icon={<LanguageIcon />}
               title="Current Language"
               value={LanguageService.getLanguageDisplayText(currentLanguage)}
               onPress={handleLanguagePress}
-              showChevron={true}
+              showChevron={false}
               iconColor={theme.colors.primary}
               isFirstInGroup={true}
-              isLastInGroup={true}
+              isLastInGroup={!showLanguageDropdown}
+              rightIcon={
+                <Ionicons
+                  name={showLanguageDropdown ? 'chevron-up' : 'chevron-down'}
+                  size={20}
+                  color={theme.colors.textTertiary}
+                />
+              }
             />
+            {showLanguageDropdown && (
+              <>
+                {LANGUAGES.map((languageOption, index, array) => {
+                  const isSelected = currentLanguage === languageOption.code;
+                  return (
+                    <Card
+                      key={languageOption.code}
+                      title={languageOption.nativeLabel}
+                      subtitle={languageOption.label}
+                      onPress={() => handleLanguageSelect(languageOption.code)}
+                      isFirstInGroup={false}
+                      isLastInGroup={index === array.length - 1}
+                      showSeparator={index < array.length - 1}
+                      showChevron={false}
+                      rightIcon={
+                        isSelected ? (
+                          <Ionicons name="checkmark-circle" size={24} color={theme.colors.primary} />
+                        ) : undefined
+                      }
+                      style={
+                        isSelected
+                          ? { backgroundColor: theme.colors.surfaceElevated, borderColor: theme.colors.primary, borderWidth: 2 }
+                          : {}
+                      }
+                    />
+                  );
+                })}
+              </>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -151,7 +194,7 @@ const createStyles = (theme: Theme) =>
     },
     scrollContent: {
       paddingTop: theme.spacing.lg, // Spacing between header and first card
-      paddingBottom: theme.spacing['3xl'] + 60, // Extra padding for tab bar
+      paddingBottom: theme.spacing.base, // Bottom padding (tab bar is provided by tab navigator)
     },
     sectionContainer: {
       marginBottom: theme.spacing.lg,

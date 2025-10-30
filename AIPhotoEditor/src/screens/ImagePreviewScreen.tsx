@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Image, Dimensions, Text, TouchableOpacity, Modal, Pressable } from 'react-native';
+import { View, StyleSheet, Image, Dimensions, Text, TouchableOpacity, Modal, Pressable, ScrollView, TextInput, Alert } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { NavigationProp, RouteProp } from '../types/navigation';
 import { EditMode, getEditMode } from '../constants/editModes';
-import { Header } from '../components/Header';
+import { AIToolHeader } from '../components/AIToolHeader';
+import { AIToolInfoCard } from '../components/AIToolInfoCard';
 import { Button } from '../components/Button';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
+import { spacing as baseSpacing } from '../theme/spacing';
 
 const { width, height } = Dimensions.get('window');
 
@@ -20,9 +22,28 @@ const ImagePreviewScreen = () => {
   const route = useRoute<RouteProp<'ImagePreview'>>();
   const { imageUri, editMode } = route.params;
   const [showImagePreview, setShowImagePreview] = useState(false);
+  const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
+  const [removalPrompt, setRemovalPrompt] = useState('');
+  const [backgroundPrompt, setBackgroundPrompt] = useState('');
+  const [headshotStyle, setHeadshotStyle] = useState<'corporate' | 'creative' | 'casual' | 'executive'>('corporate');
+  const [backgroundStyle, setBackgroundStyle] = useState<'office' | 'studio' | 'outdoor' | 'neutral'>('neutral');
+  const [lightingStyle, setLightingStyle] = useState<'professional' | 'soft' | 'dramatic' | 'natural'>('professional');
   const modeData = getEditMode(editMode);
+  const isRemoveBackgroundMode = editMode === EditMode.REMOVE_BACKGROUND;
+  const isRemoveObjectMode = editMode === EditMode.REMOVE_OBJECT;
+  const isReplaceBackgroundMode = editMode === EditMode.REPLACE_BACKGROUND;
+  const isProfessionalHeadshotsMode = editMode === EditMode.PROFESSIONAL_HEADSHOTS;
 
   const handleProcess = () => {
+    if (isRemoveObjectMode && !removalPrompt.trim()) {
+      Alert.alert('Missing Prompt', 'Please describe what you want to remove from the image');
+      return;
+    }
+    if (isReplaceBackgroundMode && !backgroundPrompt.trim()) {
+      Alert.alert('Missing Background', 'Please describe the new background');
+      return;
+    }
+
     haptic.medium();
 
     // Try to navigate using parent navigator first
@@ -30,7 +51,13 @@ const ImagePreviewScreen = () => {
     const navParams = {
       imageUri,
       editMode,
-      config: {}
+      config: isRemoveObjectMode
+        ? { prompt: removalPrompt.trim(), removalPrompt: removalPrompt.trim() }
+        : (isReplaceBackgroundMode
+          ? { backgroundPrompt: backgroundPrompt.trim() }
+          : (isProfessionalHeadshotsMode
+            ? { headshotStyle, backgroundStyle, lightingStyle }
+            : {}))
     };
 
     if (parentNav) {
@@ -42,85 +69,413 @@ const ImagePreviewScreen = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundSecondary }]} edges={['bottom']}>
-      <Header
+      <AIToolHeader
         title={modeData?.name || 'Preview'}
-        leftAction={{
-          icon: 'chevron-back-outline',
-          onPress: () => navigation.goBack(),
-        }}
+        backgroundColor={colors.backgroundSecondary}
       />
 
-      {/* Compact preview */}
-      <View style={[styles.previewContainer, { paddingHorizontal: spacing.base, paddingVertical: spacing.base }]}>
-        <TouchableOpacity
-          onPress={() => {
-            haptic.light();
-            setShowImagePreview(true);
-          }}
-          activeOpacity={0.8}
-        >
-          <Image
-            source={{ uri: imageUri }}
-            style={[styles.preview, {
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
-            }]}
-          />
-          <View style={[styles.expandIcon, { backgroundColor: colors.primary }]}>
-            <Ionicons name="expand" size={14} color="#FFFFFF" />
-          </View>
-        </TouchableOpacity>
-        <View style={{ marginLeft: spacing.md, flex: 1 }}>
-          <Text style={[styles.previewTitle, { color: colors.text, fontSize: typography.scaled.lg, fontWeight: typography.weight.bold }]}>
-            Your Photo
-          </Text>
-          <Text style={[styles.previewSubtitle, { color: colors.textSecondary, fontSize: typography.scaled.sm }]}>
-            Tap to view larger • Ready to process
-          </Text>
-        </View>
-      </View>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Hero Image Preview - Remove Background, Remove Object, Replace Background, or Professional Headshots Mode */}
+        {(isRemoveBackgroundMode || isRemoveObjectMode || isReplaceBackgroundMode || isProfessionalHeadshotsMode) ? (
+          <View style={{ paddingHorizontal: spacing.base, paddingTop: spacing.md, alignItems: 'center' }}>
+            <TouchableOpacity
+              onPress={() => {
+                haptic.light();
+                setShowImagePreview(true);
+              }}
+              activeOpacity={0.9}
+              style={{ alignSelf: 'center' }}
+            >
+              <View style={[styles.heroImageWrapper, {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.1,
+                shadowRadius: 12,
+                elevation: 4,
+              }]}>
+                <Image
+                  source={{ uri: imageUri }}
+                  style={styles.heroImage}
+                  resizeMode="cover"
+                />
+                <View style={styles.expandOverlay}>
+                  <View style={[styles.expandButton, { backgroundColor: colors.primary }]}>
+                    <Ionicons name="expand" size={18} color="#FFFFFF" />
+                    <Text style={[styles.expandText, { color: '#FFFFFF', fontSize: typography.scaled.sm, fontWeight: typography.weight.medium }]}>
+                      Tap to view full size
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </TouchableOpacity>
 
-      {/* Explanation for Remove Background */}
-      {editMode === EditMode.REMOVE_BACKGROUND && (
-        <View style={[styles.explanationContainer, { 
-          backgroundColor: colors.surface, 
-          marginHorizontal: spacing.base,
-          marginTop: spacing.md,
-          padding: spacing.base,
-          borderRadius: 12,
-          borderWidth: 1,
-          borderColor: colors.border,
-        }]}>
-          <View style={styles.explanationHeader}>
-            <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
-            <Text style={[styles.explanationTitle, { 
-              color: colors.text, 
-              fontSize: typography.scaled.base, 
-              fontWeight: typography.weight.bold,
-              marginLeft: spacing.xs,
+            {/* Quick Info Badges */}
+            <View style={[styles.badgesContainer, { marginTop: spacing.sm }]}>
+            <View style={[styles.badge, { 
+              backgroundColor: colors.primary + '15',
+              borderColor: colors.primary + '30',
             }]}>
-              How it works
+              <Ionicons name="flash-outline" size={14} color={colors.primary} />
+              <Text style={[styles.badgeText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}>
+                Instant
+              </Text>
+            </View>
+            <View style={[styles.badge, { 
+              backgroundColor: colors.primary + '15',
+              borderColor: colors.primary + '30',
+            }]}>
+              <Ionicons name="sparkles-outline" size={14} color={colors.primary} />
+              <Text style={[styles.badgeText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}>
+                AI-powered
+              </Text>
+            </View>
+            <View style={[styles.badge, { 
+              backgroundColor: colors.primary + '15',
+              borderColor: colors.primary + '30',
+            }]}>
+              <Ionicons name="trophy-outline" size={14} color={colors.primary} />
+              <Text style={[styles.badgeText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}>
+                Professional
+              </Text>
+            </View>
+          </View>
+
+          {/* Prompt Input - Remove Object Mode */}
+          {isRemoveObjectMode && (
+            <View style={{ marginHorizontal: spacing.base, marginTop: spacing.base }}>
+              <View style={[styles.promptContainer, {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              }]}>
+                <Text style={[styles.promptLabel, {
+                  color: colors.text,
+                  fontSize: typography.scaled.sm,
+                  fontWeight: typography.weight.medium,
+                  marginBottom: spacing.xs,
+                }]}>
+                  What would you like to remove?
+                </Text>
+                <TextInput
+                  style={[styles.promptInput, {
+                    backgroundColor: colors.background,
+                    color: colors.text,
+                    borderColor: colors.border,
+                    fontSize: typography.scaled.base,
+                  }]}
+                  value={removalPrompt}
+                  onChangeText={setRemovalPrompt}
+                  placeholder="e.g., person, car, sign, bottle..."
+                  placeholderTextColor={colors.textSecondary}
+                  multiline={false}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+            </View>
+          )}
+
+          {/* Professional Headshots Controls */}
+          {isProfessionalHeadshotsMode && (
+            <View style={{ marginHorizontal: spacing.base, marginTop: spacing.base }}>
+              {/* Headshot Style Selection */}
+              <View style={[styles.promptContainer, {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                marginBottom: spacing.base,
+              }]}>
+                <Text style={[styles.promptLabel, {
+                  color: colors.text,
+                  fontSize: typography.scaled.sm,
+                  fontWeight: typography.weight.medium,
+                  marginBottom: spacing.sm,
+                }]}>
+                  Headshot Style
+                </Text>
+                <View style={styles.optionGrid}>
+                  {(['corporate', 'creative', 'casual', 'executive'] as const).map((style) => (
+                    <TouchableOpacity
+                      key={style}
+                      onPress={() => {
+                        haptic.light();
+                        setHeadshotStyle(style);
+                      }}
+                      style={[styles.optionButton, {
+                        backgroundColor: headshotStyle === style ? colors.primary : colors.background,
+                        borderColor: headshotStyle === style ? colors.primary : colors.border,
+                      }]}
+                    >
+                      <Text 
+                        style={[styles.optionText, {
+                          color: headshotStyle === style ? '#FFFFFF' : colors.text,
+                          fontSize: typography.scaled.sm,
+                          fontWeight: typography.weight.medium,
+                        }]}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit={true}
+                        minimumFontScale={0.8}
+                      >
+                        {style.charAt(0).toUpperCase() + style.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Background Style Selection */}
+              <View style={[styles.promptContainer, {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                marginBottom: spacing.base,
+              }]}>
+                <Text style={[styles.promptLabel, {
+                  color: colors.text,
+                  fontSize: typography.scaled.sm,
+                  fontWeight: typography.weight.medium,
+                  marginBottom: spacing.sm,
+                }]}>
+                  Background
+                </Text>
+                <View style={styles.optionGrid}>
+                  {(['office', 'studio', 'outdoor', 'neutral'] as const).map((style) => (
+                    <TouchableOpacity
+                      key={style}
+                      onPress={() => {
+                        haptic.light();
+                        setBackgroundStyle(style);
+                      }}
+                      style={[styles.optionButton, {
+                        backgroundColor: backgroundStyle === style ? colors.primary : colors.background,
+                        borderColor: backgroundStyle === style ? colors.primary : colors.border,
+                      }]}
+                    >
+                      <Text 
+                        style={[styles.optionText, {
+                          color: backgroundStyle === style ? '#FFFFFF' : colors.text,
+                          fontSize: typography.scaled.sm,
+                          fontWeight: typography.weight.medium,
+                        }]}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit={true}
+                        minimumFontScale={0.8}
+                      >
+                        {style.charAt(0).toUpperCase() + style.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Lighting Style Selection */}
+              <View style={[styles.promptContainer, {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              }]}>
+                <Text style={[styles.promptLabel, {
+                  color: colors.text,
+                  fontSize: typography.scaled.sm,
+                  fontWeight: typography.weight.medium,
+                  marginBottom: spacing.sm,
+                }]}>
+                  Lighting
+                </Text>
+                <View style={styles.optionGrid}>
+                  {(['professional', 'soft', 'dramatic', 'natural'] as const).map((style) => (
+                    <TouchableOpacity
+                      key={style}
+                      onPress={() => {
+                        haptic.light();
+                        setLightingStyle(style);
+                      }}
+                      style={[styles.optionButton, {
+                        backgroundColor: lightingStyle === style ? colors.primary : colors.background,
+                        borderColor: lightingStyle === style ? colors.primary : colors.border,
+                      }]}
+                    >
+                      <Text 
+                        style={[styles.optionText, {
+                          color: lightingStyle === style ? '#FFFFFF' : colors.text,
+                          fontSize: typography.scaled.sm,
+                          fontWeight: typography.weight.medium,
+                        }]}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit={true}
+                        minimumFontScale={0.8}
+                      >
+                        {style.charAt(0).toUpperCase() + style.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Background Input - Replace Background Mode */}
+          {isReplaceBackgroundMode && (
+            <View style={{ marginHorizontal: spacing.base, marginTop: spacing.base }}>
+              <View style={[styles.promptContainer, {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              }]}>
+                <Text style={[styles.promptLabel, {
+                  color: colors.text,
+                  fontSize: typography.scaled.sm,
+                  fontWeight: typography.weight.medium,
+                  marginBottom: spacing.xs,
+                }]}> 
+                  Describe the new background
+                </Text>
+                <TextInput
+                  style={[styles.promptInput, {
+                    backgroundColor: colors.background,
+                    color: colors.text,
+                    borderColor: colors.border,
+                    fontSize: typography.scaled.base,
+                  }]}
+                  value={backgroundPrompt}
+                  onChangeText={setBackgroundPrompt}
+                  placeholder="e.g., beach at sunset, modern office, forest trail"
+                  placeholderTextColor={colors.textSecondary}
+                  multiline={false}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+            </View>
+          )}
+
+          {/* Process Button - Moved Above Information Card */}
+          <View style={{ paddingHorizontal: spacing.base, paddingTop: spacing.lg }}>
+            <Button
+              title={
+                isRemoveObjectMode
+                  ? `Remove Object`
+                  : isReplaceBackgroundMode
+                    ? `Replace Background`
+                    : isProfessionalHeadshotsMode
+                      ? `Create Headshot`
+                      : `Remove Background`
+              }
+              onPress={handleProcess}
+              disabled={
+                (isRemoveObjectMode && !removalPrompt.trim()) ||
+                (isReplaceBackgroundMode && !backgroundPrompt.trim())
+              }
+              style={[styles.processButton, { minHeight: 56 }] as any}
+            />
+            <View style={{ marginTop: spacing.sm, alignItems: 'center' }}>
+              <View style={[styles.timingInfo, {
+                backgroundColor: colors.surface,
+                paddingHorizontal: spacing.base,
+                paddingVertical: spacing.xs,
+                borderRadius: 20,
+              }]}>
+                <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
+                <Text style={[styles.timingText, {
+                  color: colors.textSecondary,
+                  fontSize: typography.scaled.xs,
+                  marginLeft: spacing.xs,
+                }]}>
+                  Usually takes 5-10 seconds
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      ) : (
+        /* Compact preview - Other Modes */
+        <View style={[styles.previewContainer, { paddingHorizontal: spacing.base, paddingVertical: spacing.base }]}>
+          <TouchableOpacity
+            onPress={() => {
+              haptic.light();
+              setShowImagePreview(true);
+            }}
+            activeOpacity={0.8}
+          >
+            <Image
+              source={{ uri: imageUri }}
+              style={[styles.preview, {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              }]}
+            />
+            <View style={[styles.expandIcon, { backgroundColor: colors.primary }]}>
+              <Ionicons name="expand" size={14} color="#FFFFFF" />
+            </View>
+          </TouchableOpacity>
+          <View style={{ marginLeft: spacing.md, flex: 1 }}>
+            <Text style={[styles.previewTitle, { color: colors.text, fontSize: typography.scaled.lg, fontWeight: typography.weight.bold }]}>
+              Your Photo
+            </Text>
+            <Text style={[styles.previewSubtitle, { color: colors.textSecondary, fontSize: typography.scaled.sm }]}>
+              Tap to view larger • Ready to process
             </Text>
           </View>
-          <Text style={[styles.explanationText, { 
-            color: colors.textSecondary, 
-            fontSize: typography.scaled.sm,
-            marginTop: spacing.xs,
-            lineHeight: 20,
-          }]}>
-            Our AI will automatically detect and remove the background from your photo, keeping the main subject intact. The result will have a transparent background, perfect for use in other designs or compositions.
-          </Text>
         </View>
       )}
 
-      {/* Process Button */}
-      <View style={[styles.buttonContainer, { paddingHorizontal: spacing.base, paddingBottom: spacing.xl }]}>
-        <Button
-          title={`Process ${modeData?.name || 'Image'}`}
-          onPress={handleProcess}
-          style={styles.processButton}
+      {/* Modern Information Card - All Relevant Modes */}
+      {(isRemoveBackgroundMode || isRemoveObjectMode || isReplaceBackgroundMode || isProfessionalHeadshotsMode) && (
+        <AIToolInfoCard
+          icon={
+            isRemoveObjectMode ? 'cut-outline' :
+            isRemoveBackgroundMode ? 'cut-outline' :
+            isReplaceBackgroundMode ? 'image-outline' :
+            'person-circle-outline'
+          }
+          whatDescription={
+            isRemoveObjectMode
+              ? 'AI-powered object removal based on your description. Describe what you want to remove, and our AI will intelligently erase it while preserving the rest of your image.'
+              : isRemoveBackgroundMode
+                ? 'Automatically removes the background from your photo while keeping your subject intact.'
+                : isReplaceBackgroundMode
+                  ? 'Swap your photo’s background with a new scene while keeping the subject natural and clean.'
+                  : 'Generate a polished, professional-looking headshot from your photo with refined lighting and backgrounds.'
+          }
+          howDescription={
+            isRemoveObjectMode
+              ? 'The system detects the described subject, removes it, and fills the area with context-aware detail to match surrounding textures and lighting.'
+              : isRemoveBackgroundMode
+                ? 'Your subject is separated using semantic analysis and edge handling, producing a clean cutout with natural boundaries.'
+                : isReplaceBackgroundMode
+                  ? 'Your subject is segmented, a precise mask is created, and a new background is composited with consistent perspective, lighting, and color.'
+                  : 'Facial regions and contours are preserved while lighting, background, and clarity are enhanced to produce a studio-quality portrait.'
+          }
+          howItems={
+            isRemoveObjectMode
+              ? [
+                  { text: 'Smart prompt understanding' },
+                  { text: 'Context-aware inpainting' },
+                  { text: 'Natural-looking results' },
+                ]
+              : isRemoveBackgroundMode
+                ? [
+                    { text: 'Transparent PNG output' },
+                    { text: 'Great for product photos & posts' },
+                    { text: 'Handles hair and fine edges' },
+                  ]
+                : isReplaceBackgroundMode
+                  ? [
+                      { text: 'Clean subject masking' },
+                      { text: 'Scene-consistent lighting' },
+                      { text: 'High-quality compositing' },
+                    ]
+                  : [
+                      { text: 'Identity-preserving adjustments' },
+                      { text: 'Professional lighting & backdrop' },
+                      { text: 'Crisp, share-ready results' },
+                    ]
+          }
         />
-      </View>
+      )}
+
+      </ScrollView>
 
       {/* Image Preview Modal */}
       <Modal
@@ -172,6 +527,12 @@ const ImagePreviewScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   previewContainer: {
     flexDirection: 'row',
@@ -278,6 +639,136 @@ const styles = StyleSheet.create({
   },
   previewModalHint: {
     textAlign: 'center',
+  },
+  // Beta Mode Styles
+  heroImageWrapper: {
+    width: width - (baseSpacing.base * 2),
+    height: width - (baseSpacing.base * 2),
+    maxHeight: 300,
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+    alignSelf: 'center',
+  },
+  heroImage: {
+    width: '100%',
+    height: '100%',
+  },
+  expandOverlay: {
+    position: 'absolute',
+    bottom: baseSpacing.base,
+    left: 0,
+    right: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  expandButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: baseSpacing.md,
+    paddingVertical: baseSpacing.xs,
+    borderRadius: 20,
+    gap: baseSpacing.xs,
+  },
+  expandText: {
+    // Dynamic styles applied inline
+  },
+  badgesContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: baseSpacing.sm,
+    flexWrap: 'wrap',
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: baseSpacing.sm,
+    paddingVertical: baseSpacing.xs,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: baseSpacing.xs,
+  },
+  badgeText: {
+    // Dynamic styles applied inline
+  },
+  modernCard: {
+    // Dynamic styles applied inline
+  },
+  divider: {
+    height: 1,
+    marginHorizontal: baseSpacing.base,
+  },
+  checkItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: baseSpacing.sm,
+  },
+  checkText: {
+    // Dynamic styles applied inline
+  },
+  expandableHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  techItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: baseSpacing.sm,
+  },
+  techDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  techText: {
+    // Dynamic styles applied inline
+  },
+  timingInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  timingText: {
+    // Dynamic styles applied inline
+  },
+  promptContainer: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: baseSpacing.base,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  promptLabel: {
+    // Dynamic styles applied inline
+  },
+  promptInput: {
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: baseSpacing.base,
+    paddingVertical: baseSpacing.sm,
+    minHeight: 44,
+  },
+  optionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: baseSpacing.sm,
+    justifyContent: 'space-between',
+  },
+  optionButton: {
+    width: '48%',
+    paddingVertical: baseSpacing.sm,
+    paddingHorizontal: baseSpacing.base,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+  },
+  optionText: {
+    // Dynamic styles applied inline
   },
 });
 

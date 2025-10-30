@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { View, StyleSheet, Alert, Text, TouchableOpacity, Modal, ScrollView, Pressable, Dimensions, Image, Platform } from 'react-native';
+import { View, StyleSheet, Alert, Text, TouchableOpacity, Modal, ScrollView, Pressable, Dimensions, Image } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,12 +12,16 @@ import { NavigationProp, RouteProp } from '../types/navigation';
 import { EditMode, EDIT_MODES } from '../constants/editModes';
 import { FlashMode, CameraLens } from '../types/camera';
 import { IconButton } from '../components/IconButton';
+import { Card } from '../components/Card';
+import { ZoomableImage } from '../components/ZoomableImage';
 import { Button } from '../components/Button';
 import { useTheme, spacing as fallbackSpacing } from '../theme';
 import { haptic } from '../utils/haptics';
 import { useScreenFlash } from '../utils/screenFlash';
 import { getNextFlashMode, getFlashIconName, shouldUseFlash, shouldUseScreenFlash, mapLensIdentifier, lensToIdentifier } from '../utils/flashMode';
 import { SettingsService } from '../services/settingsService';
+import { SubscriptionService } from '../services/subscriptionService';
+import { ImageProcessingService } from '../services/imageProcessingService';
 
 const QuickCameraScreen = () => {
   const { theme } = useTheme();
@@ -28,6 +32,7 @@ const QuickCameraScreen = () => {
   // Get route params if available (only when navigated from stack with editMode, not as tab)
   const route = useRoute();
   const editModeFromRoute = (route.params as any)?.editMode as EditMode | undefined;
+  const preselectedGenreId = (route.params as any)?.preselectedGenreId as string | undefined;
   const [facing, setFacing] = useState<CameraType>('back');
   const [flashMode, setFlashMode] = useState<FlashMode>('auto');
   const [selectedLens, setSelectedLens] = useState<CameraLens>('standard');
@@ -45,9 +50,8 @@ const QuickCameraScreen = () => {
   const [latestPhoto, setLatestPhoto] = useState<string | null>(null);
   const [showFeatureSelector, setShowFeatureSelector] = useState(false);
   const [capturedImageUri, setCapturedImageUri] = useState<string | null>(null);
-  const [showNightModeSuggestion, setShowNightModeSuggestion] = useState(false);
-  const [lastPhotoCount, setLastPhotoCount] = useState(0);
-  const [isMonitoringForNewPhoto, setIsMonitoringForNewPhoto] = useState(false);
+  const [isPremium, setIsPremium] = useState(false);
+  const [showImagePreview, setShowImagePreview] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<any>(null);
   const { triggerFlash, FlashOverlay } = useScreenFlash({
@@ -87,6 +91,19 @@ const QuickCameraScreen = () => {
     getLatestPhoto();
   }, []);
 
+  // Load subscription status
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const premium = await SubscriptionService.checkSubscriptionStatus();
+        setIsPremium(premium);
+      } catch (e) {
+        setIsPremium(false);
+      }
+    };
+    load();
+  }, []);
+
   // Detect available camera lenses
   useEffect(() => {
     const checkAvailableLenses = async () => {
@@ -97,7 +114,7 @@ const QuickCameraScreen = () => {
               const lensIds = await cameraRef.current.getAvailableLenses();
               console.log('[QuickCamera] Available lens IDs:', lensIds);
               
-              const mappedLenses: CameraLens[] = [];
+              let mappedLenses: CameraLens[] = [];
               const identifiers: Record<CameraLens, string> = { ...availableLensIdentifiers };
               
               for (const lensId of lensIds) {
@@ -109,6 +126,9 @@ const QuickCameraScreen = () => {
                 }
               }
               
+              // Restrict to ultra-wide and standard only (no telephoto)
+              mappedLenses = mappedLenses.filter(l => l === 'standard' || l === 'ultra-wide');
+
               if (!mappedLenses.includes('standard')) {
                 mappedLenses.unshift('standard');
               }
@@ -150,84 +170,6 @@ const QuickCameraScreen = () => {
     }
   }, [facing, selectedLens, zoomLevel]);
 
-  // Monitor photo library for new photos when user returns from native camera
-  useEffect(() => {
-    if (!isMonitoringForNewPhoto) return;
-
-    const checkForNewPhotos = async () => {
-      try {
-        const { status } = await MediaLibrary.requestPermissionsAsync();
-        if (status === 'granted') {
-          const assets = await MediaLibrary.getAssetsAsync({
-            mediaType: MediaLibrary.MediaType.photo,
-            sortBy: MediaLibrary.SortBy.creationTime,
-            first: 5, // Check last 5 photos to account for any delay
-          });
-          
-          if (assets.assets.length > 0) {
-            const latestPhoto = assets.assets[0];
-            const now = Date.now();
-            const photoTime = latestPhoto.creationTime * 1000; // Convert to ms
-            
-            // If photo was taken within last 60 seconds, offer to import
-            if (now - photoTime < 60000) {
-              // Check if this is a new photo (creation time is recent)
-              const isLikelyNew = assets.assets.length > lastPhotoCount || lastPhotoCount === 0;
-              
-              if (isLikelyNew) {
-                setLastPhotoCount(assets.assets.length);
-                setIsMonitoringForNewPhoto(false);
-                
-                Alert.alert(
-                  'Import Photo?',
-                  'We found a photo you just took. Would you like to import it for editing?',
-                  [
-                  { 
-                    text: 'Cancel', 
-                    style: 'cancel',
-                    onPress: () => {
-                      setShowNightModeSuggestion(false);
-                    }
-                  },
-                  {
-                    text: 'Import',
-                    onPress: async () => {
-                      try {
-                        haptic.success();
-                        const fileUri = await copyImageToFileSystem(latestPhoto.uri);
-                        setShowNightModeSuggestion(false);
-                        
-                        if (editModeFromRoute) {
-                          handleImageSelected(fileUri);
-                        } else {
-                          setCapturedImageUri(fileUri);
-                          setShowFeatureSelector(true);
-                        }
-                      } catch (error) {
-                        console.error('[QuickCamera] Error importing photo:', error);
-                        haptic.error();
-                        Alert.alert('Error', 'Failed to import photo');
-                      }
-                    },
-                  },
-                ]);
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.debug('[QuickCamera] Photo check error:', error);
-      }
-    };
-
-    // Check every 2 seconds when monitoring is active
-    const photoCheckInterval = setInterval(checkForNewPhotos, 2000);
-
-    return () => {
-      clearInterval(photoCheckInterval);
-    };
-  }, [isMonitoringForNewPhoto, lastPhotoCount]);
-
   if (!permission) {
     return <View style={[styles.container, { backgroundColor: colors.background }]} />;
   }
@@ -255,12 +197,19 @@ const QuickCameraScreen = () => {
     const modeToUse = editMode || editModeFromRoute || EditMode.TRANSFORM;
     const parentNav = navigation.getParent();
 
-    if (modeToUse === EditMode.TRANSFORM) {
+    if (modeToUse === EditMode.VIRTUAL_TRY_ON) {
+      // Virtual try-on goes to VirtualTryOnSelection with person image pre-filled
+      if (parentNav) {
+        parentNav.navigate('VirtualTryOnSelection', { editMode: modeToUse, personImageUri: imageUri });
+      } else {
+        navigation.navigate('VirtualTryOnSelection', { editMode: modeToUse, personImageUri: imageUri });
+      }
+    } else if (modeToUse === EditMode.TRANSFORM) {
       // Transform goes to GenreSelection for style selection
       if (parentNav) {
-        parentNav.navigate('GenreSelection', { imageUri, editMode: modeToUse });
+        (parentNav as any).navigate('GenreSelection', { imageUri, editMode: modeToUse, preselectedGenreId } as any);
       } else {
-        navigation.navigate('GenreSelection', { imageUri, editMode: modeToUse });
+        (navigation as any).navigate('GenreSelection', { imageUri, editMode: modeToUse, preselectedGenreId } as any);
       }
     } else {
       // Other AI tools go to ImagePreview screen
@@ -334,8 +283,12 @@ const QuickCameraScreen = () => {
           if (editModeFromRoute) {
             handleImageSelected(manipulatedImage.uri);
           } else {
-            setCapturedImageUri(manipulatedImage.uri);
-            setShowFeatureSelector(true);
+            const parentNav = navigation.getParent();
+            if (parentNav) {
+              parentNav.navigate('PostCaptureFeatureSelection', { imageUri: manipulatedImage.uri });
+            } else {
+              navigation.navigate('PostCaptureFeatureSelection' as any, { imageUri: manipulatedImage.uri } as any);
+            }
           }
         }
       } catch (error) {
@@ -348,69 +301,6 @@ const QuickCameraScreen = () => {
   const toggleFlashMode = () => {
     haptic.selection();
     setFlashMode(getNextFlashMode(flashMode));
-  };
-
-  const openNativeCamera = async () => {
-    try {
-      haptic.medium();
-      
-      // iOS doesn't allow opening Camera app directly via URL scheme
-      // Instead, we'll show instructions and start monitoring for new photos
-      const initialPhotoCount = await (async () => {
-        try {
-          const { status } = await MediaLibrary.requestPermissionsAsync();
-          if (status === 'granted') {
-            const assets = await MediaLibrary.getAssetsAsync({
-              mediaType: MediaLibrary.MediaType.photo,
-              sortBy: MediaLibrary.SortBy.creationTime,
-              first: 1,
-            });
-            return assets.assets.length;
-          }
-        } catch (error) {
-          console.debug('[QuickCamera] Error getting initial photo count:', error);
-        }
-        return 0;
-      })();
-
-      setLastPhotoCount(initialPhotoCount);
-      setIsMonitoringForNewPhoto(true);
-
-      Alert.alert(
-        'Use Built-in Camera for Night Mode',
-        'For the best results in low light:\n\n1. Exit this app (swipe up or press home)\n2. Open the built-in Camera app\n3. Take your photo (Night Mode will activate automatically)\n4. Return here and we\'ll detect your new photo automatically',
-        [
-          { 
-            text: 'Cancel', 
-            style: 'cancel',
-            onPress: () => {
-              setIsMonitoringForNewPhoto(false);
-              setShowNightModeSuggestion(false);
-            }
-          },
-          {
-            text: 'Got it',
-            onPress: () => {
-              // Keep monitoring active
-            },
-          },
-        ]
-      );
-    } catch (error) {
-      console.error('[QuickCamera] Error opening native camera instructions:', error);
-      Alert.alert('Error', 'Could not show camera instructions');
-    }
-  };
-
-  const suggestNightMode = () => {
-    haptic.medium();
-    setShowNightModeSuggestion(true);
-  };
-
-  const dismissSuggestion = () => {
-    haptic.light();
-    setShowNightModeSuggestion(false);
-    setIsMonitoringForNewPhoto(false);
   };
 
   const toggleLens = () => {
@@ -437,11 +327,6 @@ const QuickCameraScreen = () => {
     } else if (zoom === 1) {
       setSelectedLens('standard');
       setZoomLevel(0); // Native lens - no digital zoom
-    } else if (zoom === 2 && availableLenses.includes('telephoto')) {
-      setSelectedLens('telephoto');
-      setZoomLevel(0); // Native lens - no digital zoom
-      // Note: Telephoto lens native zoom varies by device (often 2.5x-3x)
-      // We use the native telephoto zoom, not forcing it to exactly 2x
     }
   };
 
@@ -489,8 +374,12 @@ const QuickCameraScreen = () => {
         if (editModeFromRoute) {
           handleImageSelected(fileUri);
         } else {
-          setCapturedImageUri(fileUri);
-          setShowFeatureSelector(true);
+          const parentNav = navigation.getParent();
+          if (parentNav) {
+            parentNav.navigate('PostCaptureFeatureSelection', { imageUri: fileUri });
+          } else {
+            navigation.navigate('PostCaptureFeatureSelection' as any, { imageUri: fileUri } as any);
+          }
         }
       }
     } catch (error) {
@@ -520,6 +409,7 @@ const QuickCameraScreen = () => {
         cameraRef.current.setFocusAsync(normalizedX, normalizedY);
         haptic.light();
       }
+
     } catch (error) {
       console.debug('[QuickCamera] Focus not available:', error);
     }
@@ -532,6 +422,7 @@ const QuickCameraScreen = () => {
           facing={facing} 
           ref={cameraRef}
           zoom={0}
+          flash={(facing === 'front' ? 'off' : (flashMode === 'on' ? 'on' : (flashMode === 'auto' ? 'auto' : 'off'))) as any}
           selectedLens={availableLensIdentifiers[selectedLens] || undefined}
           // CRITICAL: zoom prop is ALWAYS 0 (hardcoded) to ensure NO digital zoom is ever used
           // We only use native optical zoom via selectedLens prop (switching physical camera lenses)
@@ -543,7 +434,7 @@ const QuickCameraScreen = () => {
           onAvailableLensesChanged={(event) => {
             const lensIds = event.lenses || [];
             console.log('[QuickCamera] onAvailableLensesChanged event:', lensIds, 'facing:', facing);
-            const mappedLenses: CameraLens[] = [];
+            let mappedLenses: CameraLens[] = [];
             const identifiers: Record<CameraLens, string> = { ...availableLensIdentifiers };
             
             for (const lensId of lensIds) {
@@ -554,6 +445,9 @@ const QuickCameraScreen = () => {
               }
             }
             
+            // Restrict to ultra-wide and standard only (no telephoto)
+            mappedLenses = mappedLenses.filter(l => l === 'standard' || l === 'ultra-wide');
+
             if (!mappedLenses.includes('standard')) {
               mappedLenses.unshift('standard');
               const standardId = lensIds.find(id => {
@@ -598,74 +492,32 @@ const QuickCameraScreen = () => {
               )}
             </View>
             
-            {/* Right: Night Mode Button and Flash Button */}
+            {/* Right: Flash Button */}
             <View style={styles.topBarRight}>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <IconButton
-                  name="moon-outline"
-                  onPress={suggestNightMode}
-                  size={26}
-                  color="#FFFFFF"
-                  backgroundColor="rgba(0, 0, 0, 0.5)"
-                  style={styles.cameraControl}
-                />
-                <IconButton
-                  name={flashIcon}
-                  onPress={toggleFlashMode}
-                  size={26}
-                  color={isFlashActive ? "#FFD700" : "#FFFFFF"}
-                  backgroundColor="rgba(0, 0, 0, 0.5)"
-                  style={styles.cameraControl}
-                />
-              </View>
+              <IconButton
+                name={flashIcon}
+                onPress={toggleFlashMode}
+                size={26}
+                color={isFlashActive ? "#FFD700" : "#FFFFFF"}
+                backgroundColor="rgba(0, 0, 0, 0.5)"
+                style={styles.cameraControl}
+              />
             </View>
           </View>
 
-          {/* Low Light Suggestion Banner */}
-          {showNightModeSuggestion && (
-            <View style={styles.suggestionBanner} pointerEvents="box-none">
-              <View style={[styles.suggestionContent, { backgroundColor: 'rgba(0, 0, 0, 0.85)' }]}>
-                <View style={styles.suggestionLeft}>
-                  <Ionicons name="moon" size={24} color="#FFD700" style={{ marginRight: 12 }} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.suggestionTitle}>Low Light Detected</Text>
-                    <Text style={styles.suggestionText}>
-                      Use the built-in Camera app for better Night Mode photos
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.suggestionRight}>
-                  <TouchableOpacity
-                    onPress={openNativeCamera}
-                    style={[styles.suggestionButton, { backgroundColor: '#FFD700' }]}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.suggestionButtonText, { color: '#000000' }]}>Use Camera</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={dismissSuggestion}
-                    style={styles.suggestionDismiss}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="close" size={20} color="#FFFFFF" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          )}
+          {/* Focus indicator removed (no visual feedback) */}
 
           {/* Bottom Bar */}
           <View style={styles.bottomSection}>
             {/* Zoom Buttons Above Shutter */}
-            {availableLenses.length > 1 && (
+            {availableLenses.length >= 1 && (
               <View style={styles.zoomContainerWrapper}>
                 <View style={styles.zoomContainer}>
                 {(() => {
-                  const physicalZooms = [0.5, 1];
-                  if (availableLenses.includes('telephoto')) {
-                    physicalZooms.push(2);
-                  }
-                  return physicalZooms.map((zoom) => {
+                  const zoomOptions: number[] = [];
+                  if (availableLenses.includes('ultra-wide')) zoomOptions.push(0.5);
+                  zoomOptions.push(1);
+                  return zoomOptions.map((zoom) => {
                     const isActive = selectedZoom === zoom;
                     return (
                       <TouchableOpacity
@@ -772,7 +624,7 @@ const QuickCameraScreen = () => {
       >
         <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
           <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
-            <View style={styles.modalHeader}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }] }>
               <Text style={[styles.modalTitle, { color: colors.text }]}>Choose Feature</Text>
               <TouchableOpacity onPress={() => {
                 setShowFeatureSelector(false);
@@ -787,31 +639,94 @@ const QuickCameraScreen = () => {
               contentContainerStyle={styles.modalScrollContent}
               showsVerticalScrollIndicator={false}
             >
-              {Object.values(EDIT_MODES).map((mode) => {
-                if (!mode) return null;
-                return (
+              {capturedImageUri && (
+                <View style={{ paddingHorizontal: 16, paddingTop: 12, alignItems: 'center' }}>
                   <TouchableOpacity
-                    key={mode.id}
-                    style={[styles.featureOption, { backgroundColor: '#1a1a1a' }]}
                     onPress={() => {
-                      haptic.selection();
-                      handleFeatureSelected(mode.id);
+                      haptic.light();
+                      setShowImagePreview(true);
                     }}
-                    activeOpacity={0.7}
+                    activeOpacity={0.9}
+                    style={{ alignSelf: 'center' }}
                   >
-                    <Text style={styles.featureModalIcon}>{mode.icon}</Text>
-                    <View style={styles.featureModalInfo}>
-                      <Text style={[styles.featureModalTitle, { color: '#FFFFFF' }]}>{mode.name}</Text>
-                      <Text style={[styles.featureModalDescription, { color: '#888' }]} numberOfLines={1}>
-                        {mode.description}
-                      </Text>
+                    <View style={{
+                      width: Dimensions.get('window').width - 32,
+                      aspectRatio: 4 / 3,
+                      borderRadius: 16,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      overflow: 'hidden',
+                      backgroundColor: colors.surface,
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 6 },
+                      shadowOpacity: 0.12,
+                      shadowRadius: 16,
+                      elevation: 6,
+                    }}>
+                      <Image
+                        source={{ uri: capturedImageUri }}
+                        style={{ width: '100%', height: '100%' }}
+                        resizeMode="cover"
+                      />
                     </View>
                   </TouchableOpacity>
-                );
-              })}
+                </View>
+              )}
+
+              {(() => {
+                const modes = Object.values(EDIT_MODES).filter(Boolean);
+                return modes.map((mode, index) => {
+                  const isLocked = (mode as any).isPremium && !isPremium;
+                  const isNotWorking = !ImageProcessingService.isModeSupported((mode as any).id);
+                  const isDisabled = isLocked || isNotWorking;
+                  return (
+                    <Card
+                      key={(mode as any).id}
+                      icon={(mode as any).icon}
+                      title={(mode as any).name}
+                      subtitle={(mode as any).description}
+                      showPremiumBadge={(mode as any).isPremium}
+                      rightIcon={isLocked ? 'lock' : 'chevron'}
+                      disabled={isDisabled}
+                      onPress={() => {
+                        if (isDisabled) {
+                          haptic.error();
+                          return;
+                        }
+                        haptic.selection();
+                        handleFeatureSelected((mode as any).id);
+                      }}
+                      isFirstInGroup={index === 0}
+                      isLastInGroup={index === modes.length - 1}
+                      showSeparator={index < modes.length - 1}
+                    />
+                  );
+                });
+              })()}
             </ScrollView>
           </View>
         </View>
+      </Modal>
+
+      {/* Fullscreen Image Preview from chooser */}
+      <Modal
+        visible={showImagePreview}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowImagePreview(false)}
+        statusBarTranslucent
+      >
+        {capturedImageUri ? (
+          <ZoomableImage
+            uri={capturedImageUri}
+            onClose={() => {
+              haptic.light();
+              setShowImagePreview(false);
+            }}
+          />
+        ) : (
+          <View />
+        )}
       </Modal>
     </View>
   );
@@ -842,10 +757,10 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   topBarRight: {
+    width: 44,
+    height: 44,
     justifyContent: 'center',
     alignItems: 'flex-end',
-    minWidth: 44,
-    height: 44,
   },
   cameraControl: {
     shadowColor: '#000',
@@ -1014,58 +929,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  suggestionBanner: {
-    position: 'absolute',
-    top: 100,
-    left: 16,
-    right: 16,
-    zIndex: 1000,
-  },
-  suggestionContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  suggestionLeft: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  suggestionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 4,
-  },
-  suggestionText: {
-    fontSize: 12,
-    color: '#CCCCCC',
-    lineHeight: 16,
-  },
-  suggestionRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  suggestionButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  suggestionButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  suggestionDismiss: {
-    padding: 4,
-  },
+  // Focus indicator style removed
 });
 
 export default QuickCameraScreen;

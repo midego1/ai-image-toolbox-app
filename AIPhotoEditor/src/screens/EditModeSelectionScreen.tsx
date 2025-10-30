@@ -1,29 +1,35 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, StyleSheet, ScrollView, Text, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationProp } from '../types/navigation';
-import { EditMode, EditModeCategory, getEditMode, getAvailableEditModes } from '../constants/editModes';
-import { Header } from '../components/Header';
+import { EditMode, EditModeCategory, getEditMode, getAvailableEditModes, PHASE1_FEATURES } from '../constants/editModes';
+import { AIToolHeader } from '../components/AIToolHeader';
 import { Card } from '../components/Card';
 import { useTheme } from '../theme/ThemeProvider';
 import { haptic } from '../utils/haptics';
 import { SubscriptionService } from '../services/subscriptionService';
+import { ImageProcessingService } from '../services/imageProcessingService';
+ 
 
 const EditModeSelectionScreen = () => {
   const { theme } = useTheme();
   const { colors, typography, spacing } = theme;
   const navigation = useNavigation<NavigationProp<'Camera' | 'ImageSelection'>>();
   const [isPremium, setIsPremium] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<'all' | EditModeCategory>('all');
 
   useEffect(() => {
     checkSubscriptionStatus();
+    
   }, []);
 
   const checkSubscriptionStatus = async () => {
     const premium = await SubscriptionService.checkSubscriptionStatus();
     setIsPremium(premium);
   };
+
+  
 
   // Determine which modes should use image selection (can work on existing images)
   // vs camera (optimized for taking new photos)
@@ -39,6 +45,7 @@ const EditModeSelectionScreen = () => {
       EditMode.STYLE_TRANSFER,
       EditMode.TEXT_OVERLAY,
       EditMode.CROP_ROTATE,
+      EditMode.PROFESSIONAL_HEADSHOTS,
     ];
     return imageSelectionModes.includes(mode);
   };
@@ -73,22 +80,53 @@ const EditModeSelectionScreen = () => {
     [EditModeCategory.STYLIZE]: availableModes.filter(m => m.category === EditModeCategory.STYLIZE),
   };
 
-  const renderModeCard = (modeData: typeof availableModes[0]) => (
-    <Card
-      key={modeData.id}
-      onPress={() => handleModeSelect(modeData.id)}
-      style={[styles.modeCard, { width: '48%', marginBottom: spacing.base, minHeight: 140 }]}
-    >
-      <Text style={[styles.modeIcon, { fontSize: 48, marginBottom: spacing.md }]}>{modeData.icon}</Text>
-      <Text style={[styles.modeName, { color: colors.text, fontSize: typography.scaled.base, fontWeight: typography.weight.bold, marginBottom: spacing.xs }]}>{modeData.name}</Text>
-      <Text style={[styles.modeDescription, { color: colors.textSecondary, fontSize: typography.scaled.sm, paddingHorizontal: spacing.xs }]}>{modeData.description}</Text>
-      {modeData.isPremium && (
-        <View style={[styles.premiumBadge, { backgroundColor: colors.primary, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs / 2 }]}>
-          <Text style={[styles.premiumText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.bold }]}>PRO</Text>
-        </View>
-      )}
-    </Card>
-  );
+  // Removed featured and recent
+
+  // Filter + sort modes for "All"
+  const filteredModes = useMemo(() => {
+    let list = [...availableModes];
+    if (selectedCategory !== 'all') {
+      list = list.filter(m => m.category === selectedCategory);
+    }
+    return list;
+  }, [availableModes, selectedCategory]);
+
+  const renderModeCard = (modeData: typeof availableModes[0], index: number, totalCount: number) => {
+    const isNotWorking = !ImageProcessingService.isModeSupported(modeData.id);
+    const isDisabled = (modeData.isPremium && !isPremium) || isNotWorking;
+    const isLeftColumn = index % 2 === 0;
+    const itemsInLastRow = totalCount % 2 === 0 ? 2 : 1;
+    const isLastRow = index >= totalCount - itemsInLastRow;
+    
+    return (
+      <Card
+        key={modeData.id}
+        onPress={() => handleModeSelect(modeData.id)}
+        disabled={isDisabled}
+        style={[
+          styles.modeCard,
+          {
+            width: '50%',
+            minHeight: 140,
+            marginBottom: 0,
+            borderRightWidth: isLeftColumn ? StyleSheet.hairlineWidth : 0,
+            borderBottomWidth: !isLastRow ? StyleSheet.hairlineWidth : 0,
+            borderColor: colors.border,
+            borderRadius: 0,
+          },
+        ]}
+      >
+        <Text style={[styles.modeIcon, { fontSize: 48, marginBottom: spacing.md }]}>{modeData.icon}</Text>
+        <Text style={[styles.modeName, { color: colors.text, fontSize: typography.scaled.base, fontWeight: typography.weight.bold, marginBottom: spacing.xs }]}>{modeData.name}</Text>
+        <Text style={[styles.modeDescription, { color: colors.textSecondary, fontSize: typography.scaled.sm, paddingHorizontal: spacing.xs }]}>{modeData.description}</Text>
+        {modeData.isPremium && (
+          <View style={[styles.premiumBadge, { backgroundColor: colors.primary, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs / 2 }]}>
+            <Text style={[styles.premiumText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.bold }]}>PRO</Text>
+          </View>
+        )}
+      </Card>
+    );
+  };
 
   const renderCategory = (category: EditModeCategory, title: string) => {
     const modes = modesByCategory[category];
@@ -97,8 +135,10 @@ const EditModeSelectionScreen = () => {
     return (
       <View key={category} style={[styles.categorySection, { marginBottom: spacing.xl }]}>
         <Text style={[styles.categoryTitle, { color: colors.text, fontSize: typography.scaled.lg, fontWeight: typography.weight.bold, marginBottom: spacing.base, marginTop: spacing.md }]}>{title}</Text>
-        <View style={styles.modeGrid}>
-          {modes.map(renderModeCard)}
+        <View style={[styles.modeGridContainer, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+          <View style={styles.modeGrid}>
+            {modes.map((m, idx) => renderModeCard(m, idx, modes.length))}
+          </View>
         </View>
       </View>
     );
@@ -106,26 +146,56 @@ const EditModeSelectionScreen = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
-      <Header
-        title="Choose Edit Mode"
-        leftAction={{
-          icon: 'chevron-back-outline',
-          onPress: () => {
-            // If we're in tabs, navigate to Home tab
-            navigation.goBack();
-          },
-        }}
-      />
+      <AIToolHeader title="Styles" />
 
       <ScrollView
         style={[styles.scrollView, { backgroundColor: colors.backgroundSecondary }]}
         contentContainerStyle={[styles.scrollContent, { padding: spacing.base, paddingBottom: spacing['3xl'] + 60 }]}
         showsVerticalScrollIndicator={false}
       >
-        {renderCategory(EditModeCategory.TRANSFORM, 'Transform')}
-        {renderCategory(EditModeCategory.ENHANCE, 'Enhance')}
-        {renderCategory(EditModeCategory.EDIT, 'Edit')}
-        {renderCategory(EditModeCategory.STYLIZE, 'Stylize')}
+        {/* Category chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingVertical: spacing.xs, gap: spacing.sm }}
+          style={{ marginBottom: spacing.base }}
+        >
+          {(['all', EditModeCategory.TRANSFORM, EditModeCategory.ENHANCE, EditModeCategory.EDIT, EditModeCategory.STYLIZE] as const).map(cat => {
+            const isActive = selectedCategory === cat;
+            const label = cat === 'all' ? 'All' : cat.charAt(0).toUpperCase() + cat.slice(1);
+            return (
+              <TouchableOpacity
+                key={String(cat)}
+                onPress={() => setSelectedCategory(cat)}
+                style={{
+                  paddingHorizontal: spacing.base,
+                  paddingVertical: spacing.xs,
+                  borderRadius: 16,
+                  backgroundColor: isActive ? colors.primary : colors.surface,
+                  marginRight: spacing.sm,
+                }}
+              >
+                <Text style={{ color: isActive ? colors.text : colors.textSecondary, fontWeight: typography.weight.medium }}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        
+
+        {/* Removed featured and recent sections */}
+
+        {/* All (filtered) */}
+        <View style={[styles.categorySection, { marginBottom: spacing['2xl'] }]}>
+          <Text style={[styles.categoryTitle, { color: colors.text, fontSize: typography.scaled.lg, fontWeight: typography.weight.bold, marginBottom: spacing.base, marginTop: spacing.md }]}>All</Text>
+          <View style={[styles.modeGridContainer, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+            <View style={styles.modeGrid}>
+              {filteredModes.map((m, idx) => renderModeCard(m, idx, filteredModes.length))}
+            </View>
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -150,7 +220,12 @@ const styles = StyleSheet.create({
   modeGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
+  },
+  modeGridContainer: {
+    borderWidth: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   modeCard: {
     alignItems: 'center',

@@ -14,9 +14,9 @@ const ImageSelectionScreen = () => {
   const { theme } = useTheme();
   const colors = theme?.colors || {} as any;
   const spacing = fallbackSpacing;
-  const navigation = useNavigation<NavigationProp<'GenreSelection' | 'Processing' | 'Camera' | 'ImagePreview'>>();
+  const navigation = useNavigation<NavigationProp<'GenreSelection' | 'Processing' | 'Camera' | 'ImagePreview' | 'VirtualTryOnSelection'>>();
   const route = useRoute();
-  const { editMode } = (route.params as any) || {};
+  const { editMode, preselectedGenreId } = (route.params as any) || {};
   const modeData = editMode ? getEditMode(editMode) : null;
 
   const copyImageToFileSystem = async (uri: string): Promise<string> => {
@@ -82,12 +82,20 @@ const ImageSelectionScreen = () => {
 
     const parentNav = navigation.getParent();
 
-    if (editMode === EditMode.TRANSFORM) {
+    if (editMode === EditMode.VIRTUAL_TRY_ON) {
+      // Virtual try-on goes to VirtualTryOnSelection for dual image selection
+      // Pass the selected image as personImageUri if user selected from gallery
+      if (parentNav) {
+        parentNav.navigate('VirtualTryOnSelection', { editMode, personImageUri: imageUri });
+      } else {
+        navigation.navigate('VirtualTryOnSelection', { editMode, personImageUri: imageUri });
+      }
+    } else if (editMode === EditMode.TRANSFORM) {
       // Transform goes to GenreSelection for style selection
       if (parentNav) {
-        parentNav.navigate('GenreSelection', { imageUri, editMode });
+        (parentNav as any).navigate('GenreSelection', { imageUri, editMode, preselectedGenreId } as any);
       } else {
-        navigation.navigate('GenreSelection', { imageUri, editMode });
+        (navigation as any).navigate('GenreSelection', { imageUri, editMode, preselectedGenreId } as any);
       }
     } else {
       // Other AI tools go to ImagePreview screen
@@ -105,8 +113,16 @@ const ImageSelectionScreen = () => {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <View style={styles.header}>
         <IconButton
-          name="chevron-back"
-          onPress={() => navigation.goBack()}
+          name="home-outline"
+          onPress={() => {
+            haptic.light();
+            const parentNav = navigation.getParent();
+            if (parentNav) {
+              parentNav.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+            } else {
+              navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+            }
+          }}
           size={26}
           color={colors.text}
           backgroundColor="transparent"

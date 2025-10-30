@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Text, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationProp } from '../types/navigation';
-import { Header } from '../components/Header';
+import { MainHeader } from '../components/MainHeader';
 import { SectionHeader } from '../components/SectionHeader';
+import { Card } from '../components/Card';
 import { useTheme, Theme } from '../theme/ThemeProvider';
 import { LanguageService, Language, LANGUAGES } from '../services/languageService';
 import { haptic } from '../utils/haptics';
+import { Ionicons } from '@expo/vector-icons';
 
 const LanguageSelectionScreen = () => {
   const navigation = useNavigation<NavigationProp<'LanguageSelection'>>();
@@ -31,14 +33,16 @@ const LanguageSelectionScreen = () => {
     await LanguageService.setLanguage(language);
   };
 
+  const handleBack = () => {
+    navigation.goBack();
+  };
+
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <Header
+    <SafeAreaView style={styles.container} edges={[]}>
+      <MainHeader
         title="Language"
-        leftAction={{
-          icon: 'chevron-back-outline',
-          onPress: () => navigation.goBack(),
-        }}
+        onBack={handleBack}
+        backgroundColor={theme.colors.backgroundSecondary}
       />
 
       <ScrollView
@@ -47,35 +51,32 @@ const LanguageSelectionScreen = () => {
         showsVerticalScrollIndicator={false}
       >
         <SectionHeader title="SELECT LANGUAGE" />
-        <View style={styles.optionsContainer}>
-          {LANGUAGES.map((languageOption) => {
+        <View style={styles.categoryContainer}>
+          {LANGUAGES.map((languageOption, index, array) => {
             const isSelected = selectedLanguage === languageOption.code;
             return (
-              <TouchableOpacity
+              <Card
                 key={languageOption.code}
-                style={[
-                  styles.optionCard,
-                  isSelected && styles.optionCardSelected,
-                ]}
+                title={languageOption.nativeLabel}
+                subtitle={languageOption.label}
                 onPress={() => handleLanguageChange(languageOption.code)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.optionContent}>
-                  <View style={styles.optionTextContainer}>
-                    <Text style={[styles.optionTitle, isSelected && styles.optionTitleSelected]}>
-                      {languageOption.nativeLabel}
-                    </Text>
-                    <Text style={styles.optionDescription}>
-                      {languageOption.label}
-                    </Text>
-                  </View>
-                </View>
-                {isSelected && (
-                  <View style={styles.checkmark}>
-                    <Text style={styles.checkmarkText}>✓</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
+                isFirstInGroup={index === 0}
+                isLastInGroup={index === array.length - 1}
+                showSeparator={index < array.length - 1}
+                showChevron={false}
+                rightIcon={
+                  isSelected ? (
+                    <View style={styles.checkmark}>
+                      <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                    </View>
+                  ) : undefined
+                }
+                style={
+                  isSelected
+                    ? { backgroundColor: theme.colors.surfaceElevated, borderColor: theme.colors.primary, borderWidth: 2 }
+                    : {}
+                }
+              />
             );
           })}
         </View>
@@ -94,48 +95,11 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     scrollContent: {
-      padding: theme.spacing.base,
+      paddingTop: theme.spacing.xl,
       paddingBottom: theme.spacing['3xl'] + 60,
     },
-    optionsContainer: {
-      gap: theme.spacing.xs,
-      marginBottom: theme.spacing.lg,
-    },
-    optionCard: {
-      backgroundColor: theme.colors.surface,
-      borderRadius: 12,
-      padding: theme.spacing.base,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      borderWidth: 2,
-      borderColor: 'transparent',
-      minHeight: 64,
-    },
-    optionCardSelected: {
-      borderColor: theme.colors.primary,
-      backgroundColor: theme.colors.surfaceElevated,
-    },
-    optionContent: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      flex: 1,
-    },
-    optionTextContainer: {
-      flex: 1,
-    },
-    optionTitle: {
-      color: theme.colors.text,
-      fontSize: theme.typography.scaled.base,
-      fontWeight: theme.typography.weight.semibold,
-      marginBottom: theme.spacing.xs / 2,
-    },
-    optionTitleSelected: {
-      color: theme.colors.primary,
-    },
-    optionDescription: {
-      color: theme.colors.textSecondary,
-      fontSize: theme.typography.scaled.sm,
+    categoryContainer: {
+      paddingHorizontal: theme.spacing.base,
     },
     checkmark: {
       width: 24,
@@ -144,12 +108,6 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.primary,
       alignItems: 'center',
       justifyContent: 'center',
-      marginLeft: theme.spacing.base,
-    },
-    checkmarkText: {
-      color: theme.colors.background,
-      fontSize: 16,
-      fontWeight: 'bold',
     },
   });
 

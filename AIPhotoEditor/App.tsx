@@ -9,15 +9,17 @@ import CameraScreen from './src/screens/CameraScreen';
 import ImageSelectionScreen from './src/screens/ImageSelectionScreen';
 import ImagePreviewScreen from './src/screens/ImagePreviewScreen';
 import GenreSelectionScreen from './src/screens/GenreSelectionScreen';
+import VirtualTryOnSelectionScreen from './src/screens/VirtualTryOnSelectionScreen';
 import ProcessingScreen from './src/screens/ProcessingScreen';
 import ResultScreen from './src/screens/ResultScreen';
-import AppearanceSettingsScreen from './src/screens/AppearanceSettingsScreen';
+import PostCaptureFeatureSelectionScreen from './src/screens/PostCaptureFeatureSelectionScreen';
 import LanguageSelectionScreen from './src/screens/LanguageSelectionScreen';
 import SubscriptionScreen from './src/screens/SubscriptionScreen';
 import { SubscriptionService } from './src/services/subscriptionService';
 import { AIService } from './src/services/aiService';
 import { getReplicateApiKey, isApiKeyConfigured } from './src/config/apiKeys';
 import { RootStackParamList } from './src/types/navigation';
+import { AnalyticsService } from './src/services/analyticsService';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -27,6 +29,10 @@ export default function App() {
     SubscriptionService.init().catch(() => {
       // Service initialization failed - continue anyway
     });
+
+    // Local analytics: app open and session start
+    AnalyticsService.increment('app_open').catch(() => {});
+    AnalyticsService.increment('session_start').catch(() => {});
     
     // Initialize Replicate API key from config (production-ready)
     // Key is loaded from EAS Secrets or app.json extra config
@@ -62,6 +68,7 @@ export default function App() {
 const AppContent = () => {
   return (
     <NavigationContainer>
+      {/* @ts-ignore - React Navigation v7 type definitions issue */}
       <Stack.Navigator
         screenOptions={{
           gestureEnabled: true,
@@ -80,14 +87,6 @@ const AppContent = () => {
           }}
         />
         {/* Settings screens */}
-        <Stack.Screen 
-          name="AppearanceSettings" 
-          component={AppearanceSettingsScreen}
-          options={{ 
-            headerShown: false,
-            gestureEnabled: true,
-          }}
-        />
         <Stack.Screen 
           name="LanguageSelection" 
           component={LanguageSelectionScreen}
@@ -130,8 +129,24 @@ const AppContent = () => {
           }}
         />
         <Stack.Screen 
+          name="PostCaptureFeatureSelection" 
+          component={PostCaptureFeatureSelectionScreen}
+          options={{ 
+            headerShown: false,
+            gestureEnabled: true,
+          }}
+        />
+        <Stack.Screen 
           name="GenreSelection" 
           component={GenreSelectionScreen}
+          options={{ 
+            headerShown: false,
+            gestureEnabled: true,
+          }}
+        />
+        <Stack.Screen 
+          name="VirtualTryOnSelection" 
+          component={VirtualTryOnSelectionScreen}
           options={{ 
             headerShown: false,
             gestureEnabled: true,

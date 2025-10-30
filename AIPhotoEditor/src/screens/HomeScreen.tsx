@@ -8,13 +8,14 @@ import { Button } from '../components/Button';
 import { SubscriptionStatus } from '../components/SubscriptionStatus';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
+import { ImageProcessingService } from '../services/imageProcessingService';
 
 const { width } = Dimensions.get('window');
 
 const HomeScreen = () => {
   const { theme } = useTheme();
   const { colors, typography, spacing } = theme;
-  const navigation = useNavigation<NavigationProp<'EditModeSelection' | 'Settings'>>();
+  const navigation = useNavigation<NavigationProp<'EditModeSelection' | 'Camera'>>();
 
   const handleStartCreating = () => {
     haptic.medium();
@@ -26,7 +27,7 @@ const HomeScreen = () => {
     navigation.navigate('Camera', { editMode: mode });
   };
 
-  const featuredModes = PHASE1_FEATURES.slice(0, 4); // Show first 4 featured modes
+  
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -62,38 +63,7 @@ const HomeScreen = () => {
           />
         </View>
 
-        {/* Featured Edit Modes */}
-        <View style={[styles.featuredSection, { marginTop: spacing.lg }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text, fontSize: typography.scaled.lg, fontWeight: typography.weight.bold, marginBottom: spacing.base, paddingHorizontal: spacing.xl }]}>Featured Styles</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={[styles.featuredScrollContent, { paddingHorizontal: spacing.xl, paddingRight: spacing.xl * 2 }]}
-          >
-            {featuredModes.map((modeId) => {
-              const mode = getEditMode(modeId);
-              if (!mode) return null;
-              
-              return (
-                <TouchableOpacity
-                  key={modeId}
-                  style={[styles.featuredCard, {
-                    backgroundColor: colors.surface,
-                    borderRadius: 16,
-                    marginRight: spacing.base,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                  }]}
-                  onPress={() => handleQuickAction(modeId)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.featuredIcon, { fontSize: 48, marginBottom: spacing.sm }]}>{mode.icon}</Text>
-                  <Text style={[styles.featuredName, { color: colors.text, fontSize: typography.scaled.sm, fontWeight: typography.weight.semibold }]}>{mode.name}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
+        {/* Removed Featured Styles section */}
       </ScrollView>
     </SafeAreaView>
   );

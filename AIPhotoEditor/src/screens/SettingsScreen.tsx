@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, Linking, Share, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { NavigationProp } from '../types/navigation';
-import { SettingItem } from '../components/SettingItem';
+import { NavigationProp, SettingsNavigationProp } from '../types/navigation';
+import { Card } from '../components/Card';
 import { SectionHeader } from '../components/SectionHeader';
 import { MainHeader } from '../components/MainHeader';
 import { SubscriptionStatus } from '../components/SubscriptionStatus';
@@ -12,10 +12,12 @@ import { useTheme, Theme } from '../theme/ThemeProvider';
 import { SubscriptionService } from '../services/subscriptionService';
 import { SettingsService } from '../services/settingsService';
 import { haptic } from '../utils/haptics';
+import { AnalyticsService } from '../services/analyticsService';
 
 const SettingsScreen = () => {
   const { theme } = useTheme();
-  const navigation = useNavigation<NavigationProp<'AppearanceSettings' | 'Subscription'>>();
+  const settingsNavigation = useNavigation<SettingsNavigationProp<any>>();
+  const rootNavigation = useNavigation<NavigationProp<'Subscription'>>();
   const styles = createStyles(theme);
   
   // Subscription state
@@ -24,9 +26,11 @@ const SettingsScreen = () => {
   
   // Auto-save originals state
   const [autoSaveOriginals, setAutoSaveOriginals] = useState(false);
+  const [analyticsConsent, setAnalyticsConsent] = useState(false);
 
   useEffect(() => {
     loadAutoSaveSetting();
+    loadAnalyticsConsent();
   }, []);
 
   // Reload subscription data whenever the screen comes into focus
@@ -53,6 +57,57 @@ const SettingsScreen = () => {
     }
   };
 
+  const loadAnalyticsConsent = async () => {
+    const consent = await AnalyticsService.getConsent();
+    setAnalyticsConsent(consent);
+  };
+
+  const handleAnalyticsConsentToggle = async () => {
+    const next = !analyticsConsent;
+    try {
+      await AnalyticsService.setConsent(next);
+      setAnalyticsConsent(next);
+      haptic.light();
+    } catch (e) {
+      Alert.alert('Error', 'Failed to update analytics sharing setting');
+    }
+  };
+
+  const handleAnalyticsReset = async () => {
+    Alert.alert(
+      'Reset Analytics',
+      'This will clear local usage counters. Continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await AnalyticsService.reset();
+              haptic.success();
+              Alert.alert('Done', 'Analytics data has been reset.');
+            } catch {
+              Alert.alert('Error', 'Failed to reset analytics data');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleAnalyticsExport = async () => {
+    try {
+      const data = await AnalyticsService.export();
+      const json = JSON.stringify(data, null, 2);
+      await Share.share({ message: json, title: 'AI Photo Editor Analytics Export' });
+      haptic.success();
+    } catch (e) {
+      haptic.error();
+      Alert.alert('Error', 'Unable to export analytics data');
+    }
+  };
+
   const loadSubscriptionData = async () => {
     const subscribed = await SubscriptionService.checkSubscriptionStatus();
     const used = await SubscriptionService.getTransformationsUsed();
@@ -64,8 +119,8 @@ const SettingsScreen = () => {
     haptic.medium();
     // Reload subscription data before navigating
     await loadSubscriptionData();
-    // Navigate to subscription screen
-    navigation.navigate('Subscription');
+    // Navigate to subscription screen (still in root stack)
+    rootNavigation.navigate('Subscription');
   };
 
 
@@ -92,12 +147,45 @@ const SettingsScreen = () => {
     Alert.alert('Rate App', 'This would open the App Store for rating.');
   };
 
-  const handleShareApp = () => {
-    Alert.alert('Share App', 'Share functionality coming soon!');
+  const handleShareApp = async () => {
+    try {
+      haptic.light();
+      
+      // App store URLs - Update these with your actual App Store and Google Play Store URLs
+      // You can get these URLs after publishing your app to the stores
+      const appStoreUrl = Platform.select({
+        ios: 'https://apps.apple.com/app/your-app-id', // Replace with your iOS App Store URL
+        android: 'https://play.google.com/store/apps/details?id=com.aiphotoeditor.app', // Replace with your Android Play Store URL
+        default: 'https://apps.apple.com/app/your-app-id', // Fallback to iOS URL
+      });
+      
+      const shareMessage = `Check out AI Photo Editor! Transform your photos with AI-powered editing tools.\n\nDownload it here: ${appStoreUrl}`;
+      
+      const result = await Share.share({
+        message: shareMessage,
+        // On iOS, you can also specify a title
+        ...(Platform.OS === 'ios' && { title: 'Share AI Photo Editor' }),
+      });
+      
+      // Optional: Handle share result
+      if (result.action === Share.sharedAction) {
+        haptic.success();
+      } else if (result.action === Share.dismissedAction) {
+        // User dismissed the share sheet
+      }
+    } catch (error) {
+      console.error('Error sharing app:', error);
+      haptic.error();
+      Alert.alert('Error', 'Unable to share the app. Please try again.');
+    }
   };
 
   const handleAppearance = () => {
-    navigation.navigate('AppearanceSettings');
+    settingsNavigation.navigate('AppearanceSettings');
+  };
+
+  const handleStatistics = () => {
+    settingsNavigation.navigate('Statistics');
   };
 
   const handleSupport = () => {
@@ -159,7 +247,7 @@ const SettingsScreen = () => {
                 showChevron: true,
               },
             ].map((item, index, array) => (
-              <SettingItem
+              <Card
                 key={item.title}
                 iconName={item.iconName}
                 title={item.title}
@@ -213,7 +301,7 @@ const SettingsScreen = () => {
                 showChevron: true,
               },
             ].map((item, index, array) => (
-              <SettingItem
+              <Card
                 key={item.title}
                 iconName={item.iconName}
                 title={item.title}
@@ -236,6 +324,23 @@ const SettingsScreen = () => {
           <View style={styles.categoryContainer}>
             {[
               {
+                iconName: 'stats-chart-outline' as const,
+                title: 'Statistics',
+                subtitle: 'App storage and usage',
+                onPress: handleStatistics,
+                iconColor: theme.colors.primary,
+                showChevron: true,
+              },
+              {
+                iconName: 'shield-checkmark-outline' as const,
+                title: 'Analytics Sharing',
+                subtitle: 'Anonymous local metrics only',
+                value: analyticsConsent ? 'On' : 'Off',
+                onPress: handleAnalyticsConsentToggle,
+                iconColor: theme.colors.primary,
+                showChevron: true,
+              },
+              {
                 iconName: 'trash-outline' as const,
                 title: 'Clear Cache',
                 subtitle: 'Free up storage space',
@@ -243,8 +348,24 @@ const SettingsScreen = () => {
                 iconColor: theme.colors.warning,
                 showChevron: false,
               },
+              {
+                iconName: 'refresh-outline' as const,
+                title: 'Reset Analytics Data',
+                subtitle: 'Clear local usage counters',
+                onPress: handleAnalyticsReset,
+                iconColor: theme.colors.warning,
+                showChevron: false,
+              },
+              {
+                iconName: 'download-outline' as const,
+                title: 'Export Analytics JSON',
+                subtitle: 'Share local counters as JSON',
+                onPress: handleAnalyticsExport,
+                iconColor: theme.colors.primary,
+                showChevron: false,
+              },
             ].map((item, index, array) => (
-              <SettingItem
+              <Card
                 key={item.title}
                 iconName={item.iconName}
                 title={item.title}
@@ -290,7 +411,7 @@ const SettingsScreen = () => {
                 showChevron: false,
               },
             ].map((item, index, array) => (
-              <SettingItem
+              <Card
                 key={item.title}
                 iconName={item.iconName}
                 title={item.title}

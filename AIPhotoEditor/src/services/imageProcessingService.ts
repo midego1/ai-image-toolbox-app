@@ -3,6 +3,10 @@ import { TransformResponse } from './aiService';
 import { BaseProcessor } from './processors/baseProcessor';
 import { TransformProcessor } from './processors/transformProcessor';
 import { BackgroundRemovalProcessor } from './processors/backgroundRemovalProcessor';
+import { VirtualTryOnProcessor } from './processors/virtualTryOnProcessor';
+import { ObjectRemovalProcessor } from './processors/objectRemovalProcessor';
+import { ReplaceBackgroundProcessor } from './processors/replaceBackgroundProcessor';
+import { ProfessionalHeadshotProcessor } from './processors/professionalHeadshotProcessor';
 
 /**
  * Image Processing Service
@@ -18,10 +22,13 @@ export class ImageProcessingService {
     if (this.processors.size === 0) {
       this.processors.set(EditMode.TRANSFORM, new TransformProcessor());
       this.processors.set(EditMode.REMOVE_BACKGROUND, new BackgroundRemovalProcessor());
+      this.processors.set(EditMode.VIRTUAL_TRY_ON, new VirtualTryOnProcessor());
+      this.processors.set(EditMode.REMOVE_OBJECT, new ObjectRemovalProcessor());
+      this.processors.set(EditMode.REPLACE_BACKGROUND, new ReplaceBackgroundProcessor());
+      this.processors.set(EditMode.PROFESSIONAL_HEADSHOTS, new ProfessionalHeadshotProcessor());
       // Add more processors as they are implemented
       // this.processors.set(EditMode.ENHANCE, new EnhanceProcessor());
       // this.processors.set(EditMode.FILTERS, new FilterProcessor());
-      // this.processors.set(EditMode.REMOVE_OBJECT, new ObjectRemovalProcessor());
     }
   }
 
@@ -49,9 +56,16 @@ export class ImageProcessingService {
     }
 
     try {
-      return await processor.process(imageUri, config);
+      console.log(`[ImageProcessingService] Processing ${editMode}...`);
+      const result = await processor.process(imageUri, config);
+      console.log(`[ImageProcessingService] Processor returned:`, {
+        success: result.success,
+        hasImageUri: !!result.imageUri,
+        error: result.error
+      });
+      return result;
     } catch (error: any) {
-      console.error(`ImageProcessingService error for ${editMode}:`, error);
+      console.error(`[ImageProcessingService] Error for ${editMode}:`, error);
       return {
         success: false,
         error: error.message || 'Failed to process image',

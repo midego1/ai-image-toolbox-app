@@ -22,7 +22,7 @@ export function getReplicateApiKey(): string {
 }
 
 /**
- * Check if API key is configured
+ * Check if Replicate API key is configured
  */
 export function isApiKeyConfigured(): boolean {
   const key = getReplicateApiKey();

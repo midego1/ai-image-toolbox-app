@@ -7,25 +7,34 @@ export type RootStackParamList = {
   MainTabs: undefined;
   Home: undefined;
   EditModeSelection: undefined;
-  Settings: undefined;
-  AppearanceSettings: undefined;
   LanguageSelection: undefined;
   Subscription: undefined;
   Camera: { editMode?: EditMode };
   ImageSelection: { editMode: EditMode };
   ImagePreview: { imageUri: string; editMode: EditMode };
-  GenreSelection: { imageUri: string; editMode?: EditMode };
+  PostCaptureFeatureSelection: { imageUri: string };
+  GenreSelection: { imageUri?: string; editMode?: EditMode };
+  VirtualTryOnSelection: { editMode: EditMode; personImageUri?: string };
   Processing: { imageUri: string; editMode: EditMode; config?: EditModeConfig };
-  Result: { originalImage: string; transformedImage: string; editMode: EditMode };
+  Result: { originalImage: string; transformedImage: string; editMode: EditMode; config?: EditModeConfig; fromHistory?: boolean };
 };
 
 export type TabParamList = {
   Features: undefined;
   Camera: undefined;
+  History: undefined;
   Settings: undefined;
 };
 
+export type SettingsStackParamList = {
+  SettingsMain: undefined;
+  AppearanceSettings: undefined;
+  Statistics: undefined;
+};
+
 export type NavigationProp<T extends keyof RootStackParamList> = NativeStackNavigationProp<RootStackParamList, T>;
+
+export type SettingsNavigationProp<T extends keyof SettingsStackParamList> = NativeStackNavigationProp<SettingsStackParamList, T>;
 
 export type RouteProp<T extends keyof RootStackParamList> = RNRouteProp<RootStackParamList, T>;
 

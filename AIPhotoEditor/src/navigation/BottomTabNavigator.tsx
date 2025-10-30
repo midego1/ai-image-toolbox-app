@@ -6,9 +6,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeProvider';
 import { TabParamList } from '../types/navigation';
-import FeaturesScreen from '../screens/FeaturesScreen';
+import { FeaturesStackNavigator } from './FeaturesStackNavigator';
 import QuickCameraScreen from '../screens/QuickCameraScreen';
-import SettingsScreen from '../screens/SettingsScreen';
+import HistoryScreen from '../screens/HistoryScreen';
+import { SettingsStackNavigator } from './SettingsStackNavigator';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 
@@ -58,12 +59,15 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
         // Match icons from the design
         // Features: grid/apps icon
         // Camera: camera icon
+        // History: time/images icon
         // Settings: settings/cog icon
         let iconName: string;
         if (route.name === 'Features') {
           iconName = 'grid-outline';
         } else if (route.name === 'Camera') {
           iconName = 'camera-outline';
+        } else if (route.name === 'History') {
+          iconName = 'time-outline';
         } else if (route.name === 'Settings') {
           iconName = 'settings-outline';
         } else {
@@ -111,7 +115,7 @@ export const BottomTabNavigator = () => {
     >
       <Tab.Screen
         name="Features"
-        component={FeaturesScreen}
+        component={FeaturesStackNavigator}
         options={{
           headerShown: false,
           tabBarLabel: 'Features',
@@ -126,8 +130,16 @@ export const BottomTabNavigator = () => {
         }}
       />
       <Tab.Screen
+        name="History"
+        component={HistoryScreen}
+        options={{
+          headerShown: false,
+          tabBarLabel: 'History',
+        }}
+      />
+      <Tab.Screen
         name="Settings"
-        component={SettingsScreen}
+        component={SettingsStackNavigator}
         options={{
           headerShown: false,
           tabBarLabel: 'Settings',

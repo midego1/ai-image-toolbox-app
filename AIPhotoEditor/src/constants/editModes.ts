@@ -16,13 +16,17 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
     icon: '🎨',
     category: EditModeCategory.TRANSFORM,
     requiresConfig: true,
+    requiresSubscription: false, // Free but credit-limited
+    creditCost: 1,
   },
   [EditMode.REMOVE_BACKGROUND]: {
     id: EditMode.REMOVE_BACKGROUND,
     name: 'Remove Background',
-    description: 'AI-powered background removal',
-    icon: '✂️',
+    description: 'AI-powered background removal with modern UI',
+    icon: '🎯',
     category: EditModeCategory.EDIT,
+    requiresSubscription: false, // Free but credit-limited
+    creditCost: 0.1, // 0.1 credits (10x cheaper to encourage maximum usage)
   },
   [EditMode.ENHANCE]: {
     id: EditMode.ENHANCE,
@@ -31,6 +35,8 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
     icon: '✨',
     category: EditModeCategory.ENHANCE,
     requiresConfig: true,
+    requiresSubscription: false, // Free but credit-limited
+    creditCost: 1,
   },
   [EditMode.FILTERS]: {
     id: EditMode.FILTERS,
@@ -39,6 +45,8 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
     icon: '🌈',
     category: EditModeCategory.STYLIZE,
     requiresConfig: true,
+    requiresSubscription: false, // Free but credit-limited
+    creditCost: 1,
   },
   [EditMode.REMOVE_OBJECT]: {
     id: EditMode.REMOVE_OBJECT,
@@ -47,6 +55,8 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
     icon: '🗑️',
     category: EditModeCategory.EDIT,
     isPremium: true,
+    requiresSubscription: true, // Subscription-only
+    creditCost: 1,
   },
   [EditMode.REPLACE_BACKGROUND]: {
     id: EditMode.REPLACE_BACKGROUND,
@@ -56,6 +66,8 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
     category: EditModeCategory.EDIT,
     isPremium: true,
     requiresConfig: true,
+    requiresSubscription: true, // Subscription-only
+    creditCost: 1,
   },
   [EditMode.FACE_ENHANCE]: {
     id: EditMode.FACE_ENHANCE,
@@ -64,6 +76,8 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
     icon: '👤',
     category: EditModeCategory.ENHANCE,
     isPremium: true,
+    requiresSubscription: true, // Subscription-only
+    creditCost: 1,
   },
   [EditMode.STYLE_TRANSFER]: {
     id: EditMode.STYLE_TRANSFER,
@@ -73,6 +87,8 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
     category: EditModeCategory.STYLIZE,
     isPremium: true,
     requiresConfig: true,
+    requiresSubscription: true, // Subscription-only
+    creditCost: 1,
   },
   [EditMode.TEXT_OVERLAY]: {
     id: EditMode.TEXT_OVERLAY,
@@ -81,6 +97,8 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
     icon: '📝',
     category: EditModeCategory.EDIT,
     requiresConfig: true,
+    requiresSubscription: true, // Subscription-only (could be made free later)
+    creditCost: 0, // No API cost, but subscription-only
   },
   [EditMode.CROP_ROTATE]: {
     id: EditMode.CROP_ROTATE,
@@ -88,6 +106,30 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
     description: 'Basic editing tools',
     icon: '📐',
     category: EditModeCategory.EDIT,
+    requiresSubscription: false, // Always free
+    creditCost: 0, // No API cost, local processing
+  },
+  [EditMode.VIRTUAL_TRY_ON]: {
+    id: EditMode.VIRTUAL_TRY_ON,
+    name: 'Virtual Try-On',
+    description: 'Try on clothes before you buy',
+    icon: '👗',
+    category: EditModeCategory.EDIT,
+    isPremium: true,
+    requiresConfig: true,
+    requiresSubscription: true, // Subscription-only
+    creditCost: 1,
+  },
+  [EditMode.PROFESSIONAL_HEADSHOTS]: {
+    id: EditMode.PROFESSIONAL_HEADSHOTS,
+    name: 'Professional Headshots',
+    description: 'Create LinkedIn-quality professional portraits',
+    icon: '💼',
+    category: EditModeCategory.ENHANCE,
+    isPremium: true,
+    requiresConfig: true,
+    requiresSubscription: true, // Subscription-only
+    creditCost: 1, // 1 credit for single-step Nano Banana processing
   },
 };
 
@@ -99,10 +141,13 @@ export const getEditModesByCategory = (category: EditModeCategory): EditModeData
 };
 
 /**
- * Get available edit modes (excludes premium if user is not premium)
+ * Get available edit modes (excludes subscription-only if user is not subscribed)
  */
 export const getAvailableEditModes = (isPremium: boolean = false): EditModeData[] => {
-  return Object.values(EDIT_MODES).filter(mode => !mode.isPremium || isPremium);
+  // Legacy compatibility: isPremium maps to requiresSubscription
+  return Object.values(EDIT_MODES).filter(
+    mode => !mode.requiresSubscription || isPremium
+  );
 };
 
 /**

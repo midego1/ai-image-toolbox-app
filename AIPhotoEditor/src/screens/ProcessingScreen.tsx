@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Image, Text, ActivityIndicator, Animated } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, StyleSheet, Image, Text, ActivityIndicator, Animated, Alert } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ImageProcessingService } from '../services/imageProcessingService';
@@ -8,6 +8,7 @@ import { NavigationProp, RouteProp } from '../types/navigation';
 import { EditMode, getEditMode } from '../constants/editModes';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
+import { AnalyticsService } from '../services/analyticsService';
 
 const ProcessingScreen = () => {
   const { theme } = useTheme();
@@ -19,6 +20,7 @@ const ProcessingScreen = () => {
   const [status, setStatus] = useState('Preparing...');
   const fadeAnim = useState(new Animated.Value(0))[0];
   const scaleAnim = useState(new Animated.Value(0.8))[0];
+  const editStartTsRef = useRef<number | null>(null);
   
   const modeData = getEditMode(editMode);
 
@@ -43,15 +45,45 @@ const ProcessingScreen = () => {
 
   const checkAndProcess = async () => {
     try {
-      // Check if user can transform
-      const canTransform = await SubscriptionService.canTransform();
-      if (!canTransform) {
+      // local analytics: edit started
+      try { await AnalyticsService.increment('edit_started'); } catch {}
+      editStartTsRef.current = Date.now();
+      // Get edit mode data to check subscription and credit requirements
+      const requiresSubscription = modeData?.requiresSubscription ?? false;
+      const creditCost = modeData?.creditCost ?? 1;
+
+      // Check if user can use this feature
+      const accessCheck = await SubscriptionService.canUseFeature(requiresSubscription, creditCost);
+      
+      if (!accessCheck.canUse) {
         haptic.error();
+        Alert.alert(
+          accessCheck.reason?.includes('subscription') ? 'Subscription Required' : 'Insufficient Credits',
+          accessCheck.reason || 'You need a subscription or more credits to use this feature.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'View Plans', 
+              onPress: () => {
+                navigation.goBack();
+                // Navigate to subscription screen
+                setTimeout(() => {
+                  navigation.navigate('Subscription' as any);
+                }, 100);
+              }
+            }
+          ]
+        );
         navigation.goBack();
         return;
       }
 
-      setStatus('Processing with AI...');
+      // Set appropriate status message based on edit mode
+      if (editMode === EditMode.PROFESSIONAL_HEADSHOTS) {
+        setStatus('Creating professional headshot...');
+      } else {
+        setStatus('Processing with AI...');
+      }
       setProgress(20);
 
       // Process image
@@ -65,39 +97,112 @@ const ProcessingScreen = () => {
   const processImage = async () => {
     try {
       setProgress(30);
-      setStatus(`Processing ${modeData?.name || 'image'}...`);
+      if (editMode === EditMode.PROFESSIONAL_HEADSHOTS) {
+        setStatus('Enhancing face, applying background, and adjusting lighting...');
+      } else {
+        setStatus(`Processing ${modeData?.name || 'image'}...`);
+      }
 
+      console.log('[ProcessingScreen] Calling ImageProcessingService.processImage...');
       const result = await ImageProcessingService.processImage(
         imageUri,
         editMode,
         config
       );
       
+      console.log('[ProcessingScreen] ImageProcessingService returned:', {
+        success: result.success,
+        hasImageUri: !!result.imageUri,
+        error: result.error
+      });
+      
       if (result.success && result.imageUri) {
+        console.log('[ProcessingScreen] Processing succeeded! Navigating to Result screen...');
         setProgress(100);
         setStatus('Complete!');
         haptic.success();
+        // local analytics: edit completed + duration
+        try {
+          await AnalyticsService.increment('edit_completed');
+          if (editStartTsRef.current) {
+            await AnalyticsService.addDurationMs(Date.now() - editStartTsRef.current);
+          }
+        } catch {}
         
-        // Increment transformation count
-        await SubscriptionService.incrementTransformations();
+        // Consume credit after successful processing
+        const creditCost = modeData?.creditCost ?? 1;
+        await SubscriptionService.consumeCredit(creditCost);
+        
+        // Get remaining credits for success message
+        const remaining = await SubscriptionService.getCreditsRemaining();
+        const creditText = creditCost === 0.1 
+          ? '0.1 credit' 
+          : `${creditCost} credit${creditCost !== 1 ? 's' : ''}`;
         
         const transformedUri = result.imageUri;
         
+        console.log('[ProcessingScreen] About to navigate to Result screen with params:', {
+          hasOriginalImage: !!imageUri,
+          hasTransformedImage: !!transformedUri,
+          editMode,
+          hasConfig: !!config,
+          configKeys: config ? Object.keys(config) : [],
+        });
+        
         // Small delay for better UX
         setTimeout(() => {
-          navigation.replace('Result', {
-            originalImage: imageUri,
-            transformedImage: transformedUri,
-            editMode,
-          });
+          try {
+            navigation.replace('Result', {
+              originalImage: imageUri,
+              transformedImage: transformedUri,
+              editMode,
+              config: config, // Pass config to Result screen for virtual try-on clothing items
+            });
+            console.log('[ProcessingScreen] Navigation to Result screen completed');
+          } catch (navError: any) {
+            console.error('[ProcessingScreen] Navigation error:', navError);
+            Alert.alert(
+              'Navigation Error',
+              'Failed to navigate to result screen. Please try again.',
+              [
+                { 
+                  text: 'OK', 
+                  onPress: () => navigation.goBack() 
+                }
+              ]
+            );
+          }
         }, 500);
       } else {
         haptic.error();
-        navigation.goBack();
+        const errorMessage = result.error || 'Unknown error occurred';
+        console.error('[ProcessingScreen] Processing failed:', errorMessage);
+        try { await AnalyticsService.increment('errors'); } catch {}
+        Alert.alert(
+          'Processing Failed',
+          errorMessage,
+          [
+            { 
+              text: 'OK', 
+              onPress: () => navigation.goBack() 
+            }
+          ]
+        );
       }
     } catch (error: any) {
       haptic.error();
-      navigation.goBack();
+      console.error('[ProcessingScreen] Unexpected error:', error);
+      try { await AnalyticsService.increment('errors'); } catch {}
+      Alert.alert(
+        'Error',
+        error.message || 'An unexpected error occurred during processing.',
+        [
+          { 
+            text: 'OK', 
+            onPress: () => navigation.goBack() 
+          }
+        ]
+      );
     }
   };
 
