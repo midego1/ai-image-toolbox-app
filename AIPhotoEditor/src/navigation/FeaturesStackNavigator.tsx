@@ -13,6 +13,9 @@ import RemoveBackgroundScreen from '../screens/RemoveBackgroundScreen';
 import ReplaceBackgroundScreen from '../screens/ReplaceBackgroundScreen';
 import RemoveObjectScreen from '../screens/RemoveObjectScreen';
 import ProfessionalHeadshotsScreen from '../screens/ProfessionalHeadshotsScreen';
+import PopFigureScreen from '../screens/PopFigureScreen';
+import PixelArtGamerScreen from '../screens/PixelArtGamerScreen';
+import StyleTransferScreen from '../screens/StyleTransferScreen';
 
 // Local stack for the Features tab so we can push screens
 // while keeping the bottom tab bar visible.
@@ -30,6 +33,9 @@ type FeaturesStackParamList = {
   ReplaceBackground: { imageUri?: string };
   RemoveObject: { imageUri?: string };
   ProfessionalHeadshots: { imageUri?: string };
+  PopFigure: { imageUri?: string; fromToolMockup?: boolean };
+  PixelArtGamer: { imageUri?: string };
+  StyleTransfer: { imageUri?: string };
 };
 
 const Stack = createNativeStackNavigator<any>();
@@ -43,6 +49,9 @@ export const FeaturesStackNavigator = () => {
       <Stack.Screen name="ReplaceBackground" component={ReplaceBackgroundScreen} />
       <Stack.Screen name="RemoveObject" component={RemoveObjectScreen} />
       <Stack.Screen name="ProfessionalHeadshots" component={ProfessionalHeadshotsScreen} />
+      <Stack.Screen name="PopFigure" component={PopFigureScreen} />
+      <Stack.Screen name="PixelArtGamer" component={PixelArtGamerScreen} />
+      <Stack.Screen name="StyleTransfer" component={StyleTransferScreen} />
       <Stack.Screen name="ImageSelection" component={ImageSelectionScreen} />
       <Stack.Screen name="ImagePreview" component={ImagePreviewScreen} />
       <Stack.Screen name="PostCaptureFeatureSelection" component={PostCaptureFeatureSelectionScreen} />

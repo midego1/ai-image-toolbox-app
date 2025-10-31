@@ -46,8 +46,14 @@ export const AIToolHeader: React.FC<AIToolHeaderProps> = ({
       // Default back behavior
       navigation.goBack();
     } else {
-      // Default home behavior: Navigate to MainTabs (home)
-      navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+      // Default home behavior: Use goBack() to preserve navigation stack and scroll position
+      // This will naturally navigate back to FeaturesMain when in Features stack
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        // Last resort: reset to MainTabs only if we can't go back
+        navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+      }
     }
   };
 

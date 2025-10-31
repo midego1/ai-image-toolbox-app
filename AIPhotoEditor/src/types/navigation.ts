@@ -32,6 +32,9 @@ export type SettingsStackParamList = {
   LanguageSelection: undefined;
   Subscription: undefined;
   ToolMockup: undefined;
+  RemoveBackgroundMockupDetail: {
+    imageUri?: string;
+  };
 };
 
 export type NavigationProp<T extends keyof RootStackParamList> = NativeStackNavigationProp<RootStackParamList, T>;

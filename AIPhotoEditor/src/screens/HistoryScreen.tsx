@@ -11,6 +11,7 @@ import { HistoryService, HistoryEntry } from '../services/historyService';
 import { getEditMode } from '../constants/editModes';
 import { EditMode } from '../types/editModes';
 import { haptic } from '../utils/haptics';
+import { useScrollBottomPadding } from '../utils/scrollPadding';
 
 const { width } = Dimensions.get('window');
 const ITEM_SIZE = (width - 48) / 2; // 2 columns with padding
@@ -18,7 +19,8 @@ const ITEM_SIZE = (width - 48) / 2; // 2 columns with padding
 const HistoryScreen = () => {
   const { theme } = useTheme();
   const navigation = useNavigation<any>();
-  const styles = createStyles(theme);
+  const scrollBottomPadding = useScrollBottomPadding();
+  const styles = createStyles(theme, scrollBottomPadding);
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
   const [selectedFilter, setSelectedFilter] = useState<EditMode | 'all'>('all');
 
@@ -328,7 +330,7 @@ const formatTimestamp = (timestamp: number): string => {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, scrollBottomPadding: number) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -339,7 +341,8 @@ const createStyles = (theme: Theme) =>
     },
     scrollContent: {
       paddingTop: theme.spacing.base,
-      paddingBottom: theme.spacing['3xl'],
+      // Use proper padding that accounts for floating tab bar
+      paddingBottom: scrollBottomPadding,
     },
     filterContainer: {
       marginBottom: theme.spacing.base,

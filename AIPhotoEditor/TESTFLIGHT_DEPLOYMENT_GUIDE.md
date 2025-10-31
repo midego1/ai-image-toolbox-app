@@ -115,6 +115,54 @@ eas credentials
 3. Generate a new password for "EAS Build"
 4. Use this password when prompted by EAS
 
+## Step 4.5: Configure EAS Secrets (Required for AI Features)
+
+**IMPORTANT:** Before building for TestFlight, you need to configure your Replicate API key as an EAS Secret. This allows the API key to be included in your production build without hardcoding it in your source code.
+
+### Get Your Replicate API Key
+
+1. Go to [Replicate.com](https://replicate.com) and sign in
+2. Navigate to [Account Settings → API Tokens](https://replicate.com/account/api-tokens)
+3. Click **"Create token"** or copy your existing token
+4. **Copy the token** - it looks like `r8_...` (you'll need this in the next step)
+
+### Set EAS Secret
+
+Run this command (replace `YOUR_REPLICATE_API_KEY` with your actual key):
+
+```bash
+eas secret:create --scope project --name REPLICATE_API_KEY --value YOUR_REPLICATE_API_KEY
+```
+
+Or you can set it via the Expo dashboard:
+1. Go to [expo.dev](https://expo.dev)
+2. Select your project
+3. Go to **Secrets** in the left sidebar
+4. Click **"Create Secret"**
+5. Name: `REPLICATE_API_KEY`
+6. Value: Paste your Replicate API key
+7. Click **"Save"**
+
+### Verify the Secret is Set
+
+```bash
+eas secret:list
+```
+
+You should see `REPLICATE_API_KEY` in the list.
+
+**Note:** EAS automatically maps the secret name `REPLICATE_API_KEY` (uppercase with underscores) to `replicateApiKey` (camelCase) in your app.json `extra` field during build time. The `app.json` field can remain empty (`""`) for production builds - EAS will inject the secret value automatically.
+
+### Alternative: Manual Entry in App Settings
+
+If you prefer to let users enter the API key themselves (or for testing), you can now use the Settings screen:
+1. Open the app
+2. Go to **Settings** → **DEVELOPER** section
+3. Tap **"Replicate API Key"**
+4. Enter your API key
+
+This is useful for development builds but **not recommended for production** as it requires users to have their own Replicate account.
+
 ## Step 5: Build for Production
 
 Build your iOS app with the production profile:

@@ -14,9 +14,15 @@ import { CaptureLibraryButtons } from '../components/CaptureLibraryButtons';
 import { Button } from '../components/Button';
 import { IconButton } from '../components/IconButton';
 import { ActionButtonBar } from '../components/ActionButtonBar';
+import { ToolStatsBar } from '../components/ToolStatsBar';
+import { TopTabSwitcher } from '../components/TopTabSwitcher';
+import { ToolGuideTab } from '../components/ToolGuideTab';
+import { ToolExamplesTab } from '../components/ToolExamplesTab';
+import { TabView } from '../components/TabView';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
 import { spacing as baseSpacing } from '../theme/spacing';
+import { useScrollBottomPadding, useScrollBottomPaddingWithActionButton } from '../utils/scrollPadding';
 import { ClothingType, ClothingTypeData, CLOTHING_TYPES, getAllClothingTypes } from '../constants/clothingTypes';
 import { ClothingItem } from '../services/processors/virtualTryOnProcessor';
 
@@ -26,6 +32,8 @@ const VirtualTryOnSelectionScreen = () => {
   const { theme } = useTheme();
   const { colors, typography, spacing } = theme;
   const insets = useSafeAreaInsets();
+  const scrollBottomPadding = useScrollBottomPadding();
+  const scrollBottomPaddingWithButton = useScrollBottomPaddingWithActionButton();
   const navigation = useNavigation<NavigationProp<'Processing'>>();
   const route = useRoute();
   const { editMode, personImageUri: initialPersonImageUri } = (route.params as any) || {};
@@ -36,6 +44,7 @@ const VirtualTryOnSelectionScreen = () => {
   const [pendingClothingUri, setPendingClothingUri] = useState<string | null>(null);
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
   const [showImagePreview, setShowImagePreview] = useState(false);
+  const [activeTopTab, setActiveTopTab] = useState<'tool' | 'guide'>('tool');
   const cardScale = useRef(new Animated.Value(0.96)).current;
   const hintAnim = useRef(new Animated.Value(0)).current;
 
@@ -333,12 +342,31 @@ const VirtualTryOnSelectionScreen = () => {
         backgroundColor={colors.backgroundSecondary}
       />
 
+      {/* Floating Top Tab Switcher */}
+      <TopTabSwitcher
+        tabs={[
+          { id: 'tool', label: 'Tool', icon: 'create-outline' },
+          { id: 'guide', label: 'Guide', icon: 'book-outline' },
+        ]}
+        activeTab={activeTopTab}
+        onTabChange={(tabId) => setActiveTopTab(tabId as 'tool' | 'guide')}
+      />
+
+      {/* Add top padding to content to account for floating tab bar */}
+      <View style={{ height: 12 + 48 + 12 }} />
+
+      {activeTopTab === 'tool' ? (
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
           // Add padding when button is visible to prevent content from being hidden
-          personImageUri && clothingItems.length > 0 ? { paddingBottom: 120 } : { paddingBottom: insets.bottom + spacing.base },
+          // ActionButtonBar is ~100px (button 56px + padding + timing info) + safe area
+          personImageUri && clothingItems.length > 0 
+            // Use proper padding that accounts for floating tab bar
+            // When button is visible, account for ActionButtonBar height
+            ? { paddingBottom: scrollBottomPaddingWithButton } 
+            : { paddingBottom: scrollBottomPadding },
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -413,35 +441,14 @@ const VirtualTryOnSelectionScreen = () => {
             </View>
           )}
 
-          {/* Quick Info Badges - ALWAYS VISIBLE */}
-          <View style={[styles.badgesContainer, { marginTop: spacing.sm }]}>
-            <View style={[styles.badge, { 
-              backgroundColor: colors.primary + '15',
-              borderColor: colors.primary + '30',
-            }]}>
-              <Ionicons name="sparkles-outline" size={14} color={colors.primary} />
-              <Text style={{ color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium, marginLeft: baseSpacing.xs }}>
-                AI-powered
-              </Text>
-            </View>
-            <View style={[styles.badge, { 
-              backgroundColor: colors.primary + '15',
-              borderColor: colors.primary + '30',
-            }]}>
-              <Ionicons name="shirt-outline" size={14} color={colors.primary} />
-              <Text style={{ color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium, marginLeft: baseSpacing.xs }}>
-                Multiple Items
-              </Text>
-            </View>
-            <View style={[styles.badge, { 
-              backgroundColor: colors.primary + '15',
-              borderColor: colors.primary + '30',
-            }]}>
-              <Ionicons name="trophy-outline" size={14} color={colors.primary} />
-              <Text style={{ color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium, marginLeft: baseSpacing.xs }}>
-                Professional
-              </Text>
-            </View>
+          {/* Tool Stats Bar */}
+          <View style={{ paddingHorizontal: spacing.base, marginTop: spacing.sm }}>
+            <ToolStatsBar
+              time="12-18 sec"
+              credits="0.8 credit"
+              rating="4.6/5"
+              usage="650 today"
+            />
           </View>
         </View>
 
@@ -505,9 +512,84 @@ const VirtualTryOnSelectionScreen = () => {
           </View>
         </View>
       </ScrollView>
+      ) : (
+        /* Guide View */
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: scrollBottomPadding },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Guide Tab Content with sub-tabs */}
+          <TabView
+            tabs={[
+              { id: 'guide', label: 'Guide', icon: 'book-outline' },
+              { id: 'examples', label: 'Examples', icon: 'images-outline' },
+              { id: 'info', label: 'Info', icon: 'information-circle-outline' },
+            ]}
+            containerStyle={{ marginHorizontal: spacing.base, marginTop: spacing.lg }}
+          >
+            {/* Guide Tab */}
+            <ToolGuideTab
+              title="How to Use Virtual Try-On"
+              content="Try on clothing virtually with realistic fit, shadows, and natural appearance. Perfect for shopping decisions.\n\n👤 Step 1: Select Person Photo\nChoose a full-body photo from your library or take a new one. Full-body photos provide the most accurate fitting.\n\n👕 Step 2: Add Clothing Items\nTap Add Clothing Item to upload clothing photos. You can add multiple items to try on complete outfits:\nShirts, T-shirts, Blouses\nPants, Jeans, Shorts\nDresses, Skirts\nJackets, Coats\nAccessories\n\n🏷️ Step 3: Specify Clothing Type\nFor each item, select the correct clothing type. This helps the AI place and fit items accurately.\n\n✨ Step 4: Generate Try-On\nTap Generate Try-On and wait 12-18 seconds. The AI will:\nAnalyze body pose and structure\nFit clothing with realistic wrinkles and draping\nApply natural lighting and shadows\nBlend everything seamlessly\n\n🎯 Pro Tips\nFull-body, front-facing photos work best.\nClear, well-lit photos improve accuracy.\nAdd multiple items to see complete outfit combinations.\nSpecify correct clothing type for best fit.\nWorks great for e-commerce and personal shopping.\nNatural lighting in photos produces more realistic results."
+            />
+
+            {/* Examples Tab */}
+            <ToolExamplesTab
+              title="Virtual Try-On Examples"
+              examples={[
+                {
+                  id: '1',
+                  title: 'Single Item Try-On',
+                  description: 'Try on a shirt with realistic fit and appearance',
+                  tags: ['Shirt', 'Single Item'],
+                },
+                {
+                  id: '2',
+                  title: 'Complete Outfit',
+                  description: 'Try on multiple items for a complete outfit look',
+                  tags: ['Outfit', 'Multiple Items'],
+                },
+                {
+                  id: '3',
+                  title: 'Casual Wear',
+                  description: 'Try on casual clothing with natural fit',
+                  tags: ['Casual', 'Natural'],
+                },
+              ]}
+              onExamplePress={(example) => {
+                haptic.light();
+                console.log('Example pressed:', example.title);
+              }}
+            />
+
+            {/* Info Tab */}
+            <View style={{ paddingHorizontal: spacing.base, paddingTop: spacing.base, paddingBottom: spacing.base }}>
+              <AIToolInfoCard
+                icon="shirt-outline"
+                whatDescription="Try on clothing items virtually with realistic fit and appearance. Upload a person photo and one or more clothing items to see how they look together."
+                howDescription="Our AI analyzes the person's pose and body structure, then accurately places clothing items with realistic fit, shadows, and lighting to create a natural try-on effect."
+                howItems={[
+                  { text: 'Realistic fit and appearance' },
+                  { text: 'Multiple clothing items supported' },
+                  { text: 'Natural lighting and shadows' },
+                ]}
+                expandableWhat={false}
+                expandableHow={false}
+              />
+            </View>
+          </TabView>
+          
+          {/* Extra bottom padding */}
+          <View style={{ height: spacing.xl }} />
+        </ScrollView>
+      )}
 
       <ActionButtonBar
-        visible={!!(personImageUri && clothingItems.length > 0)}
+        visible={activeTopTab === 'tool' && !!(personImageUri && clothingItems.length > 0)}
         bottomContent={
           <View style={[styles.timingInfo, {
             backgroundColor: colors.surface,

@@ -111,6 +111,14 @@ const ImageSelectionScreen = () => {
       } else {
         (navigation as any).navigate('ProfessionalHeadshots', { imageUri } as any);
       }
+    } else if (editMode === EditMode.STYLE_TRANSFER) {
+      // Style Transfer goes directly to ImagePreview (like ReplaceBackground)
+      // ImagePreviewScreen has the style selection UI built in
+      if (parentNav) {
+        parentNav.navigate('ImagePreview', { imageUri, editMode });
+      } else {
+        navigation.navigate('ImagePreview', { imageUri, editMode });
+      }
     } else {
       // Other AI tools go to ImagePreview screen
       if (parentNav) {

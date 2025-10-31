@@ -8,7 +8,7 @@ import { AIToolHeader } from '../components/AIToolHeader';
 import { Card } from '../components/Card';
 import { ZoomableImage } from '../components/ZoomableImage';
 import { haptic } from '../utils/haptics';
-import { NavigationProp, RouteProp } from '../types/navigation';
+import { RouteProp } from '../types/navigation';
 import { EditMode, EDIT_MODES } from '../constants/editModes';
 import { ImageProcessingService } from '../services/imageProcessingService';
 import { SubscriptionService } from '../services/subscriptionService';
@@ -18,7 +18,7 @@ const { width, height } = Dimensions.get('window');
 const PostCaptureFeatureSelectionScreen = () => {
   const { theme } = useTheme();
   const { colors, spacing, typography } = theme;
-  const navigation = useNavigation<NavigationProp<'PostCaptureFeatureSelection'>>();
+  const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<'PostCaptureFeatureSelection'>>();
   const imageUri = route.params.imageUri;
 
@@ -37,6 +37,9 @@ const PostCaptureFeatureSelectionScreen = () => {
       navigation.navigate('VirtualTryOnSelection', { editMode, personImageUri: imageUri } as any);
     } else if (editMode === EditMode.TRANSFORM) {
       navigation.navigate('GenreSelection', { imageUri, editMode } as any);
+    } else if (editMode === EditMode.STYLE_TRANSFER) {
+      // Style Transfer goes directly to ImagePreview (like ReplaceBackground)
+      navigation.navigate('ImagePreview', { imageUri, editMode } as any);
     } else {
       navigation.navigate('ImagePreview', { imageUri, editMode } as any);
     }

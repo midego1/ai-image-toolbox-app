@@ -8,6 +8,7 @@ import { AIToolHeader } from '../components/AIToolHeader';
 import { Card } from '../components/Card';
 import { useTheme } from '../theme/ThemeProvider';
 import { haptic } from '../utils/haptics';
+import { useScrollBottomPadding } from '../utils/scrollPadding';
 import { SubscriptionService } from '../services/subscriptionService';
 import { ImageProcessingService } from '../services/imageProcessingService';
  
@@ -15,6 +16,7 @@ import { ImageProcessingService } from '../services/imageProcessingService';
 const EditModeSelectionScreen = () => {
   const { theme } = useTheme();
   const { colors, typography, spacing } = theme;
+  const scrollBottomPadding = useScrollBottomPadding();
   const navigation = useNavigation<NavigationProp<'ImageSelection'>>();
   const [isPremium, setIsPremium] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<'all' | EditModeCategory>('all');
@@ -150,7 +152,7 @@ const EditModeSelectionScreen = () => {
 
       <ScrollView
         style={[styles.scrollView, { backgroundColor: colors.backgroundSecondary }]}
-        contentContainerStyle={[styles.scrollContent, { padding: spacing.base, paddingBottom: spacing['3xl'] + 60 }]}
+        contentContainerStyle={[styles.scrollContent, { padding: spacing.base, paddingBottom: scrollBottomPadding }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Category chips */}

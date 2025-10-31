@@ -12,17 +12,20 @@ import { SubscriptionStatus } from '../components/SubscriptionStatus';
 import { useTheme, Theme } from '../theme/ThemeProvider';
 import { SubscriptionService } from '../services/subscriptionService';
 import { SettingsService } from '../services/settingsService';
-import { haptic } from '../utils/haptics';
+import { haptic, updateVibrationsCache } from '../utils/haptics';
+import { useScrollBottomPadding } from '../utils/scrollPadding';
 import { AnalyticsService } from '../services/analyticsService';
 import { ThemeMode } from '../services/themeService';
 import { LanguageService, Language, LANGUAGES } from '../services/languageService';
+import { AIService } from '../services/aiService';
 
 const SettingsScreen = () => {
   const { theme, themeMode, setThemeMode } = useTheme();
   const settingsNavigation = useNavigation<SettingsNavigationProp<any>>();
   const rootNavigation = useNavigation<NavigationProp<'Subscription'>>();
   const insets = useSafeAreaInsets();
-  const styles = createStyles(theme, insets);
+  const scrollBottomPadding = useScrollBottomPadding();
+  const styles = createStyles(theme, insets, scrollBottomPadding);
   
   // Subscription state
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -35,11 +38,19 @@ const SettingsScreen = () => {
   // Appearance and language state
   const [currentLanguage, setCurrentLanguage] = useState<Language>('automatic');
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
+  
+  // Vibration state
+  const [vibrationsEnabled, setVibrationsEnabled] = useState(true);
+  
+  // API key state
+  const [hasApiKey, setHasApiKey] = useState(false);
 
   useEffect(() => {
     loadAutoSaveSetting();
     loadAnalyticsConsent();
     loadLanguage();
+    loadVibrationsSetting();
+    loadApiKeyStatus();
   }, []);
 
   // Reload subscription data whenever the screen comes into focus
@@ -48,8 +59,68 @@ const SettingsScreen = () => {
     React.useCallback(() => {
       loadSubscriptionData();
       loadLanguage();
+      loadVibrationsSetting();
+      loadApiKeyStatus();
     }, [])
   );
+  
+  const loadApiKeyStatus = async () => {
+    const hasKey = await AIService.hasReplicateApiKey();
+    setHasApiKey(hasKey);
+  };
+  
+  const handleApiKeyPress = () => {
+    haptic.medium();
+    
+    if (Platform.OS === 'ios') {
+      // Use Alert.prompt for iOS
+      Alert.prompt(
+        'Replicate API Key',
+        hasApiKey 
+          ? 'Enter your Replicate API key to update it, or leave blank to view current status.'
+          : 'Enter your Replicate API key to enable AI features. You can get your key from https://replicate.com/account/api-tokens',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: hasApiKey ? 'Update' : 'Save',
+            onPress: async (apiKey) => {
+              if (apiKey && apiKey.trim().length > 0) {
+                try {
+                  await AIService.setReplicateApiKey(apiKey.trim());
+                  await loadApiKeyStatus();
+                  haptic.success();
+                  Alert.alert('Success', 'API key has been saved successfully.');
+                } catch (error) {
+                  haptic.error();
+                  Alert.alert('Error', 'Failed to save API key. Please try again.');
+                }
+              } else if (hasApiKey) {
+                // Show current status if user left it blank
+                Alert.alert(
+                  'API Key Status',
+                  'API key is currently configured. To update it, enter a new key.',
+                  [{ text: 'OK' }]
+                );
+              }
+            },
+          },
+        ],
+        'plain-text'
+      );
+    } else {
+      // For Android, use a simple alert with instructions
+      Alert.alert(
+        'API Key Configuration',
+        hasApiKey
+          ? 'API key is configured. To update it, please use the development build or configure via EAS Secrets for production builds.'
+          : 'API key is not configured. For production builds, configure via EAS Secrets. For development, add it to app.json or set it programmatically.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
 
   const loadLanguage = async () => {
     const language = await LanguageService.getLanguage();
@@ -69,6 +140,27 @@ const SettingsScreen = () => {
       haptic.light();
     } catch (error) {
       Alert.alert('Error', 'Failed to update auto-save setting');
+    }
+  };
+
+  const loadVibrationsSetting = async () => {
+    const enabled = await SettingsService.getVibrationsEnabled();
+    setVibrationsEnabled(enabled);
+  };
+
+  const handleVibrationsToggle = async () => {
+    const newValue = !vibrationsEnabled;
+    try {
+      await SettingsService.setVibrationsEnabled(newValue);
+      setVibrationsEnabled(newValue);
+      // Update the haptics cache so changes take effect immediately
+      await updateVibrationsCache();
+      // Only provide haptic feedback if vibrations are being enabled
+      if (newValue) {
+        haptic.light();
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update vibrations setting');
     }
   };
 
@@ -365,6 +457,18 @@ const SettingsScreen = () => {
               showSeparator={true}
             />
             <Card
+              iconName="pulse-outline"
+              title="Vibrations"
+              subtitle="Haptic feedback"
+              value={vibrationsEnabled ? 'On' : 'Off'}
+              onPress={handleVibrationsToggle}
+              showChevron={false}
+              iconColor={theme.colors.primary}
+              isFirstInGroup={false}
+              isLastInGroup={false}
+              showSeparator={true}
+            />
+            <Card
               icon={<LanguageIcon />}
               title="Current Language"
               value={LanguageService.getLanguageDisplayText(currentLanguage)}
@@ -582,6 +686,18 @@ const SettingsScreen = () => {
         <View style={styles.sectionContainer}>
           <View style={styles.categoryContainer}>
             <Card
+              iconName="key-outline"
+              title="Replicate API Key"
+              subtitle={hasApiKey ? "API key configured" : "Required for AI features"}
+              value={hasApiKey ? "Configured" : "Not Set"}
+              onPress={handleApiKeyPress}
+              iconColor={hasApiKey ? theme.colors.success : theme.colors.warning}
+              showChevron={true}
+              isFirstInGroup={true}
+              isLastInGroup={false}
+              showSeparator={true}
+            />
+            <Card
               iconName="brush-outline"
               title="Tool Mockups"
               subtitle="View redesigned AI Tools UI"
@@ -591,7 +707,7 @@ const SettingsScreen = () => {
               }}
               iconColor={theme.colors.primary}
               showChevron={true}
-              isFirstInGroup={true}
+              isFirstInGroup={false}
               isLastInGroup={true}
               showSeparator={false}
             />
@@ -602,7 +718,7 @@ const SettingsScreen = () => {
   );
 };
 
-const createStyles = (theme: Theme, insets: { bottom: number }) =>
+const createStyles = (theme: Theme, insets: { bottom: number }, scrollBottomPadding: number) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -613,8 +729,8 @@ const createStyles = (theme: Theme, insets: { bottom: number }) =>
     },
     scrollContent: {
       paddingTop: theme.spacing.xl,
-      // Add bottom padding to account for tab bar (49px) + safe area + spacing
-      paddingBottom: 49 + insets.bottom + theme.spacing.lg,
+      // Use proper padding that accounts for floating tab bar
+      paddingBottom: scrollBottomPadding,
     },
     asciiCard: {
       borderRadius: theme.spacing.md,

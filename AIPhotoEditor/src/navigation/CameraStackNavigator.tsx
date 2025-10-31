@@ -9,6 +9,7 @@ import GenreSelectionScreen from '../screens/GenreSelectionScreen';
 import VirtualTryOnSelectionScreen from '../screens/VirtualTryOnSelectionScreen';
 import ProcessingScreen from '../screens/ProcessingScreen';
 import ResultScreen from '../screens/ResultScreen';
+import StyleTransferScreen from '../screens/StyleTransferScreen';
 
 type CameraStackParamList = {
   QuickCameraMain: { editMode?: any; preselectedGenreId?: string; onPhoto?: (uri: string) => void } | undefined;
@@ -17,6 +18,7 @@ type CameraStackParamList = {
   PostCaptureFeatureSelection: { imageUri: string };
   GenreSelection: { imageUri?: string; editMode?: any };
   VirtualTryOnSelection: { editMode: any; personImageUri?: string };
+  StyleTransfer: { imageUri?: string };
   Processing: { imageUri: string; editMode: any; config?: any };
   Result: { originalImage: string; transformedImage: string; editMode: any; config?: any; fromHistory?: boolean };
 };
@@ -52,6 +54,7 @@ const CameraStackContent = () => {
       <Stack.Screen name="PostCaptureFeatureSelection" component={PostCaptureFeatureSelectionScreen} />
       <Stack.Screen name="GenreSelection" component={GenreSelectionScreen} />
       <Stack.Screen name="VirtualTryOnSelection" component={VirtualTryOnSelectionScreen} />
+      <Stack.Screen name="StyleTransfer" component={StyleTransferScreen} />
       <Stack.Screen name="Processing" component={ProcessingScreen} />
       <Stack.Screen name="Result" component={ResultScreen} />
     </Stack.Navigator>

@@ -12,9 +12,17 @@ import { AIToolInfoCard } from '../components/AIToolInfoCard';
 import { Button } from '../components/Button';
 import { CaptureLibraryButtons } from '../components/CaptureLibraryButtons';
 import { ActionButtonBar } from '../components/ActionButtonBar';
+import { OptionGroup } from '../components/OptionGroup';
+import { CollapsibleSection } from '../components/CollapsibleSection';
+import { ToolStatsBar } from '../components/ToolStatsBar';
+import { TopTabSwitcher } from '../components/TopTabSwitcher';
+import { ToolGuideTab } from '../components/ToolGuideTab';
+import { ToolExamplesTab } from '../components/ToolExamplesTab';
+import { TabView } from '../components/TabView';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
 import { spacing as baseSpacing } from '../theme/spacing';
+import { useScrollBottomPadding, useScrollBottomPaddingWithActionButton } from '../utils/scrollPadding';
 
 const { width, height } = Dimensions.get('window');
 
@@ -22,11 +30,17 @@ const ProfessionalHeadshotsScreen = () => {
   const { theme } = useTheme();
   const { colors, typography, spacing } = theme;
   const insets = useSafeAreaInsets();
+  const scrollBottomPadding = useScrollBottomPadding();
+  const scrollBottomPaddingWithButton = useScrollBottomPaddingWithActionButton();
   const navigation = useNavigation<NavigationProp<'Processing'>>();
   const route = useRoute<RouteProp<'GenreSelection'>>();
   const { imageUri } = (route.params as any) || {};
   const [localImageUri, setLocalImageUri] = useState<string | undefined>(imageUri);
   const [showImagePreview, setShowImagePreview] = useState(false);
+  const [headshotStyle, setHeadshotStyle] = useState<'corporate' | 'creative' | 'casual' | 'executive'>('corporate');
+  const [backgroundStyle, setBackgroundStyle] = useState<'office' | 'studio' | 'outdoor' | 'neutral'>('neutral');
+  const [lightingStyle, setLightingStyle] = useState<'professional' | 'soft' | 'dramatic' | 'natural'>('professional');
+  const [activeTopTab, setActiveTopTab] = useState<'tool' | 'guide'>('tool');
   const cardScale = useRef(new Animated.Value(0.96)).current;
   const hintAnim = useRef(new Animated.Value(0)).current;
 
@@ -76,15 +90,15 @@ const ProfessionalHeadshotsScreen = () => {
     });
   };
 
-  const handleContinue = () => {
+  const handleGenerate = () => {
     if (!localImageUri) return;
     haptic.medium();
-    // Navigate to ImagePreview where user can select style and background
     const params = {
       imageUri: localImageUri,
       editMode: EditMode.PROFESSIONAL_HEADSHOTS,
+      config: { headshotStyle, backgroundStyle, lightingStyle }
     } as any;
-    (navigation as any).navigate('ImagePreview', params);
+    (navigation as any).navigate('Processing', params);
   };
 
   return (
@@ -94,12 +108,31 @@ const ProfessionalHeadshotsScreen = () => {
         backgroundColor={colors.backgroundSecondary}
       />
 
+      {/* Floating Top Tab Switcher */}
+      <TopTabSwitcher
+        tabs={[
+          { id: 'tool', label: 'Tool', icon: 'create-outline' },
+          { id: 'guide', label: 'Guide', icon: 'book-outline' },
+        ]}
+        activeTab={activeTopTab}
+        onTabChange={(tabId) => setActiveTopTab(tabId as 'tool' | 'guide')}
+      />
+
+      {/* Add top padding to content to account for floating tab bar */}
+      <View style={{ height: 12 + 48 + 12 }} />
+
+      {activeTopTab === 'tool' ? (
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
           // Add padding when button is visible to prevent content from being hidden
-          localImageUri ? { paddingBottom: 120 } : { paddingBottom: insets.bottom + spacing.base },
+          // ActionButtonBar is ~100px (button 56px + padding + timing info) + safe area
+          // Use proper padding that accounts for floating tab bar
+          // When button is visible, account for ActionButtonBar height
+          localImageUri 
+            ? { paddingBottom: scrollBottomPaddingWithButton } 
+            : { paddingBottom: scrollBottomPadding },
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -171,36 +204,59 @@ const ProfessionalHeadshotsScreen = () => {
             </View>
           )}
 
-          {/* Quick Info Badges - ALWAYS VISIBLE */}
-          <View style={[styles.badgesContainer, { marginTop: spacing.sm }]}>
-            <View style={[styles.badge, { 
-              backgroundColor: colors.primary + '15',
-              borderColor: colors.primary + '30',
-            }]}>
-              <Ionicons name="sparkles-outline" size={14} color={colors.primary} />
-              <Text style={[styles.badgeText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}>
-                AI-powered
-              </Text>
-            </View>
-            <View style={[styles.badge, { 
-              backgroundColor: colors.primary + '15',
-              borderColor: colors.primary + '30',
-            }]}>
-              <Ionicons name="business-outline" size={14} color={colors.primary} />
-              <Text style={[styles.badgeText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}>
-                LinkedIn Ready
-              </Text>
-            </View>
-            <View style={[styles.badge, { 
-              backgroundColor: colors.primary + '15',
-              borderColor: colors.primary + '30',
-            }]}>
-              <Ionicons name="trophy-outline" size={14} color={colors.primary} />
-              <Text style={[styles.badgeText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}>
-                Professional
-              </Text>
-            </View>
+          {/* Tool Stats Bar */}
+          <View style={{ paddingHorizontal: spacing.base, marginTop: spacing.sm }}>
+            <ToolStatsBar
+              time="8-12 sec"
+              credits="0.5 credit"
+              rating="4.8/5"
+              usage="950 today"
+            />
           </View>
+        </View>
+
+        {/* Configuration Section - Always visible */}
+        <View style={{ paddingHorizontal: spacing.base, marginTop: spacing.lg }}>
+          <CollapsibleSection
+            title="Advanced Options"
+            defaultExpanded={true}
+            containerStyle={{ marginBottom: spacing.base }}
+          >
+            <OptionGroup
+              selectors={[
+                {
+                  label: 'Headshot Style',
+                  options: ['corporate', 'creative', 'casual', 'executive'].map(style => ({
+                    id: style,
+                    label: style.charAt(0).toUpperCase() + style.slice(1),
+                  })),
+                  selectedId: headshotStyle,
+                  onSelect: (id) => setHeadshotStyle(id as any),
+                  columns: 4,
+                },
+                {
+                  label: 'Background',
+                  options: ['office', 'studio', 'outdoor', 'neutral'].map(style => ({
+                    id: style,
+                    label: style.charAt(0).toUpperCase() + style.slice(1),
+                  })),
+                  selectedId: backgroundStyle,
+                  onSelect: (id) => setBackgroundStyle(id as any),
+                  columns: 4,
+                },
+                {
+                  label: 'Lighting',
+                  options: ['professional', 'soft', 'dramatic', 'natural'].map(style => ({
+                    id: style,
+                    label: style.charAt(0).toUpperCase() + style.slice(1),
+                  })),
+                  selectedId: lightingStyle,
+                  onSelect: (id) => setLightingStyle(id as any),
+                  columns: 4,
+                },
+              ]}
+            />
+          </CollapsibleSection>
         </View>
 
         {/* Information Card */}
@@ -215,9 +271,84 @@ const ProfessionalHeadshotsScreen = () => {
           ]}
         />
       </ScrollView>
+      ) : (
+        /* Guide View */
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: scrollBottomPadding },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Guide Tab Content with sub-tabs */}
+          <TabView
+            tabs={[
+              { id: 'guide', label: 'Guide', icon: 'book-outline' },
+              { id: 'examples', label: 'Examples', icon: 'images-outline' },
+              { id: 'info', label: 'Info', icon: 'information-circle-outline' },
+            ]}
+            containerStyle={{ marginHorizontal: spacing.base, marginTop: spacing.lg }}
+          >
+            {/* Guide Tab */}
+            <ToolGuideTab
+              title="How to Create Professional Headshots"
+              content="Create LinkedIn-ready professional headshots with AI-powered enhancement and studio-quality backgrounds.\n\n📸 Step 1: Select Your Photo\nChoose a clear, well-lit photo from your library or take a new one. Face-forward portraits work best.\n\n👔 Step 2: Choose Headshot Style\nCorporate - Traditional business look, perfect for LinkedIn\nCreative - Modern, artistic professional style\nCasual - Friendly, approachable professional vibe\nExecutive - High-level professional appearance\n\n🏢 Step 3: Select Background\nOffice - Professional workspace setting\nStudio - Clean, professional studio background\nOutdoor - Natural outdoor professional setting\nNeutral - Simple, versatile background\n\n💡 Step 4: Choose Lighting\nProfessional - Studio-quality lighting\nSoft - Gentle, flattering light\nDramatic - Bold, impactful lighting\nNatural - Realistic outdoor lighting\n\n✨ Step 5: Generate\nTap Generate Headshot and wait 10-15 seconds for your professional result.\n\n🎯 Pro Tips\nCorporate + Studio + Professional equals perfect LinkedIn headshot.\nClear face photos produce the most realistic results.\nYour identity is preserved while enhancing appearance.\nStudio backgrounds are most versatile for professional use.\nNatural lighting works great with Outdoor backgrounds."
+            />
+
+            {/* Examples Tab */}
+            <ToolExamplesTab
+              title="Professional Headshot Examples"
+              examples={[
+                {
+                  id: '1',
+                  title: 'Corporate Headshot',
+                  description: 'Professional corporate style with office background',
+                  tags: ['Corporate', 'Office'],
+                },
+                {
+                  id: '2',
+                  title: 'Creative Headshot',
+                  description: 'Modern creative style with studio background',
+                  tags: ['Creative', 'Studio'],
+                },
+                {
+                  id: '3',
+                  title: 'Executive Headshot',
+                  description: 'Executive style with professional lighting',
+                  tags: ['Executive', 'Professional'],
+                },
+              ]}
+              onExamplePress={(example) => {
+                haptic.light();
+                console.log('Example pressed:', example.title);
+              }}
+            />
+
+            {/* Info Tab */}
+            <View style={{ paddingHorizontal: spacing.base, paddingTop: spacing.base, paddingBottom: spacing.base }}>
+              <AIToolInfoCard
+                icon="person-outline"
+                whatDescription="Create professional headshots perfect for LinkedIn, resumes, and business profiles. Enhance your appearance while preserving your identity with AI-powered face enhancement and background replacement."
+                howDescription="Our AI enhances facial clarity, improves lighting, and applies professional backgrounds while maintaining your natural appearance. Choose from multiple styles and backgrounds for the perfect professional look."
+                howItems={[
+                  { text: 'Identity-preserving face enhancement' },
+                  { text: 'Multiple professional styles' },
+                  { text: 'Studio-quality backgrounds' },
+                ]}
+                expandableWhat={false}
+                expandableHow={false}
+              />
+            </View>
+          </TabView>
+          
+          {/* Extra bottom padding */}
+          <View style={{ height: spacing.xl }} />
+        </ScrollView>
+      )}
 
       <ActionButtonBar
-        visible={!!localImageUri}
+        visible={activeTopTab === 'tool' && !!localImageUri}
         bottomContent={
           <View style={[styles.timingInfo, {
             backgroundColor: colors.surface,
@@ -237,8 +368,8 @@ const ProfessionalHeadshotsScreen = () => {
         }
       >
         <Button
-          title="Continue"
-          onPress={handleContinue}
+          title="Generate Headshot"
+          onPress={handleGenerate}
           size="large"
           style={{ minHeight: 56, width: '100%' }}
         />

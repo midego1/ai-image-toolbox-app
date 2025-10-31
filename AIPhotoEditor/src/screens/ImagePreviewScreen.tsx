@@ -3,21 +3,25 @@ import { View, StyleSheet, Image, Dimensions, Text, TouchableOpacity, Modal, Pre
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { NavigationProp, RouteProp } from '../types/navigation';
 import { EditMode, getEditMode } from '../constants/editModes';
 import { AIToolHeader } from '../components/AIToolHeader';
 import { AIToolInfoCard } from '../components/AIToolInfoCard';
 import { Button } from '../components/Button';
+import { ToolStatsBar } from '../components/ToolStatsBar';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
 import { spacing as baseSpacing } from '../theme/spacing';
+import { useScrollBottomPadding } from '../utils/scrollPadding';
 
 const { width, height } = Dimensions.get('window');
 
 const ImagePreviewScreen = () => {
   const { theme } = useTheme();
   const { colors, typography, spacing } = theme;
+  const scrollBottomPadding = useScrollBottomPadding();
   const navigation = useNavigation<NavigationProp<'Processing'>>();
   const route = useRoute<RouteProp<'ImagePreview'>>();
   const { imageUri, editMode } = route.params;
@@ -28,11 +32,52 @@ const ImagePreviewScreen = () => {
   const [headshotStyle, setHeadshotStyle] = useState<'corporate' | 'creative' | 'casual' | 'executive'>('corporate');
   const [backgroundStyle, setBackgroundStyle] = useState<'office' | 'studio' | 'outdoor' | 'neutral'>('neutral');
   const [lightingStyle, setLightingStyle] = useState<'professional' | 'soft' | 'dramatic' | 'natural'>('professional');
+  const [styleImageUri, setStyleImageUri] = useState<string | undefined>();
+  const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
+  const [styleStrength, setStyleStrength] = useState(0.7);
+  const [showStylePreview, setShowStylePreview] = useState(false);
   const modeData = getEditMode(editMode);
   const isRemoveBackgroundMode = editMode === EditMode.REMOVE_BACKGROUND;
   const isRemoveObjectMode = editMode === EditMode.REMOVE_OBJECT;
   const isReplaceBackgroundMode = editMode === EditMode.REPLACE_BACKGROUND;
   const isProfessionalHeadshotsMode = editMode === EditMode.PROFESSIONAL_HEADSHOTS;
+  const isStyleTransferMode = editMode === EditMode.STYLE_TRANSFER;
+
+  const presetStyles = [
+    { id: 'van_gogh', name: 'Van Gogh', icon: '🎨' },
+    { id: 'picasso', name: 'Picasso', icon: '🖼️' },
+    { id: 'monet', name: 'Monet', icon: '🌅' },
+    { id: 'watercolor', name: 'Watercolor', icon: '💧' },
+    { id: 'oil_painting', name: 'Oil Painting', icon: '🖌️' },
+    { id: 'sketch', name: 'Sketch', icon: '✏️' },
+  ];
+
+  const pickStyleFromLibrary = async () => {
+    try {
+      haptic.light();
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.9,
+        selectionLimit: 1,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const selectedUri = result.assets[0].uri;
+        setStyleImageUri(selectedUri);
+        setSelectedPreset(null);
+      }
+    } catch (error) {
+      console.error('Error picking style image:', error);
+      Alert.alert('Error', 'Failed to select style image from library');
+    }
+  };
+
+  const handlePresetSelect = (preset: string) => {
+    haptic.light();
+    setSelectedPreset(preset);
+    setStyleImageUri(undefined);
+  };
 
   const handleProcess = () => {
     if (isRemoveObjectMode && !removalPrompt.trim()) {
@@ -43,21 +88,33 @@ const ImagePreviewScreen = () => {
       Alert.alert('Missing Background', 'Please describe the new background');
       return;
     }
+    if (isStyleTransferMode && !styleImageUri && !selectedPreset) {
+      Alert.alert('Missing Style', 'Please select a style image or preset');
+      return;
+    }
 
     haptic.medium();
 
     // Try to navigate using parent navigator first
     const parentNav = navigation.getParent();
+    const config: any = isRemoveObjectMode
+      ? { prompt: removalPrompt.trim(), removalPrompt: removalPrompt.trim() }
+      : (isReplaceBackgroundMode
+        ? { backgroundPrompt: backgroundPrompt.trim() }
+        : (isProfessionalHeadshotsMode
+          ? { headshotStyle, backgroundStyle, lightingStyle }
+          : (isStyleTransferMode
+            ? {
+                styleStrength,
+                ...(styleImageUri ? { styleImageUri } : {}),
+                ...(selectedPreset ? { stylePreset: selectedPreset } : {}),
+              }
+            : {})));
+
     const navParams = {
       imageUri,
       editMode,
-      config: isRemoveObjectMode
-        ? { prompt: removalPrompt.trim(), removalPrompt: removalPrompt.trim() }
-        : (isReplaceBackgroundMode
-          ? { backgroundPrompt: backgroundPrompt.trim() }
-          : (isProfessionalHeadshotsMode
-            ? { headshotStyle, backgroundStyle, lightingStyle }
-            : {}))
+      config,
     };
 
     navigation.navigate('Processing', navParams);
@@ -72,11 +129,11 @@ const ImagePreviewScreen = () => {
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottomPadding }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero Image Preview - Remove Background, Remove Object, Replace Background, or Professional Headshots Mode */}
-        {(isRemoveBackgroundMode || isRemoveObjectMode || isReplaceBackgroundMode || isProfessionalHeadshotsMode) ? (
+        {/* Hero Image Preview - Remove Background, Remove Object, Replace Background, Professional Headshots, or Style Transfer Mode */}
+        {(isRemoveBackgroundMode || isRemoveObjectMode || isReplaceBackgroundMode || isProfessionalHeadshotsMode || isStyleTransferMode) ? (
           <View style={{ paddingHorizontal: spacing.base, paddingTop: spacing.md, alignItems: 'center' }}>
             <TouchableOpacity
               onPress={() => {
@@ -111,36 +168,41 @@ const ImagePreviewScreen = () => {
               </View>
             </TouchableOpacity>
 
-            {/* Quick Info Badges */}
-            <View style={[styles.badgesContainer, { marginTop: spacing.sm }]}>
-            <View style={[styles.badge, { 
-              backgroundColor: colors.primary + '15',
-              borderColor: colors.primary + '30',
-            }]}>
-              <Ionicons name="flash-outline" size={14} color={colors.primary} />
-              <Text style={[styles.badgeText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}>
-                Instant
-              </Text>
-            </View>
-            <View style={[styles.badge, { 
-              backgroundColor: colors.primary + '15',
-              borderColor: colors.primary + '30',
-            }]}>
-              <Ionicons name="sparkles-outline" size={14} color={colors.primary} />
-              <Text style={[styles.badgeText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}>
-                AI-powered
-              </Text>
-            </View>
-            <View style={[styles.badge, { 
-              backgroundColor: colors.primary + '15',
-              borderColor: colors.primary + '30',
-            }]}>
-              <Ionicons name="trophy-outline" size={14} color={colors.primary} />
-              <Text style={[styles.badgeText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}>
-                Professional
-              </Text>
-            </View>
-          </View>
+            {/* Tool Stats Bar */}
+            {(isRemoveBackgroundMode || isRemoveObjectMode || isReplaceBackgroundMode || isProfessionalHeadshotsMode || isStyleTransferMode) && (
+              <View style={{ paddingHorizontal: spacing.base, marginTop: spacing.sm }}>
+                <ToolStatsBar
+                  time={
+                    isRemoveBackgroundMode ? "2-5 sec" :
+                    isRemoveObjectMode ? "3-6 sec" :
+                    isReplaceBackgroundMode ? "4-8 sec" :
+                    isProfessionalHeadshotsMode ? "8-12 sec" :
+                    "10-15 sec"
+                  }
+                  credits={
+                    isRemoveBackgroundMode ? "0.1 credit" :
+                    isRemoveObjectMode ? "0.2 credit" :
+                    isReplaceBackgroundMode ? "0.3 credit" :
+                    isProfessionalHeadshotsMode ? "0.5 credit" :
+                    "0.5 credit"
+                  }
+                  rating={
+                    isRemoveBackgroundMode ? "4.9/5" :
+                    isRemoveObjectMode ? "4.8/5" :
+                    isReplaceBackgroundMode ? "4.7/5" :
+                    isProfessionalHeadshotsMode ? "4.8/5" :
+                    "4.7/5"
+                  }
+                  usage={
+                    isRemoveBackgroundMode ? "2.3k today" :
+                    isRemoveObjectMode ? "1.5k today" :
+                    isReplaceBackgroundMode ? "1.2k today" :
+                    isProfessionalHeadshotsMode ? "950 today" :
+                    "850 today"
+                  }
+                />
+              </View>
+            )}
 
           {/* Prompt Input - Remove Object Mode */}
           {isRemoveObjectMode && (
@@ -346,6 +408,154 @@ const ImagePreviewScreen = () => {
             </View>
           )}
 
+          {/* Style Transfer Controls */}
+          {isStyleTransferMode && (
+            <View style={{ marginHorizontal: spacing.base, marginTop: spacing.base }}>
+              {/* Style Image Selection */}
+              <View style={[styles.promptContainer, {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                marginBottom: spacing.base,
+              }]}>
+                <Text style={[styles.promptLabel, {
+                  color: colors.text,
+                  fontSize: typography.scaled.sm,
+                  fontWeight: typography.weight.medium,
+                  marginBottom: spacing.sm,
+                }]}>
+                  Style Image (Optional)
+                </Text>
+                {styleImageUri ? (
+                  <TouchableOpacity
+                    onPress={() => { haptic.light(); setShowStylePreview(true); }}
+                    activeOpacity={0.9}
+                  >
+                    <View style={[styles.styleImageWrapper, {
+                      backgroundColor: colors.background,
+                      borderColor: colors.primary,
+                      borderWidth: 2,
+                    }]}> 
+                      <Image
+                        source={{ uri: styleImageUri }}
+                        style={styles.styleImage}
+                        resizeMode="cover"
+                      />
+                      <TouchableOpacity
+                        style={[styles.removeButton, { backgroundColor: colors.error }]}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          haptic.light();
+                          setStyleImageUri(undefined);
+                        }}
+                      >
+                        <Ionicons name="close" size={16} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    </View>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.selectStyleButton, {
+                      backgroundColor: colors.background,
+                      borderColor: colors.border,
+                    }]}
+                    onPress={pickStyleFromLibrary}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="image-outline" size={24} color={colors.primary} />
+                    <Text style={[styles.selectStyleText, { color: colors.text, fontSize: typography.scaled.sm, fontWeight: typography.weight.medium, marginTop: spacing.xs }]}>
+                      Select Style Image
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Preset Styles */}
+              <View style={[styles.promptContainer, {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                marginBottom: spacing.base,
+              }]}>
+                <Text style={[styles.promptLabel, {
+                  color: colors.text,
+                  fontSize: typography.scaled.sm,
+                  fontWeight: typography.weight.medium,
+                  marginBottom: spacing.sm,
+                }]}>
+                  Or Choose Preset Style
+                </Text>
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.presetScroll}
+                >
+                  {presetStyles.map((preset) => (
+                    <TouchableOpacity
+                      key={preset.id}
+                      style={[styles.presetCard, {
+                        backgroundColor: selectedPreset === preset.id ? colors.primary : colors.background,
+                        borderColor: selectedPreset === preset.id ? colors.primary : colors.border,
+                      }]}
+                      onPress={() => handlePresetSelect(preset.id)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.presetIcon}>{preset.icon}</Text>
+                      <Text style={[styles.presetText, {
+                        color: selectedPreset === preset.id ? '#FFFFFF' : colors.text,
+                        fontSize: typography.scaled.xs,
+                        fontWeight: typography.weight.medium,
+                      }]}>
+                        {preset.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              {/* Style Strength */}
+              <View style={[styles.promptContainer, {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              }]}>
+                <Text style={[styles.promptLabel, {
+                  color: colors.text,
+                  fontSize: typography.scaled.sm,
+                  fontWeight: typography.weight.medium,
+                  marginBottom: spacing.sm,
+                }]}>
+                  Style Strength
+                </Text>
+                <View style={styles.optionGrid}>
+                  {[
+                    { value: 0.3, label: 'Light' },
+                    { value: 0.5, label: 'Moderate' },
+                    { value: 0.7, label: 'Strong' },
+                    { value: 0.9, label: 'Very Strong' },
+                  ].map((strength) => (
+                    <TouchableOpacity
+                      key={strength.value}
+                      onPress={() => {
+                        haptic.light();
+                        setStyleStrength(strength.value);
+                      }}
+                      style={[styles.optionButton, {
+                        backgroundColor: Math.abs(styleStrength - strength.value) < 0.1 ? colors.primary : colors.background,
+                        borderColor: Math.abs(styleStrength - strength.value) < 0.1 ? colors.primary : colors.border,
+                      }]}
+                    >
+                      <Text style={[styles.optionText, {
+                        color: Math.abs(styleStrength - strength.value) < 0.1 ? '#FFFFFF' : colors.text,
+                        fontSize: typography.scaled.sm,
+                        fontWeight: typography.weight.medium,
+                      }]}>
+                        {strength.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </View>
+          )}
+
           {/* Process Button - Moved Above Information Card */}
           <View style={{ paddingHorizontal: spacing.base, paddingTop: spacing.lg }}>
             <Button
@@ -356,12 +566,15 @@ const ImagePreviewScreen = () => {
                     ? `Replace Background`
                     : isProfessionalHeadshotsMode
                       ? `Create Headshot`
-                      : `Remove Background`
+                      : isStyleTransferMode
+                        ? `Apply Style Transfer`
+                        : `Remove Background`
               }
               onPress={handleProcess}
               disabled={
                 (isRemoveObjectMode && !removalPrompt.trim()) ||
-                (isReplaceBackgroundMode && !backgroundPrompt.trim())
+                (isReplaceBackgroundMode && !backgroundPrompt.trim()) ||
+                (isStyleTransferMode && !styleImageUri && !selectedPreset)
               }
               style={[styles.processButton, { minHeight: 56 }] as any}
             />
@@ -417,13 +630,14 @@ const ImagePreviewScreen = () => {
       )}
 
       {/* Modern Information Card - All Relevant Modes */}
-      {(isRemoveBackgroundMode || isRemoveObjectMode || isReplaceBackgroundMode || isProfessionalHeadshotsMode) && (
+      {(isRemoveBackgroundMode || isRemoveObjectMode || isReplaceBackgroundMode || isProfessionalHeadshotsMode || isStyleTransferMode) && (
         <AIToolInfoCard
           icon={
             isRemoveObjectMode ? 'cut-outline' :
             isRemoveBackgroundMode ? 'cut-outline' :
             isReplaceBackgroundMode ? 'image-outline' :
-            'person-circle-outline'
+            isProfessionalHeadshotsMode ? 'person-circle-outline' :
+            'brush-outline'
           }
           whatDescription={
             isRemoveObjectMode
@@ -431,8 +645,10 @@ const ImagePreviewScreen = () => {
               : isRemoveBackgroundMode
                 ? 'Automatically removes the background from your photo while keeping your subject intact.'
                 : isReplaceBackgroundMode
-                  ? 'Swap your photo’s background with a new scene while keeping the subject natural and clean.'
-                  : 'Generate a polished, professional-looking headshot from your photo with refined lighting and backgrounds.'
+                  ? "Swap your photo's background with a new scene while keeping the subject natural and clean."
+                  : isProfessionalHeadshotsMode
+                    ? 'Generate a polished, professional-looking headshot from your photo with refined lighting and backgrounds.'
+                    : "Apply artistic styles from famous paintings or any style image to your photos. Blend colors, brushstrokes, and textures while preserving your content's structure and composition."
           }
           howDescription={
             isRemoveObjectMode
@@ -441,7 +657,9 @@ const ImagePreviewScreen = () => {
                 ? 'Your subject is separated using semantic analysis and edge handling, producing a clean cutout with natural boundaries.'
                 : isReplaceBackgroundMode
                   ? 'Your subject is segmented, a precise mask is created, and a new background is composited with consistent perspective, lighting, and color.'
-                  : 'Facial regions and contours are preserved while lighting, background, and clarity are enhanced to produce a studio-quality portrait.'
+                  : isProfessionalHeadshotsMode
+                    ? 'Facial regions and contours are preserved while lighting, background, and clarity are enhanced to produce a studio-quality portrait.'
+                    : 'Our AI analyzes both your content image and style reference, then blends the artistic characteristics from the style onto your photo while maintaining recognizable content details.'
           }
           howItems={
             isRemoveObjectMode
@@ -462,11 +680,17 @@ const ImagePreviewScreen = () => {
                       { text: 'Scene-consistent lighting' },
                       { text: 'High-quality compositing' },
                     ]
-                  : [
-                      { text: 'Identity-preserving adjustments' },
-                      { text: 'Professional lighting & backdrop' },
-                      { text: 'Crisp, share-ready results' },
-                    ]
+                  : isProfessionalHeadshotsMode
+                    ? [
+                        { text: 'Identity-preserving adjustments' },
+                        { text: 'Professional lighting & backdrop' },
+                        { text: 'Crisp, share-ready results' },
+                      ]
+                    : [
+                        { text: 'Preserves your photo\'s composition and subject' },
+                        { text: 'Applies artistic style elements naturally' },
+                        { text: 'Adjustable strength for subtle or bold effects' },
+                      ]
           }
         />
       )}
@@ -512,6 +736,27 @@ const ImagePreviewScreen = () => {
                   </Text>
                 </View>
               </LinearGradient>
+            </View>
+          </SafeAreaView>
+        </Pressable>
+      </Modal>
+
+      {/* Style Image Preview Modal */}
+      <Modal
+        visible={showStylePreview}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowStylePreview(false)}
+      >
+        <Pressable
+          style={[styles.previewModal, { backgroundColor: 'rgba(0, 0, 0, 0.96)' }]}
+          onPress={() => { haptic.light(); setShowStylePreview(false); }}
+        >
+          <SafeAreaView style={styles.previewModalSafeArea} edges={['top', 'bottom']}>
+            <View style={styles.imageContainer}>
+              <View style={[styles.imageWrapper, { backgroundColor: colors.surface + '10' }]}>
+                <Image source={{ uri: styleImageUri || '' }} style={styles.previewModalImage} resizeMode="contain" />
+              </View>
             </View>
           </SafeAreaView>
         </Pressable>
@@ -765,6 +1010,62 @@ const styles = StyleSheet.create({
   },
   optionText: {
     // Dynamic styles applied inline
+  },
+  styleImageWrapper: {
+    width: width - (baseSpacing.base * 4),
+    maxWidth: 200,
+    height: 200,
+    borderRadius: 16,
+    overflow: 'hidden',
+    alignSelf: 'center',
+    position: 'relative',
+  },
+  styleImage: {
+    width: '100%',
+    height: '100%',
+  },
+  removeButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectStyleButton: {
+    padding: baseSpacing.lg,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: baseSpacing.xs,
+  },
+  selectStyleText: {
+    // Dynamic styles applied inline
+  },
+  presetScroll: {
+    paddingRight: baseSpacing.base,
+    gap: baseSpacing.sm,
+  },
+  presetCard: {
+    width: 80,
+    borderRadius: 12,
+    padding: baseSpacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: baseSpacing.sm,
+    borderWidth: 1,
+    minHeight: 80,
+  },
+  presetIcon: {
+    fontSize: 24,
+    marginBottom: baseSpacing.xs / 2,
+  },
+  presetText: {
+    // Dynamic styles applied inline
+    textAlign: 'center',
   },
 });
 

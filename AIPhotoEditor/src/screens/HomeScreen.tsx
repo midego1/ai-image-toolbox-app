@@ -8,6 +8,7 @@ import { Button } from '../components/Button';
 import { SubscriptionStatus } from '../components/SubscriptionStatus';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
+import { useScrollBottomPadding } from '../utils/scrollPadding';
 import { ImageProcessingService } from '../services/imageProcessingService';
 
 const { width } = Dimensions.get('window');
@@ -15,6 +16,7 @@ const { width } = Dimensions.get('window');
 const HomeScreen = () => {
   const { theme } = useTheme();
   const { colors, typography, spacing } = theme;
+  const scrollBottomPadding = useScrollBottomPadding();
   const navigation = useNavigation<NavigationProp<'EditModeSelection'>>();
 
   const handleStartCreating = () => {
@@ -42,7 +44,7 @@ const HomeScreen = () => {
 
       <ScrollView
         style={[styles.scrollView, { backgroundColor: colors.backgroundSecondary }]}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: spacing['3xl'] + 60 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottomPadding }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Primary CTA */}

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, StyleSheet, ScrollView, Image, Dimensions, Text, TouchableOpacity, Modal, Pressable, Animated, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, Image, Dimensions, Text, TouchableOpacity, Modal, Pressable, Animated, Alert, TextInput } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -12,9 +12,15 @@ import { AIToolInfoCard } from '../components/AIToolInfoCard';
 import { Button } from '../components/Button';
 import { CaptureLibraryButtons } from '../components/CaptureLibraryButtons';
 import { ActionButtonBar } from '../components/ActionButtonBar';
+import { ToolStatsBar } from '../components/ToolStatsBar';
+import { TopTabSwitcher } from '../components/TopTabSwitcher';
+import { ToolGuideTab } from '../components/ToolGuideTab';
+import { ToolExamplesTab } from '../components/ToolExamplesTab';
+import { TabView } from '../components/TabView';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
 import { spacing as baseSpacing } from '../theme/spacing';
+import { useScrollBottomPadding, useScrollBottomPaddingWithActionButton } from '../utils/scrollPadding';
 
 const { width, height } = Dimensions.get('window');
 
@@ -22,11 +28,15 @@ const ReplaceBackgroundScreen = () => {
   const { theme } = useTheme();
   const { colors, typography, spacing } = theme;
   const insets = useSafeAreaInsets();
+  const scrollBottomPadding = useScrollBottomPadding();
+  const scrollBottomPaddingWithButton = useScrollBottomPaddingWithActionButton();
   const navigation = useNavigation<NavigationProp<'Processing'>>();
   const route = useRoute<RouteProp<'GenreSelection'>>();
   const { imageUri } = (route.params as any) || {};
   const [localImageUri, setLocalImageUri] = useState<string | undefined>(imageUri);
   const [showImagePreview, setShowImagePreview] = useState(false);
+  const [backgroundPrompt, setBackgroundPrompt] = useState('');
+  const [activeTopTab, setActiveTopTab] = useState<'tool' | 'guide'>('tool');
   const cardScale = useRef(new Animated.Value(0.96)).current;
   const hintAnim = useRef(new Animated.Value(0)).current;
 
@@ -77,15 +87,19 @@ const ReplaceBackgroundScreen = () => {
     });
   };
 
-  const handleContinue = () => {
+  const handleGenerate = () => {
     if (!localImageUri) return;
+    if (!backgroundPrompt.trim()) {
+      Alert.alert('Missing Prompt', 'Please describe the background you want to replace with');
+      return;
+    }
     haptic.medium();
-    // Navigate to ImagePreview where user can enter background prompt
     const params = {
       imageUri: localImageUri,
       editMode: EditMode.REPLACE_BACKGROUND,
+      config: { prompt: backgroundPrompt.trim(), backgroundPrompt: backgroundPrompt.trim() }
     } as any;
-    (navigation as any).navigate('ImagePreview', params);
+    (navigation as any).navigate('Processing', params);
   };
 
   return (
@@ -95,12 +109,31 @@ const ReplaceBackgroundScreen = () => {
         backgroundColor={colors.backgroundSecondary}
       />
 
+      {/* Floating Top Tab Switcher */}
+      <TopTabSwitcher
+        tabs={[
+          { id: 'tool', label: 'Tool', icon: 'create-outline' },
+          { id: 'guide', label: 'Guide', icon: 'book-outline' },
+        ]}
+        activeTab={activeTopTab}
+        onTabChange={(tabId) => setActiveTopTab(tabId as 'tool' | 'guide')}
+      />
+
+      {/* Add top padding to content to account for floating tab bar */}
+      <View style={{ height: 12 + 48 + 12 }} />
+
+      {activeTopTab === 'tool' ? (
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
           // Add padding when button is visible to prevent content from being hidden
-          localImageUri ? { paddingBottom: 120 } : { paddingBottom: insets.bottom + spacing.base },
+          // ActionButtonBar is ~100px (button 56px + padding + timing info) + safe area
+          // Use proper padding that accounts for floating tab bar
+          // When button is visible, account for ActionButtonBar height
+          localImageUri && backgroundPrompt.trim()
+            ? { paddingBottom: scrollBottomPaddingWithButton } 
+            : { paddingBottom: scrollBottomPadding },
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -172,35 +205,46 @@ const ReplaceBackgroundScreen = () => {
             </View>
           )}
 
-          {/* Quick Info Badges - ALWAYS VISIBLE */}
-          <View style={[styles.badgesContainer, { marginTop: spacing.sm }]}>
-            <View style={[styles.badge, { 
-              backgroundColor: colors.primary + '15',
-              borderColor: colors.primary + '30',
+          {/* Tool Stats Bar */}
+          <View style={{ paddingHorizontal: spacing.base, marginTop: spacing.sm }}>
+            <ToolStatsBar
+              time="4-8 sec"
+              credits="0.3 credit"
+              rating="4.7/5"
+              usage="1.2k today"
+            />
+          </View>
+        </View>
+
+        {/* Prompt Input Section - Always visible */}
+        <View style={{ paddingHorizontal: spacing.base, marginTop: spacing.lg }}>
+          <View style={[styles.promptContainer, {
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+          }]}>
+            <Text style={[styles.promptLabel, {
+              color: colors.text,
+              fontSize: typography.scaled.sm,
+              fontWeight: typography.weight.medium,
+              marginBottom: spacing.xs,
             }]}>
-              <Ionicons name="flash-outline" size={14} color={colors.primary} />
-              <Text style={[styles.badgeText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}>
-                Instant
-              </Text>
-            </View>
-            <View style={[styles.badge, { 
-              backgroundColor: colors.primary + '15',
-              borderColor: colors.primary + '30',
-            }]}>
-              <Ionicons name="sparkles-outline" size={14} color={colors.primary} />
-              <Text style={[styles.badgeText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}>
-                AI-powered
-              </Text>
-            </View>
-            <View style={[styles.badge, { 
-              backgroundColor: colors.primary + '15',
-              borderColor: colors.primary + '30',
-            }]}>
-              <Ionicons name="trophy-outline" size={14} color={colors.primary} />
-              <Text style={[styles.badgeText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}>
-                Professional
-              </Text>
-            </View>
+              What background do you want?
+            </Text>
+            <TextInput
+              style={[styles.promptInput, {
+                backgroundColor: colors.background,
+                color: colors.text,
+                borderColor: colors.border,
+                fontSize: typography.scaled.base,
+              }]}
+              value={backgroundPrompt}
+              onChangeText={setBackgroundPrompt}
+              placeholder="e.g., beach, office, studio, sunset..."
+              placeholderTextColor={colors.textSecondary}
+              multiline={false}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
           </View>
         </View>
 
@@ -216,9 +260,84 @@ const ReplaceBackgroundScreen = () => {
           ]}
         />
       </ScrollView>
+      ) : (
+        /* Guide View */
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: scrollBottomPadding },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Guide Tab Content with sub-tabs */}
+          <TabView
+            tabs={[
+              { id: 'guide', label: 'Guide', icon: 'book-outline' },
+              { id: 'examples', label: 'Examples', icon: 'images-outline' },
+              { id: 'info', label: 'Info', icon: 'information-circle-outline' },
+            ]}
+            containerStyle={{ marginHorizontal: spacing.base, marginTop: spacing.lg }}
+          >
+            {/* Guide Tab */}
+            <ToolGuideTab
+              title="How to Replace Background"
+              content="Instantly swap backgrounds while keeping natural lighting and realistic shadows.\n\n📸 Step 1: Choose Your Photo\nSelect a photo from your library or take a new one. Photos with clear subject edges work best.\n\n✍️ Step 2: Describe Your New Background\nType what you want in the prompt field. Examples:\nmodern office with windows\nsunset beach scene\nprofessional studio background\ncozy coffee shop\n\n✨ Step 3: Generate\nTap Replace Background and wait 5-10 seconds for processing.\n\n🎨 Step 4: Realistic Result\nThe AI seamlessly blends your subject into the new scene with natural lighting and shadows.\n\n🎯 Pro Tips\nBe descriptive: 'sunset beach with palm trees' works better than just 'beach'.\nMention lighting: 'bright studio' or 'natural outdoor light'.\nWorks great for LinkedIn headshots and product photos.\nThe AI automatically matches lighting to your original photo.\nClear subject edges ensure the best blending results."
+            />
+
+            {/* Examples Tab */}
+            <ToolExamplesTab
+              title="Replace Background Examples"
+              examples={[
+                {
+                  id: '1',
+                  title: 'Studio Background',
+                  description: 'Professional studio setting with perfect lighting',
+                  tags: ['Studio', 'Professional'],
+                },
+                {
+                  id: '2',
+                  title: 'Beach Scene',
+                  description: 'Natural outdoor scene with realistic shadows',
+                  tags: ['Beach', 'Outdoor'],
+                },
+                {
+                  id: '3',
+                  title: 'Office Setting',
+                  description: 'Corporate office background for professional headshots',
+                  tags: ['Office', 'Corporate'],
+                },
+              ]}
+              onExamplePress={(example) => {
+                haptic.light();
+                console.log('Example pressed:', example.title);
+              }}
+            />
+
+            {/* Info Tab */}
+            <View style={{ paddingHorizontal: spacing.base, paddingTop: spacing.base, paddingBottom: spacing.base }}>
+              <AIToolInfoCard
+                icon="image-outline"
+                whatDescription="Swap scenes instantly: studios, offices, beaches, and more with realistic lighting and shadows."
+                howDescription="We use advanced AI to seamlessly blend your subject into new backgrounds while preserving natural lighting, shadows, and depth."
+                howItems={[
+                  { text: 'Realistic lighting and shadows' },
+                  { text: 'Natural blending with backgrounds' },
+                  { text: 'Works with any scene description' },
+                ]}
+                expandableWhat={false}
+                expandableHow={false}
+              />
+            </View>
+          </TabView>
+          
+          {/* Extra bottom padding */}
+          <View style={{ height: spacing.xl }} />
+        </ScrollView>
+      )}
 
       <ActionButtonBar
-        visible={!!localImageUri}
+        visible={activeTopTab === 'tool' && !!(localImageUri && backgroundPrompt.trim())}
         bottomContent={
           <View style={[styles.timingInfo, {
             backgroundColor: colors.surface,
@@ -238,8 +357,8 @@ const ReplaceBackgroundScreen = () => {
         }
       >
         <Button
-          title="Continue"
-          onPress={handleContinue}
+          title="Replace Background"
+          onPress={handleGenerate}
           size="large"
           style={{ minHeight: 56, width: '100%' }}
         />
@@ -363,6 +482,21 @@ const styles = StyleSheet.create({
   },
   timingText: {
     // Dynamic styles applied inline
+  },
+  promptContainer: {
+    padding: baseSpacing.base,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  promptLabel: {
+    // Dynamic styles applied inline
+  },
+  promptInput: {
+    paddingHorizontal: baseSpacing.base,
+    paddingVertical: baseSpacing.sm,
+    borderRadius: 8,
+    borderWidth: 1,
+    minHeight: 44,
   },
 });
 

@@ -51,37 +51,56 @@ export const AIToolInfoCard: React.FC<AIToolInfoCardProps> = ({
     setExpandedHow(prev => !prev);
   };
 
+  const cardStyle = {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 5,
+    overflow: 'hidden' as const,
+  };
+
+  const sectionHeaderStyle = {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    paddingBottom: spacing.sm,
+  };
+
   return (
-    <View style={{ marginHorizontal: spacing.base, marginTop: spacing.base }}>
-      <View style={{
-        backgroundColor: colors.surface,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: colors.border,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-        elevation: 3,
-        overflow: 'hidden',
-      }}>
-        {/* What This Does Section */}
-        <View style={{ padding: spacing.base }}>
+    <View style={{ paddingHorizontal: spacing.base, paddingTop: spacing.base }}>
+      {/* What This Does Card */}
+      <View style={cardStyle}>
+        <View style={{ padding: spacing.lg }}>
           <TouchableOpacity
             disabled={!expandableWhat}
             onPress={toggleExpandWhat}
             activeOpacity={0.7}
-            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+            style={sectionHeaderStyle}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
               {!!icon && (
-                <Ionicons name={icon} size={22} color={colors.primary} />
+                <View style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: colors.primary + '15',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: spacing.sm,
+                }}>
+                  <Ionicons name={icon} size={22} color={colors.primary} />
+                </View>
               )}
               <Text style={{
-                marginLeft: spacing.xs,
                 color: colors.text,
                 fontSize: typography.scaled.base,
                 fontWeight: typography.weight.bold,
+                flex: 1,
               }}>
                 {whatTitle}
               </Text>
@@ -89,7 +108,7 @@ export const AIToolInfoCard: React.FC<AIToolInfoCardProps> = ({
             {expandableWhat && (
               <Ionicons
                 name={expandedWhat ? 'chevron-up' : 'chevron-down'}
-                size={20}
+                size={22}
                 color={colors.textSecondary}
               />
             )}
@@ -100,38 +119,45 @@ export const AIToolInfoCard: React.FC<AIToolInfoCardProps> = ({
               <Text style={{
                 color: colors.textSecondary,
                 fontSize: typography.scaled.sm,
-                marginTop: spacing.sm,
-                lineHeight: 22,
+                lineHeight: 24,
+                marginTop: spacing.xs,
               }}>
                 {whatDescription}
               </Text>
             ) : (
-              <View style={{ marginTop: spacing.sm }}>{whatDescription}</View>
+              <View style={{ marginTop: spacing.xs }}>{whatDescription}</View>
             )
           )}
         </View>
+      </View>
 
-        {/* Divider between cards to visually connect them */}
-        {(howDescription || howItems.length > 0) && (
-          <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: spacing.base }} />
-        )}
-
-        {/* How It Works Section */}
-        {(howDescription || howItems.length > 0) && (
-          <View style={{ padding: spacing.base }}>
+      {/* How It Works Card */}
+      {(howDescription || howItems.length > 0) && (
+        <View style={[cardStyle, { marginTop: spacing.md }]}>
+          <View style={{ padding: spacing.lg }}>
             <TouchableOpacity
               disabled={!expandableHow}
               onPress={toggleExpandHow}
               activeOpacity={0.7}
-              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+              style={sectionHeaderStyle}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Ionicons name="help-circle-outline" size={20} color={colors.primary} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                <View style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: colors.primary + '15',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: spacing.sm,
+                }}>
+                  <Ionicons name="help-circle-outline" size={22} color={colors.primary} />
+                </View>
                 <Text style={{
-                  marginLeft: spacing.xs,
                   color: colors.text,
                   fontSize: typography.scaled.base,
                   fontWeight: typography.weight.bold,
+                  flex: 1,
                 }}>
                   {howTitle}
                 </Text>
@@ -139,7 +165,7 @@ export const AIToolInfoCard: React.FC<AIToolInfoCardProps> = ({
               {expandableHow && (
                 <Ionicons
                   name={expandedHow ? 'chevron-up' : 'chevron-down'}
-                  size={20}
+                  size={22}
                   color={colors.textSecondary}
                 />
               )}
@@ -152,30 +178,41 @@ export const AIToolInfoCard: React.FC<AIToolInfoCardProps> = ({
                     <Text style={{
                       color: colors.textSecondary,
                       fontSize: typography.scaled.sm,
-                      marginTop: spacing.sm,
-                      lineHeight: 22,
+                      lineHeight: 24,
+                      marginTop: spacing.xs,
+                      marginBottom: howItems.length > 0 ? spacing.md : 0,
                     }}>
                       {howDescription}
                     </Text>
                   ) : (
-                    <View style={{ marginTop: spacing.sm }}>{howDescription}</View>
+                    <View style={{ marginTop: spacing.xs, marginBottom: howItems.length > 0 ? spacing.md : 0 }}>{howDescription}</View>
                   )
                 )}
 
                 {howItems.length > 0 && (
-                  <View style={{ marginTop: spacing.sm }}>
+                  <View style={{ marginTop: spacing.xs }}>
                     {howItems.map((item, idx) => (
-                      <View key={`${item.text}-${idx}`} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs }}>
-                        <Ionicons
-                          name={item.icon || 'checkmark-circle-outline'}
-                          size={16}
-                          color={colors.textTertiary}
-                        />
+                      <View 
+                        key={`${item.text}-${idx}`} 
+                        style={{ 
+                          flexDirection: 'row', 
+                          alignItems: 'flex-start', 
+                          marginBottom: idx < howItems.length - 1 ? spacing.sm : 0,
+                          paddingLeft: spacing.xs,
+                        }}
+                      >
+                        <View style={{ marginTop: 2 }}>
+                          <Ionicons
+                            name={item.icon || 'checkmark-circle'}
+                            size={18}
+                            color={colors.primary}
+                          />
+                        </View>
                         <Text style={{
-                          marginLeft: spacing.xs,
+                          marginLeft: spacing.sm,
                           color: colors.textSecondary,
                           fontSize: typography.scaled.sm,
-                          lineHeight: 20,
+                          lineHeight: 22,
                           flex: 1,
                         }}>
                           {item.text}
@@ -187,8 +224,8 @@ export const AIToolInfoCard: React.FC<AIToolInfoCardProps> = ({
               </View>
             )}
           </View>
-        )}
-      </View>
+        </View>
+      )}
     </View>
   );
 };

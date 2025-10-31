@@ -9,14 +9,16 @@ import { Card } from '../components/Card';
 import { useTheme, Theme } from '../theme/ThemeProvider';
 import { LanguageService, Language, LANGUAGES } from '../services/languageService';
 import { haptic } from '../utils/haptics';
+import { useScrollBottomPadding } from '../utils/scrollPadding';
 import { Ionicons } from '@expo/vector-icons';
 
 const LanguageSelectionScreen = () => {
   const navigation = useNavigation<NavigationProp<'LanguageSelection'>>();
   const { theme } = useTheme();
+  const scrollBottomPadding = useScrollBottomPadding();
   const [selectedLanguage, setSelectedLanguage] = useState<Language>('automatic');
 
-  const styles = createStyles(theme);
+  const styles = createStyles(theme, scrollBottomPadding);
 
   useEffect(() => {
     loadLanguage();
@@ -85,7 +87,7 @@ const LanguageSelectionScreen = () => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, scrollBottomPadding: number) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -96,7 +98,8 @@ const createStyles = (theme: Theme) =>
     },
     scrollContent: {
       paddingTop: theme.spacing.xl,
-      paddingBottom: theme.spacing['3xl'] + 60,
+      // Use proper padding that accounts for floating tab bar
+      paddingBottom: scrollBottomPadding,
     },
     categoryContainer: {
       paddingHorizontal: theme.spacing.base,

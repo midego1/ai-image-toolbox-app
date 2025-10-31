@@ -1,6 +1,6 @@
 {
   "name": "aiphotoeditor",
-  "version": "1.0.0",
+  "version": "0.1.2",
   "main": "index.ts",
   "scripts": {
     "start": "expo start",

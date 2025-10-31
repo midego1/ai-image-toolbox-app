@@ -23,6 +23,8 @@ export enum EditMode {
   CROP_ROTATE = 'crop_rotate',
   VIRTUAL_TRY_ON = 'virtual_try_on',
   PROFESSIONAL_HEADSHOTS = 'professional_headshots',
+  POP_FIGURE = 'pop_figure',
+  PIXEL_ART_GAMER = 'pixel_art_gamer',
 }
 
 export interface EditModeData {

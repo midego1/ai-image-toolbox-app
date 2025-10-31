@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, ScrollView, Image, Dimensions, Text, TouchableOpacity, Modal, Pressable, Animated, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, Image, Dimensions, Text, TouchableOpacity, Modal, Pressable, Animated, Alert, TextInput } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -12,9 +12,15 @@ import { AIToolInfoCard } from '../components/AIToolInfoCard';
 import { Button } from '../components/Button';
 import { CaptureLibraryButtons } from '../components/CaptureLibraryButtons';
 import { ActionButtonBar } from '../components/ActionButtonBar';
+import { ToolStatsBar } from '../components/ToolStatsBar';
+import { TopTabSwitcher } from '../components/TopTabSwitcher';
+import { ToolGuideTab } from '../components/ToolGuideTab';
+import { ToolExamplesTab } from '../components/ToolExamplesTab';
+import { TabView } from '../components/TabView';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
 import { spacing as baseSpacing } from '../theme/spacing';
+import { useScrollBottomPadding, useScrollBottomPaddingWithActionButton } from '../utils/scrollPadding';
 
 const { width, height } = Dimensions.get('window');
 
@@ -22,11 +28,15 @@ const RemoveObjectScreen = () => {
   const { theme } = useTheme();
   const { colors, typography, spacing } = theme;
   const insets = useSafeAreaInsets();
+  const scrollBottomPadding = useScrollBottomPadding();
+  const scrollBottomPaddingWithButton = useScrollBottomPaddingWithActionButton();
   const navigation = useNavigation<NavigationProp<'Processing'>>();
   const route = useRoute<RouteProp<'GenreSelection'>>();
   const { imageUri } = (route.params as any) || {};
   const [localImageUri, setLocalImageUri] = useState<string | undefined>(imageUri);
   const [showImagePreview, setShowImagePreview] = useState(false);
+  const [removalPrompt, setRemovalPrompt] = useState('');
+  const [activeTopTab, setActiveTopTab] = useState<'tool' | 'guide'>('tool');
   const cardScale = useRef(new Animated.Value(0.96)).current;
   const hintAnim = useRef(new Animated.Value(0)).current;
 
@@ -76,15 +86,19 @@ const RemoveObjectScreen = () => {
     });
   };
 
-  const handleContinue = () => {
+  const handleGenerate = () => {
     if (!localImageUri) return;
+    if (!removalPrompt.trim()) {
+      Alert.alert('Missing Prompt', 'Please describe what you want to remove from the image');
+      return;
+    }
     haptic.medium();
-    // Navigate to ImagePreview where user can enter removal prompt
     const params = {
       imageUri: localImageUri,
       editMode: EditMode.REMOVE_OBJECT,
+      config: { prompt: removalPrompt.trim(), removalPrompt: removalPrompt.trim() }
     } as any;
-    (navigation as any).navigate('ImagePreview', params);
+    (navigation as any).navigate('Processing', params);
   };
 
   return (
@@ -94,12 +108,29 @@ const RemoveObjectScreen = () => {
         backgroundColor={colors.backgroundSecondary}
       />
 
+      {/* Floating Top Tab Switcher */}
+      <TopTabSwitcher
+        tabs={[
+          { id: 'tool', label: 'Tool', icon: 'create-outline' },
+          { id: 'guide', label: 'Guide', icon: 'book-outline' },
+        ]}
+        activeTab={activeTopTab}
+        onTabChange={(tabId) => setActiveTopTab(tabId as 'tool' | 'guide')}
+      />
+
+      {/* Add top padding to content to account for floating tab bar */}
+      <View style={{ height: 12 + 48 + 12 }} />
+
+      {activeTopTab === 'tool' ? (
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
-          // Add padding when button is visible to prevent content from being hidden
-          localImageUri ? { paddingBottom: 120 } : { paddingBottom: insets.bottom + spacing.base },
+          // Use proper padding that accounts for floating tab bar
+          // When button is visible, account for ActionButtonBar height
+          localImageUri && removalPrompt.trim()
+            ? { paddingBottom: scrollBottomPaddingWithButton } 
+            : { paddingBottom: scrollBottomPadding },
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -171,35 +202,46 @@ const RemoveObjectScreen = () => {
             </View>
           )}
 
-          {/* Quick Info Badges - ALWAYS VISIBLE */}
-          <View style={[styles.badgesContainer, { marginTop: spacing.sm }]}>
-            <View style={[styles.badge, { 
-              backgroundColor: colors.primary + '15',
-              borderColor: colors.primary + '30',
+          {/* Tool Stats Bar */}
+          <View style={{ paddingHorizontal: spacing.base, marginTop: spacing.sm }}>
+            <ToolStatsBar
+              time="3-6 sec"
+              credits="0.2 credit"
+              rating="4.8/5"
+              usage="1.5k today"
+            />
+          </View>
+        </View>
+
+        {/* Prompt Input Section - Always visible */}
+        <View style={{ paddingHorizontal: spacing.base, marginTop: spacing.lg }}>
+          <View style={[styles.promptContainer, {
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+          }]}>
+            <Text style={[styles.promptLabel, {
+              color: colors.text,
+              fontSize: typography.scaled.sm,
+              fontWeight: typography.weight.medium,
+              marginBottom: spacing.xs,
             }]}>
-              <Ionicons name="flash-outline" size={14} color={colors.primary} />
-              <Text style={[styles.badgeText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}>
-                Instant
-              </Text>
-            </View>
-            <View style={[styles.badge, { 
-              backgroundColor: colors.primary + '15',
-              borderColor: colors.primary + '30',
-            }]}>
-              <Ionicons name="sparkles-outline" size={14} color={colors.primary} />
-              <Text style={[styles.badgeText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}>
-                AI-powered
-              </Text>
-            </View>
-            <View style={[styles.badge, { 
-              backgroundColor: colors.primary + '15',
-              borderColor: colors.primary + '30',
-            }]}>
-              <Ionicons name="trophy-outline" size={14} color={colors.primary} />
-              <Text style={[styles.badgeText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}>
-                Professional
-              </Text>
-            </View>
+              What would you like to remove?
+            </Text>
+            <TextInput
+              style={[styles.promptInput, {
+                backgroundColor: colors.background,
+                color: colors.text,
+                borderColor: colors.border,
+                fontSize: typography.scaled.base,
+              }]}
+              value={removalPrompt}
+              onChangeText={setRemovalPrompt}
+              placeholder="e.g., person, car, sign, bottle..."
+              placeholderTextColor={colors.textSecondary}
+              multiline={false}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
           </View>
         </View>
 
@@ -215,9 +257,84 @@ const RemoveObjectScreen = () => {
           ]}
         />
       </ScrollView>
+      ) : (
+        /* Guide View */
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: scrollBottomPadding },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Guide Tab Content with sub-tabs */}
+          <TabView
+            tabs={[
+              { id: 'guide', label: 'Guide', icon: 'book-outline' },
+              { id: 'examples', label: 'Examples', icon: 'images-outline' },
+              { id: 'info', label: 'Info', icon: 'information-circle-outline' },
+            ]}
+            containerStyle={{ marginHorizontal: spacing.base, marginTop: spacing.lg }}
+          >
+            {/* Guide Tab */}
+            <ToolGuideTab
+              title="How to Remove Objects"
+              content="Clean up your photos by removing unwanted elements with AI precision.\n\n📸 Step 1: Select Your Photo\nChoose a photo from your library or take a new one. Make sure the object you want to remove is clearly visible.\n\n✍️ Step 2: Describe What to Remove\nType a clear description in the prompt field. For example:\nperson in the background\nred car\ntext sign on the wall\n\n✨ Step 3: Process\nTap Remove Object and our AI will intelligently remove the specified element.\n\n🎨 Step 4: Perfect Result\nThe AI automatically fills in the background naturally, preserving the scene's integrity.\n\n🎯 Pro Tips\nBe specific: 'red car' works better than just 'car'.\nDescribe location: 'person on the left' is clearer.\nWorks great for removing tourists, signs, or distractions.\nMultiple objects? Describe them all in one prompt.\nSimple, uncluttered backgrounds produce the best results."
+            />
+
+            {/* Examples Tab */}
+            <ToolExamplesTab
+              title="Remove Object Examples"
+              examples={[
+                {
+                  id: '1',
+                  title: 'Remove Person',
+                  description: 'Clean removal of people from crowded scenes',
+                  tags: ['Person', 'Crowd'],
+                },
+                {
+                  id: '2',
+                  title: 'Remove Vehicle',
+                  description: 'Remove cars and vehicles from street scenes',
+                  tags: ['Vehicle', 'Street'],
+                },
+                {
+                  id: '3',
+                  title: 'Remove Signs',
+                  description: 'Remove text signs and advertisements from photos',
+                  tags: ['Sign', 'Text'],
+                },
+              ]}
+              onExamplePress={(example) => {
+                haptic.light();
+                console.log('Example pressed:', example.title);
+              }}
+            />
+
+            {/* Info Tab */}
+            <View style={{ paddingHorizontal: spacing.base, paddingTop: spacing.base, paddingBottom: spacing.base }}>
+              <AIToolInfoCard
+                icon="remove-circle-outline"
+                whatDescription="Remove unwanted objects, people, or distractions from your photos with precision. Simply describe what to remove and our AI handles the rest."
+                howDescription="Our AI identifies the object you specify and intelligently removes it while filling in the background naturally, preserving the scene's integrity."
+                howItems={[
+                  { text: 'Natural background filling' },
+                  { text: 'Precise object detection' },
+                  { text: 'Works with any object description' },
+                ]}
+                expandableWhat={false}
+                expandableHow={false}
+              />
+            </View>
+          </TabView>
+          
+          {/* Extra bottom padding */}
+          <View style={{ height: spacing.xl }} />
+        </ScrollView>
+      )}
 
       <ActionButtonBar
-        visible={!!localImageUri}
+        visible={activeTopTab === 'tool' && !!(localImageUri && removalPrompt.trim())}
         bottomContent={
           <View style={[styles.timingInfo, {
             backgroundColor: colors.surface,
@@ -237,8 +354,8 @@ const RemoveObjectScreen = () => {
         }
       >
         <Button
-          title="Continue"
-          onPress={handleContinue}
+          title="Remove Object"
+          onPress={handleGenerate}
           size="large"
           style={{ minHeight: 56, width: '100%' }}
         />
@@ -362,6 +479,21 @@ const styles = StyleSheet.create({
   },
   timingText: {
     // Dynamic styles applied inline
+  },
+  promptContainer: {
+    padding: baseSpacing.base,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  promptLabel: {
+    // Dynamic styles applied inline
+  },
+  promptInput: {
+    paddingHorizontal: baseSpacing.base,
+    paddingVertical: baseSpacing.sm,
+    borderRadius: 8,
+    borderWidth: 1,
+    minHeight: 44,
   },
 });
 

@@ -131,6 +131,27 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
     requiresSubscription: true, // Subscription-only
     creditCost: 1, // 1 credit for single-step Nano Banana processing
   },
+  [EditMode.POP_FIGURE]: {
+    id: EditMode.POP_FIGURE,
+    name: 'Pop Figure',
+    description: 'Transform your photo into a detailed 3D render of a chibi pop figure with collectible box options, strictly based on the provided reference photo.',
+    icon: '🧸',
+    category: EditModeCategory.TRANSFORM,
+    isPremium: true,
+    requiresSubscription: true, // Subscription-only
+    creditCost: 1,
+  },
+  [EditMode.PIXEL_ART_GAMER]: {
+    id: EditMode.PIXEL_ART_GAMER,
+    name: 'Pixel Art Gamer',
+    description: 'Transform your photo into a retro 8-bit or 16-bit video game sprite. Perfect for RPG characters, platformers, and classic arcade game aesthetics.',
+    icon: '🎮',
+    category: EditModeCategory.TRANSFORM,
+    isPremium: true,
+    requiresConfig: true,
+    requiresSubscription: true, // Subscription-only
+    creditCost: 1,
+  },
 };
 
 /**

@@ -6,6 +6,7 @@ import StatisticsScreen from '../screens/StatisticsScreen';
 import LanguageSelectionScreen from '../screens/LanguageSelectionScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
 import ToolMockupScreen from '../screens/ToolMockupScreen';
+import RemoveBackgroundMockupDetailScreen from '../screens/RemoveBackgroundMockupDetailScreen';
 import { SettingsStackParamList } from '../types/navigation';
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
@@ -64,6 +65,14 @@ export const SettingsStackNavigator = () => {
       <Stack.Screen
         name="ToolMockup"
         component={ToolMockupScreen}
+        options={{
+          headerShown: false,
+          gestureEnabled: true,
+        }}
+      />
+      <Stack.Screen
+        name="RemoveBackgroundMockupDetail"
+        component={RemoveBackgroundMockupDetailScreen}
         options={{
           headerShown: false,
           gestureEnabled: true,

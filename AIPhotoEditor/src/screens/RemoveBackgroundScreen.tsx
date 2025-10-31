@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, StyleSheet, ScrollView, Image, Dimensions, Text, TouchableOpacity, Modal, Pressable, Animated, Alert } from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { useRoute, useNavigation, usePreventRemove } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
@@ -12,9 +12,15 @@ import { AIToolInfoCard } from '../components/AIToolInfoCard';
 import { Button } from '../components/Button';
 import { CaptureLibraryButtons } from '../components/CaptureLibraryButtons';
 import { ActionButtonBar } from '../components/ActionButtonBar';
+import { ToolStatsBar } from '../components/ToolStatsBar';
+import { TopTabSwitcher } from '../components/TopTabSwitcher';
+import { ToolGuideTab } from '../components/ToolGuideTab';
+import { ToolExamplesTab } from '../components/ToolExamplesTab';
+import { TabView } from '../components/TabView';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
 import { spacing as baseSpacing } from '../theme/spacing';
+import { useScrollBottomPadding, useScrollBottomPaddingWithActionButton } from '../utils/scrollPadding';
 
 const { width, height } = Dimensions.get('window');
 
@@ -22,11 +28,14 @@ const RemoveBackgroundScreen = () => {
   const { theme } = useTheme();
   const { colors, typography, spacing } = theme;
   const insets = useSafeAreaInsets();
+  const scrollBottomPadding = useScrollBottomPadding();
+  const scrollBottomPaddingWithButton = useScrollBottomPaddingWithActionButton();
   const navigation = useNavigation<NavigationProp<'Processing'>>();
   const route = useRoute<RouteProp<'GenreSelection'>>();
-  const { imageUri } = (route.params as any) || {};
+  const { imageUri, fromToolMockup } = (route.params as any) || {};
   const [localImageUri, setLocalImageUri] = useState<string | undefined>(imageUri);
   const [showImagePreview, setShowImagePreview] = useState(false);
+  const [activeTopTab, setActiveTopTab] = useState<'tool' | 'guide'>('tool');
   const cardScale = useRef(new Animated.Value(0.96)).current;
   const hintAnim = useRef(new Animated.Value(0)).current;
 
@@ -88,19 +97,85 @@ const RemoveBackgroundScreen = () => {
     (navigation as any).navigate('Processing', params);
   };
 
+  // Handle swipe back when coming from ToolMockupScreen
+  const handleBackToToolMockup = React.useCallback(() => {
+    const parentNav = navigation.getParent();
+    if (parentNav) {
+      // Navigate back to Settings tab, then to ToolMockup screen
+      (parentNav as any).navigate('MainTabs', {
+        screen: 'Settings',
+        params: {
+          screen: 'ToolMockup',
+        }
+      });
+    } else {
+      // Fallback: just go back
+      navigation.goBack();
+    }
+  }, [navigation]);
+
+  // Prevent native back when coming from ToolMockupScreen and handle it ourselves
+  usePreventRemove(
+    fromToolMockup === true,
+    ({ data }) => {
+      handleBackToToolMockup();
+    }
+  );
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundSecondary }]} edges={[]}> 
       <AIToolHeader
         title="Remove Background"
         backgroundColor={colors.backgroundSecondary}
+        showBackButton={true}
+        onBack={() => {
+          if (fromToolMockup) {
+            // Navigate back to ToolMockupScreen in Settings stack
+            const parentNav = navigation.getParent();
+            if (parentNav) {
+              // Navigate to Settings tab, then to ToolMockup screen
+              (parentNav as any).navigate('MainTabs', {
+                screen: 'Settings',
+                params: {
+                  screen: 'ToolMockup',
+                }
+              });
+            } else {
+              // Fallback: just go back
+              navigation.goBack();
+            }
+          } else {
+            // Normal back behavior - go back in Features stack
+            navigation.goBack();
+          }
+        }}
       />
 
+      {/* Floating Top Tab Switcher */}
+      <TopTabSwitcher
+        tabs={[
+          { id: 'tool', label: 'Tool', icon: 'create-outline' },
+          { id: 'guide', label: 'Guide', icon: 'book-outline' },
+        ]}
+        activeTab={activeTopTab}
+        onTabChange={(tabId) => setActiveTopTab(tabId as 'tool' | 'guide')}
+      />
+
+      {/* Add top padding to content to account for floating tab bar */}
+      <View style={{ height: 12 + 48 + 12 }} />
+
+      {activeTopTab === 'tool' ? (
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
           // Add padding when button is visible to prevent content from being hidden
-          localImageUri ? { paddingBottom: 120 } : { paddingBottom: insets.bottom + spacing.base },
+          // ActionButtonBar is ~100px (button 56px + padding + timing info) + safe area
+          // Use proper padding that accounts for floating tab bar
+          // When button is visible, account for ActionButtonBar height
+          localImageUri 
+            ? { paddingBottom: scrollBottomPaddingWithButton } 
+            : { paddingBottom: scrollBottomPadding },
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -172,35 +247,14 @@ const RemoveBackgroundScreen = () => {
             </View>
           )}
 
-          {/* Quick Info Badges - ALWAYS VISIBLE */}
-          <View style={[styles.badgesContainer, { marginTop: spacing.sm }]}>
-            <View style={[styles.badge, { 
-              backgroundColor: colors.primary + '15',
-              borderColor: colors.primary + '30',
-            }]}>
-              <Ionicons name="flash-outline" size={14} color={colors.primary} />
-              <Text style={[styles.badgeText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}>
-                Instant
-              </Text>
-            </View>
-            <View style={[styles.badge, { 
-              backgroundColor: colors.primary + '15',
-              borderColor: colors.primary + '30',
-            }]}>
-              <Ionicons name="sparkles-outline" size={14} color={colors.primary} />
-              <Text style={[styles.badgeText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}>
-                AI-powered
-              </Text>
-            </View>
-            <View style={[styles.badge, { 
-              backgroundColor: colors.primary + '15',
-              borderColor: colors.primary + '30',
-            }]}>
-              <Ionicons name="trophy-outline" size={14} color={colors.primary} />
-              <Text style={[styles.badgeText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}>
-                Professional
-              </Text>
-            </View>
+          {/* Tool Stats Bar */}
+          <View style={{ paddingHorizontal: spacing.base, marginTop: spacing.sm }}>
+            <ToolStatsBar
+              time="2-5 sec"
+              credits="0.1 credit"
+              rating="4.9/5"
+              usage="2.3k today"
+            />
           </View>
         </View>
 
@@ -216,9 +270,84 @@ const RemoveBackgroundScreen = () => {
           ]}
         />
       </ScrollView>
+      ) : (
+        /* Guide View */
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: scrollBottomPadding },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Guide Tab Content with sub-tabs */}
+          <TabView
+            tabs={[
+              { id: 'guide', label: 'Guide', icon: 'book-outline' },
+              { id: 'examples', label: 'Examples', icon: 'images-outline' },
+              { id: 'info', label: 'Info', icon: 'information-circle-outline' },
+            ]}
+            containerStyle={{ marginHorizontal: spacing.base, marginTop: spacing.lg }}
+          >
+            {/* Guide Tab */}
+            <ToolGuideTab
+              title="How to Remove Background"
+              content="Get clean, professional background removal in seconds.\n\n📸 Step 1: Choose Your Photo\nSelect a photo from your library or capture a new one. The AI works best with clear, well-lit images.\n\n✨ Step 2: Automatic Detection\nOur AI automatically identifies and extracts your subject with precision. No manual selection needed.\n\n⚡ Step 3: Process\nTap Remove Background and wait just 2-5 seconds for your result.\n\n💾 Step 4: Use Your Result\nExport as a transparent PNG for design work, or continue editing to replace with a new background.\n\n🎯 Pro Tips\nPortrait photos with clear subjects work best.\nHigh contrast between subject and background improves accuracy.\nPerfect for product photos, headshots, and social media.\nTransparent PNGs work great for design projects and overlays."
+            />
+
+            {/* Examples Tab */}
+            <ToolExamplesTab
+              title="Remove Background Examples"
+              examples={[
+                {
+                  id: '1',
+                  title: 'Portrait Photo',
+                  description: 'Clean background removal with detailed hair and edge detection',
+                  tags: ['Portrait', 'Hair Detail'],
+                },
+                {
+                  id: '2',
+                  title: 'Product Photo',
+                  description: 'Precise extraction perfect for e-commerce and design projects',
+                  tags: ['Product', 'E-commerce'],
+                },
+                {
+                  id: '3',
+                  title: 'Pet Photo',
+                  description: 'Even furry friends get clean edge detection and separation',
+                  tags: ['Pet', 'Fur Detail'],
+                },
+              ]}
+              onExamplePress={(example) => {
+                haptic.light();
+                console.log('Example pressed:', example.title);
+              }}
+            />
+
+            {/* Info Tab */}
+            <View style={{ paddingHorizontal: spacing.base, paddingTop: spacing.base, paddingBottom: spacing.base }}>
+              <AIToolInfoCard
+                icon="cut-outline"
+                whatDescription="Remove the background from your photo with precise, edge‑aware AI. Export transparent PNGs or continue to replace the background."
+                howDescription="We detect the subject and separate it from the background using a segmentation model, preserving fine details like hair and edges."
+                howItems={[
+                  { text: 'Transparent PNG export' },
+                  { text: 'Edge-aware subject extraction' },
+                  { text: 'Great for product photos and portraits' },
+                ]}
+                expandableWhat={false}
+                expandableHow={false}
+              />
+            </View>
+          </TabView>
+          
+          {/* Extra bottom padding */}
+          <View style={{ height: spacing.xl }} />
+        </ScrollView>
+      )}
 
       <ActionButtonBar
-        visible={!!localImageUri}
+        visible={activeTopTab === 'tool' && !!localImageUri}
         bottomContent={
           <View style={[styles.timingInfo, {
             backgroundColor: colors.surface,

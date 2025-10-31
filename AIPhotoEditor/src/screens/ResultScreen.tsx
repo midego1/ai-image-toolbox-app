@@ -18,6 +18,7 @@ import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
 import { ClothingItem } from '../services/processors/virtualTryOnProcessor';
 import { spacing as baseSpacing } from '../theme/spacing';
+import { useScrollBottomPadding } from '../utils/scrollPadding';
 import { HistoryService } from '../services/historyService';
 import { AnalyticsService } from '../services/analyticsService';
 
@@ -26,6 +27,7 @@ const { width, height } = Dimensions.get('window');
 const ResultScreen = () => {
   const { theme } = useTheme();
   const { colors, typography, spacing } = theme;
+  const scrollBottomPadding = useScrollBottomPadding();
   const IMAGE_HEIGHT = height * 0.5;
   const navigation = useNavigation<NavigationProp<'MainTabs'>>();
   const route = useRoute<RouteProp<'Result'>>();
@@ -353,6 +355,32 @@ const ResultScreen = () => {
           editMode: EditMode.PROFESSIONAL_HEADSHOTS 
         });
       }
+    } else if (editMode === EditMode.PIXEL_ART_GAMER) {
+      // Navigate back to PixelArtGamerScreen with the original image and current config
+      const parentNav = navigation.getParent();
+      if (parentNav) {
+        parentNav.navigate('PixelArtGamer', { 
+          imageUri: originalImage,
+          config: config, // Pass the config so it can be pre-filled
+        } as any);
+      } else {
+        // If no parent nav, try to navigate to Features stack first
+        navigation.dispatch(
+          CommonActions.navigate({
+            name: 'MainTabs',
+            params: {
+              screen: 'Features',
+              params: {
+                screen: 'PixelArtGamer',
+                params: {
+                  imageUri: originalImage,
+                  config: config,
+                },
+              },
+            },
+          })
+        );
+      }
     }
   };
 
@@ -360,12 +388,29 @@ const ResultScreen = () => {
   const isReplaceBackgroundMode = editMode === EditMode.REPLACE_BACKGROUND;
   const isRemoveObjectMode = editMode === EditMode.REMOVE_OBJECT;
   const isProfessionalHeadshotsMode = (editMode as any) === EditMode.PROFESSIONAL_HEADSHOTS;
-  const showTryAnotherStyle = isTransformMode || isReplaceBackgroundMode || isRemoveObjectMode || isProfessionalHeadshotsMode;
+  const isPixelArtGamerMode = editMode === EditMode.PIXEL_ART_GAMER;
+  const isStyleTransferMode = editMode === EditMode.STYLE_TRANSFER;
+  const isPopFigureMode = editMode === EditMode.POP_FIGURE;
+  const showTryAnotherStyle = isTransformMode || isReplaceBackgroundMode || isRemoveObjectMode || isProfessionalHeadshotsMode || isPixelArtGamerMode;
 
   // Helper to format labels (e.g., "corporate" -> "Corporate")
   const formatLabel = (value?: string, fallback: string = ''): string => {
     const v = (value || fallback).toString();
     return v.length ? v.charAt(0).toUpperCase() + v.slice(1) : '';
+  };
+
+  // Helper to format style preset names
+  const formatStylePreset = (presetId?: string): string => {
+    if (!presetId) return '';
+    const presetMap: Record<string, string> = {
+      'van_gogh': 'Van Gogh',
+      'picasso': 'Picasso',
+      'monet': 'Monet',
+      'watercolor': 'Watercolor',
+      'oil_painting': 'Oil Painting',
+      'sketch': 'Sketch',
+    };
+    return presetMap[presetId] || formatLabel(presetId);
   };
 
   // Get contextual completion badge text based on edit mode
@@ -389,6 +434,8 @@ const ResultScreen = () => {
         return 'Style Applied';
       case EditMode.FILTERS:
         return 'Filter Applied';
+      case EditMode.PIXEL_ART_GAMER:
+        return 'Sprite Created';
       default:
         return 'Processing Complete';
     }
@@ -413,22 +460,15 @@ const ResultScreen = () => {
             // If coming from history, go back to history
             navigation.goBack();
           } else {
-            // Otherwise, navigate to History tab
-            navigation.dispatch(
-              CommonActions.navigate({
-                name: 'MainTabs',
-                params: {
-                  screen: 'History',
-                },
-              } as any)
-            );
+            // Otherwise, navigate to Features tab (home)
+            navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
           }
         }}
       />
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottomPadding }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Hero Image Preview - All Modes */}
@@ -512,17 +552,15 @@ const ResultScreen = () => {
               </View>
             )}
             {/* Created at timestamp */}
-            {!showOriginal && (
-              <View style={[styles.badge, {
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-              }]}> 
-                <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
-                <Text style={[styles.badgeText, { color: colors.textSecondary, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}> 
-                  {formatTimestamp(createdAt)}
-                </Text>
-              </View>
-            )}
+            <View style={[styles.badge, {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+            }]}> 
+              <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
+              <Text style={[styles.badgeText, { color: colors.textSecondary, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}> 
+                {formatTimestamp(createdAt)}
+              </Text>
+            </View>
           </View>
 
           {/* Image Toggle Tabs */}
@@ -617,6 +655,247 @@ const ResultScreen = () => {
         {isVirtualTryOn && clothingItems && clothingItems.length > 0 && !showOriginal && (
           <View style={{ marginHorizontal: spacing.base, marginBottom: spacing.base }}>
             <OutfitSummaryCard items={clothingItems} />
+          </View>
+        )}
+
+        {/* Pixel Art Gamer Options Card */}
+        {isPixelArtGamerMode && config && (
+          <View style={{ marginHorizontal: spacing.base, marginBottom: spacing.base }}>
+            <Card style={[{
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              borderWidth: 1,
+              borderRadius: 12,
+              padding: spacing.base,
+            }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
+                <Ionicons name="settings-outline" size={20} color={colors.primary} />
+                <Text style={[{
+                  color: colors.text,
+                  fontSize: typography.scaled.base,
+                  fontWeight: typography.weight.semibold,
+                  marginLeft: spacing.sm,
+                }]}>
+                  Options Used
+                </Text>
+              </View>
+              
+              <View style={{ gap: spacing.sm }}>
+                {config.bitDepth && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                      <Ionicons name="grid-outline" size={16} color={colors.textSecondary} />
+                      <Text style={[{
+                        color: colors.textSecondary,
+                        fontSize: typography.scaled.sm,
+                        marginLeft: spacing.xs,
+                      }]}>
+                        Bit Depth
+                      </Text>
+                    </View>
+                    <Text style={[{
+                      color: colors.text,
+                      fontSize: typography.scaled.sm,
+                      fontWeight: typography.weight.semibold,
+                    }]}>
+                      {config.bitDepth === '8-bit' ? '8-bit (NES)' : '16-bit (SNES)'}
+                    </Text>
+                  </View>
+                )}
+                
+                {config.gameStyle && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                      <Ionicons name="game-controller-outline" size={16} color={colors.textSecondary} />
+                      <Text style={[{
+                        color: colors.textSecondary,
+                        fontSize: typography.scaled.sm,
+                        marginLeft: spacing.xs,
+                      }]}>
+                        Game Style
+                      </Text>
+                    </View>
+                    <Text style={[{
+                      color: colors.text,
+                      fontSize: typography.scaled.sm,
+                      fontWeight: typography.weight.semibold,
+                    }]}>
+                      {formatLabel(config.gameStyle)}
+                    </Text>
+                  </View>
+                )}
+                
+                {config.backgroundStyle && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                      <Ionicons name="image-outline" size={16} color={colors.textSecondary} />
+                      <Text style={[{
+                        color: colors.textSecondary,
+                        fontSize: typography.scaled.sm,
+                        marginLeft: spacing.xs,
+                      }]}>
+                        Background
+                      </Text>
+                    </View>
+                    <Text style={[{
+                      color: colors.text,
+                      fontSize: typography.scaled.sm,
+                      fontWeight: typography.weight.semibold,
+                    }]}>
+                      {formatLabel(config.backgroundStyle)}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </Card>
+          </View>
+        )}
+
+        {/* Style Transfer Options Card */}
+        {isStyleTransferMode && config && (
+          <View style={{ marginHorizontal: spacing.base, marginBottom: spacing.base }}>
+            <Card style={[{
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              borderWidth: 1,
+              borderRadius: 12,
+              padding: spacing.base,
+            }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
+                <Ionicons name="settings-outline" size={20} color={colors.primary} />
+                <Text style={[{
+                  color: colors.text,
+                  fontSize: typography.scaled.base,
+                  fontWeight: typography.weight.semibold,
+                  marginLeft: spacing.sm,
+                }]}>
+                  Options Used
+                </Text>
+              </View>
+              
+              <View style={{ gap: spacing.sm }}>
+                {config.stylePreset && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                      <Ionicons name="brush-outline" size={16} color={colors.textSecondary} />
+                      <Text style={[{
+                        color: colors.textSecondary,
+                        fontSize: typography.scaled.sm,
+                        marginLeft: spacing.xs,
+                      }]}>
+                        Style Preset
+                      </Text>
+                    </View>
+                    <Text style={[{
+                      color: colors.text,
+                      fontSize: typography.scaled.sm,
+                      fontWeight: typography.weight.semibold,
+                    }]}>
+                      {formatStylePreset(config.stylePreset)}
+                    </Text>
+                  </View>
+                )}
+                
+                {config.styleImageUri && !config.stylePreset && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                      <Ionicons name="image-outline" size={16} color={colors.textSecondary} />
+                      <Text style={[{
+                        color: colors.textSecondary,
+                        fontSize: typography.scaled.sm,
+                        marginLeft: spacing.xs,
+                      }]}>
+                        Style Source
+                      </Text>
+                    </View>
+                    <Text style={[{
+                      color: colors.text,
+                      fontSize: typography.scaled.sm,
+                      fontWeight: typography.weight.semibold,
+                    }]}>
+                      Custom Image
+                    </Text>
+                  </View>
+                )}
+                
+                {config.styleStrength !== undefined && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                      <Ionicons name="pulse-outline" size={16} color={colors.textSecondary} />
+                      <Text style={[{
+                        color: colors.textSecondary,
+                        fontSize: typography.scaled.sm,
+                        marginLeft: spacing.xs,
+                      }]}>
+                        Style Strength
+                      </Text>
+                    </View>
+                    <Text style={[{
+                      color: colors.text,
+                      fontSize: typography.scaled.sm,
+                      fontWeight: typography.weight.semibold,
+                    }]}>
+                      {config.styleStrength > 0.75 
+                        ? 'Strong' 
+                        : config.styleStrength > 0.5 
+                        ? 'Moderate' 
+                        : config.styleStrength > 0.25
+                        ? 'Subtle'
+                        : 'Light'} ({Math.round(config.styleStrength * 100)}%)
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </Card>
+          </View>
+        )}
+
+        {/* Pop Figure Options Card */}
+        {isPopFigureMode && config && (
+          <View style={{ marginHorizontal: spacing.base, marginBottom: spacing.base }}>
+            <Card style={[{
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              borderWidth: 1,
+              borderRadius: 12,
+              padding: spacing.base,
+            }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
+                <Ionicons name="settings-outline" size={20} color={colors.primary} />
+                <Text style={[{
+                  color: colors.text,
+                  fontSize: typography.scaled.base,
+                  fontWeight: typography.weight.semibold,
+                  marginLeft: spacing.sm,
+                }]}>
+                  Options Used
+                </Text>
+              </View>
+              
+              <View style={{ gap: spacing.sm }}>
+                {config.includeBox !== undefined && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                      <Ionicons name={config.includeBox ? "cube" : "cube-outline"} size={16} color={colors.textSecondary} />
+                      <Text style={[{
+                        color: colors.textSecondary,
+                        fontSize: typography.scaled.sm,
+                        marginLeft: spacing.xs,
+                      }]}>
+                        Box Included
+                      </Text>
+                    </View>
+                    <Text style={[{
+                      color: colors.text,
+                      fontSize: typography.scaled.sm,
+                      fontWeight: typography.weight.semibold,
+                    }]}>
+                      {config.includeBox ? 'Yes' : 'No'}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </Card>
           </View>
         )}
 
@@ -746,6 +1025,15 @@ const ResultScreen = () => {
                     
                   </>
                 )}
+                {isPixelArtGamerMode && (
+                  <Text style={{
+                    color: colors.textSecondary,
+                    fontSize: typography.scaled.xs,
+                    marginTop: 2,
+                  }}>
+                    Adjust bit depth, game style, or background options
+                  </Text>
+                )}
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
@@ -806,6 +1094,10 @@ const ResultScreen = () => {
               </View>
             ) : undefined
           }
+          onSave={!showOriginal ? saveImage : undefined}
+          onShare={!showOriginal ? shareImage : undefined}
+          isSaving={isSaving}
+          hasSaved={hasSaved}
         />
       </Modal>
     </SafeAreaView>

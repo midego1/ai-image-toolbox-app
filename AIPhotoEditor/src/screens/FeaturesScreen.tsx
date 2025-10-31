@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -14,24 +14,37 @@ import { EditMode, EditModeCategory, getEditModesByCategory, PHASE1_FEATURES } f
 import { SubscriptionService } from '../services/subscriptionService';
 import { ImageProcessingService } from '../services/imageProcessingService';
 import { haptic } from '../utils/haptics';
+import { useScrollBottomPadding } from '../utils/scrollPadding';
 
 const FeaturesScreen = () => {
   const { theme } = useTheme();
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
-  const styles = createStyles(theme, insets);
+  const scrollBottomPadding = useScrollBottomPadding();
+  const styles = createStyles(theme, insets, scrollBottomPadding);
   const [isPremium, setIsPremium] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollOffsetRef = useRef<number>(0);
 
   const loadSubscriptionStatus = async () => {
     const premium = await SubscriptionService.checkSubscriptionStatus();
     setIsPremium(premium);
   };
 
-  // Reload subscription status whenever the screen comes into focus
+  // Reload subscription status and restore scroll position whenever the screen comes into focus
   // This ensures the status updates when navigating back from subscription screen
   useFocusEffect(
     React.useCallback(() => {
       loadSubscriptionStatus();
+      // Restore scroll position after a short delay to ensure the view has rendered
+      if (scrollOffsetRef.current > 0) {
+        setTimeout(() => {
+          scrollViewRef.current?.scrollTo({ 
+            y: scrollOffsetRef.current, 
+            animated: false 
+          });
+        }, 100);
+      }
     }, [])
   );
 
@@ -71,6 +84,24 @@ const FeaturesScreen = () => {
     // Professional Headshots should first show pre-capture selection (Library or Camera) in a dedicated screen
     if (editMode === EditMode.PROFESSIONAL_HEADSHOTS) {
       (navigation as any).navigate('ProfessionalHeadshots');
+      return;
+    }
+
+    // Pop Figure should first show pre-capture selection (Library or Camera) in a dedicated screen
+    if (editMode === EditMode.POP_FIGURE) {
+      (navigation as any).navigate('PopFigure');
+      return;
+    }
+
+    // Pixel Art Gamer should first show pre-capture selection (Library or Camera) in a dedicated screen
+    if (editMode === EditMode.PIXEL_ART_GAMER) {
+      (navigation as any).navigate('PixelArtGamer');
+      return;
+    }
+
+    // Style Transfer should first show pre-capture selection (Library or Camera) in a dedicated screen
+    if (editMode === EditMode.STYLE_TRANSFER) {
+      (navigation as any).navigate('StyleTransfer');
       return;
     }
 
@@ -138,9 +169,14 @@ const FeaturesScreen = () => {
       <MainHeader title="Features" backgroundColor={theme.colors.backgroundSecondary} />
 
       <ScrollView
+        ref={scrollViewRef}
         style={[styles.scrollView, { backgroundColor: theme.colors.backgroundSecondary }]}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        onScroll={(event) => {
+          scrollOffsetRef.current = event.nativeEvent.contentOffset.y;
+        }}
+        scrollEventThrottle={16}
       >
         {/* Removed Featured Block */}
 
@@ -198,7 +234,7 @@ const FeaturesScreen = () => {
   );
 };
 
-const createStyles = (theme: Theme, insets: { bottom: number }) =>
+const createStyles = (theme: Theme, insets: { bottom: number }, scrollBottomPadding: number) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -209,8 +245,8 @@ const createStyles = (theme: Theme, insets: { bottom: number }) =>
     },
     scrollContent: {
       paddingTop: theme.spacing.base,
-      // Add bottom padding to account for tab bar (49px) + safe area + spacing
-      paddingBottom: 49 + insets.bottom + theme.spacing.lg,
+      // Use proper padding that accounts for floating tab bar
+      paddingBottom: scrollBottomPadding,
     },
     bannerContainer: {
       paddingHorizontal: theme.spacing.base,

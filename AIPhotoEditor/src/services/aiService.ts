@@ -67,10 +67,10 @@ export class AIService {
     try {
       const apiKey = await getReplicateApiKey();
 
-      if (apiKey === REPLICATE_API_KEY_FALLBACK) {
+      if (apiKey === REPLICATE_API_KEY_FALLBACK || !apiKey || apiKey.length === 0) {
         return {
           success: false,
-          error: 'Replicate API key not configured. Please set it in app settings.',
+          error: 'Replicate API key not configured. Please set it in app settings (Settings → Developer → Replicate API Key), or configure it via EAS Secrets before building.',
         };
       }
 
@@ -130,10 +130,10 @@ export class AIService {
       const apiKey = await getReplicateApiKey();
       const { imageUris, prompt, model = 'google/nano-banana' } = params;
 
-      if (apiKey === REPLICATE_API_KEY_FALLBACK) {
+      if (apiKey === REPLICATE_API_KEY_FALLBACK || !apiKey || apiKey.length === 0) {
         return {
           success: false,
-          error: 'Replicate API key not configured. Please set it in app settings.',
+          error: 'Replicate API key not configured. Please set it in app settings (Settings → Developer → Replicate API Key), or configure it via EAS Secrets before building.',
         };
       }
 

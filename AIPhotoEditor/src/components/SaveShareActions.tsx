@@ -18,6 +18,10 @@ interface SaveShareActionsProps {
    * - 'inline': Traditional fixed bar at bottom (takes up space)
    */
   variant?: 'floating' | 'inline';
+  /**
+   * Compact mode - makes buttons smaller (smaller icons, text, and padding)
+   */
+  compact?: boolean;
 }
 
 /**
@@ -40,6 +44,7 @@ export const SaveShareActions: React.FC<SaveShareActionsProps> = ({
   hasSaved = false,
   containerStyle,
   variant = 'floating',
+  compact = false,
 }) => {
   const { theme } = useTheme();
   const { colors, typography, spacing } = theme;
@@ -75,6 +80,11 @@ export const SaveShareActions: React.FC<SaveShareActionsProps> = ({
 
   // Floating variant - absolutely positioned, overlays content
   if (variant === 'floating') {
+    // Use a darker, richer background with blur effect
+    const barBackgroundColor = colors.isDark 
+      ? 'rgba(28, 28, 30, 0.95)' // Dark with slight transparency
+      : 'rgba(255, 255, 255, 0.95)'; // Light with slight transparency
+    
     return (
       <View
         style={[
@@ -92,15 +102,18 @@ export const SaveShareActions: React.FC<SaveShareActionsProps> = ({
           style={[
             styles.floatingBar,
             {
-              backgroundColor: colors.surface,
-              borderRadius: 28,
+              backgroundColor: barBackgroundColor,
+              borderRadius: compact ? 20 : 28,
               shadowColor: '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.15,
-              shadowRadius: 12,
-              elevation: 8,
-              borderWidth: StyleSheet.hairlineWidth,
-              borderColor: colors.border,
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.3,
+              shadowRadius: 16,
+              elevation: 12,
+              borderWidth: 1,
+              borderColor: colors.isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+              paddingHorizontal: compact ? spacingConstants.xs / 2 : spacingConstants.xs,
+              paddingVertical: compact ? spacingConstants.xs / 2 : spacingConstants.xs,
+              minHeight: compact ? 44 : 56,
             },
           ]}
         >
@@ -109,7 +122,15 @@ export const SaveShareActions: React.FC<SaveShareActionsProps> = ({
             style={[
               styles.floatingButton,
               {
-                backgroundColor: hasSaved ? colors.primary + '15' : 'transparent',
+                backgroundColor: hasSaved 
+                  ? colors.primary + '20' 
+                  : colors.isDark 
+                    ? 'rgba(255, 255, 255, 0.08)' 
+                    : 'rgba(0, 0, 0, 0.04)',
+                paddingVertical: compact ? spacingConstants.xs / 2 : spacingConstants.sm,
+                paddingHorizontal: compact ? spacingConstants.xs : spacingConstants.sm,
+                minHeight: compact ? 36 : 48,
+                borderRadius: 20,
               },
               (isSaving || hasSaved) && { opacity: hasSaved ? 1 : 0.6 },
             ]}
@@ -123,7 +144,7 @@ export const SaveShareActions: React.FC<SaveShareActionsProps> = ({
               <View style={styles.floatingButtonContent}>
                 <Ionicons
                   name={hasSaved ? 'checkmark-circle' : 'download-outline'}
-                  size={22}
+                  size={compact ? 18 : 22}
                   color={hasSaved ? colors.primary : colors.text}
                 />
                 <Text
@@ -131,8 +152,8 @@ export const SaveShareActions: React.FC<SaveShareActionsProps> = ({
                     styles.floatingButtonLabel,
                     {
                       color: hasSaved ? colors.primary : colors.text,
-                      fontSize: typography.scaled.xs,
-                      fontWeight: typography.weight.medium,
+                      fontSize: compact ? typography.scaled.xs * 0.85 : typography.scaled.xs,
+                      fontWeight: typography.weight.semibold,
                     },
                   ]}
                   numberOfLines={1}
@@ -144,23 +165,40 @@ export const SaveShareActions: React.FC<SaveShareActionsProps> = ({
           </TouchableOpacity>
 
           {/* Divider */}
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          <View style={[styles.divider, { 
+            backgroundColor: colors.isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)',
+            height: compact ? 24 : 32,
+          }]} />
 
           {/* Share Button */}
           <TouchableOpacity
-            style={styles.floatingButton}
+            style={[
+              styles.floatingButton,
+              {
+                backgroundColor: colors.primary,
+                paddingVertical: compact ? spacingConstants.xs / 2 : spacingConstants.sm,
+                paddingHorizontal: compact ? spacingConstants.xs : spacingConstants.sm,
+                minHeight: compact ? 36 : 48,
+                borderRadius: 20,
+                shadowColor: colors.primary,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.4,
+                shadowRadius: 8,
+                elevation: 6,
+              },
+            ]}
             onPress={handleShare}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
           >
             <View style={styles.floatingButtonContent}>
-              <Ionicons name="share-outline" size={22} color={colors.primary} />
+              <Ionicons name="share-outline" size={compact ? 18 : 22} color="#FFFFFF" />
               <Text
                 style={[
                   styles.floatingButtonLabel,
                   {
-                    color: colors.primary,
-                    fontSize: typography.scaled.xs,
-                    fontWeight: typography.weight.medium,
+                    color: '#FFFFFF',
+                    fontSize: compact ? typography.scaled.xs * 0.85 : typography.scaled.xs,
+                    fontWeight: typography.weight.semibold,
                   },
                 ]}
                 numberOfLines={1}

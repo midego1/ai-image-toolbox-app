@@ -9,6 +9,7 @@ import { Card } from '../components/Card';
 import { useTheme, Theme } from '../theme/ThemeProvider';
 import { SubscriptionService, SubscriptionTier, SubscriptionDuration } from '../services/subscriptionService';
 import { haptic } from '../utils/haptics';
+import { useScrollBottomPadding } from '../utils/scrollPadding';
 import { Ionicons } from '@expo/vector-icons';
 
 interface TierInfo {
@@ -87,8 +88,9 @@ const getPrice = (tier: SubscriptionTier, duration: SubscriptionDuration): { pri
 
 const SubscriptionScreen = () => {
   const { theme } = useTheme();
+  const scrollBottomPadding = useScrollBottomPadding();
   const navigation = useNavigation<NavigationProp<'Subscription'>>();
-  const styles = createStyles(theme);
+  const styles = createStyles(theme, scrollBottomPadding);
   
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [creditsRemaining, setCreditsRemaining] = useState(0);
@@ -488,7 +490,7 @@ const SubscriptionScreen = () => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, scrollBottomPadding: number) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -497,7 +499,8 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     scrollContent: {
-      paddingBottom: theme.spacing['3xl'],
+      // Use proper padding that accounts for floating tab bar
+      paddingBottom: scrollBottomPadding,
     },
     content: {
       paddingHorizontal: theme.spacing.xl,

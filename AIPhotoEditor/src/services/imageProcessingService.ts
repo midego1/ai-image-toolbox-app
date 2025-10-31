@@ -7,6 +7,9 @@ import { VirtualTryOnProcessor } from './processors/virtualTryOnProcessor';
 import { ObjectRemovalProcessor } from './processors/objectRemovalProcessor';
 import { ReplaceBackgroundProcessor } from './processors/replaceBackgroundProcessor';
 import { ProfessionalHeadshotProcessor } from './processors/professionalHeadshotProcessor';
+import { PopFigureProcessor } from './processors/popFigureProcessor';
+import { PixelArtGamerProcessor } from './processors/pixelArtGamerProcessor';
+import { StyleTransferProcessor } from './processors/styleTransferProcessor';
 
 /**
  * Image Processing Service
@@ -26,6 +29,9 @@ export class ImageProcessingService {
       this.processors.set(EditMode.REMOVE_OBJECT, new ObjectRemovalProcessor());
       this.processors.set(EditMode.REPLACE_BACKGROUND, new ReplaceBackgroundProcessor());
       this.processors.set(EditMode.PROFESSIONAL_HEADSHOTS, new ProfessionalHeadshotProcessor());
+      this.processors.set(EditMode.POP_FIGURE, new PopFigureProcessor());
+      this.processors.set(EditMode.PIXEL_ART_GAMER, new PixelArtGamerProcessor());
+      this.processors.set(EditMode.STYLE_TRANSFER, new StyleTransferProcessor());
       // Add more processors as they are implemented
       // this.processors.set(EditMode.ENHANCE, new EnhanceProcessor());
       // this.processors.set(EditMode.FILTERS, new FilterProcessor());

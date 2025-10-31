@@ -245,6 +245,15 @@ const QuickCameraScreen = () => {
       }
       // Otherwise, navigate to ProfessionalHeadshotsScreen
       (navigation as any).navigate('ProfessionalHeadshots', { imageUri } as any);
+    } else if (modeToUse === EditMode.PIXEL_ART_GAMER) {
+      // If launched locally from Features stack with a callback, return result in-place
+      if (typeof onPhotoCallback === 'function') {
+        try { onPhotoCallback(imageUri); } catch {}
+        navigation.goBack();
+        return;
+      }
+      // Otherwise, navigate to PixelArtGamerScreen
+      (navigation as any).navigate('PixelArtGamer', { imageUri } as any);
     } else {
       // Other AI tools go to ImagePreview screen
       navigation.navigate('ImagePreview', { imageUri, editMode: modeToUse } as any);

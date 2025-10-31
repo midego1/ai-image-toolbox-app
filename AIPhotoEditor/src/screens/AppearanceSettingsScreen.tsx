@@ -10,15 +10,17 @@ import { useTheme, Theme } from '../theme/ThemeProvider';
 import { ThemeMode } from '../services/themeService';
 import { LanguageService, Language, LANGUAGES } from '../services/languageService';
 import { haptic } from '../utils/haptics';
+import { useScrollBottomPadding } from '../utils/scrollPadding';
 import { Ionicons } from '@expo/vector-icons';
 
 const AppearanceSettingsScreen = () => {
   const navigation = useNavigation<SettingsNavigationProp<'AppearanceSettings'>>();
   const { theme, themeMode, setThemeMode } = useTheme();
+  const scrollBottomPadding = useScrollBottomPadding();
   const [currentLanguage, setCurrentLanguage] = useState<Language>('automatic');
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
 
-  const styles = createStyles(theme);
+  const styles = createStyles(theme, scrollBottomPadding);
 
   useEffect(() => {
     loadLanguage();
@@ -208,7 +210,7 @@ const AppearanceSettingsScreen = () => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, scrollBottomPadding: number) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -219,7 +221,8 @@ const createStyles = (theme: Theme) =>
     },
     scrollContent: {
       paddingTop: theme.spacing.lg, // Spacing between header and first card
-      paddingBottom: theme.spacing.base, // Bottom padding (tab bar is provided by tab navigator)
+      // Use proper padding that accounts for floating tab bar
+      paddingBottom: scrollBottomPadding,
     },
     sectionContainer: {
       marginBottom: theme.spacing.lg,

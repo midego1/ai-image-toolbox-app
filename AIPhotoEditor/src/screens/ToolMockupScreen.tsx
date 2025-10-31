@@ -1,13 +1,15 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Image, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../theme';
 import { AIToolHeader } from '../components/AIToolHeader';
 import { haptic } from '../utils/haptics';
+import { useScrollBottomPadding } from '../utils/scrollPadding';
+import { EditMode } from '../types/editModes';
 
 const { width } = Dimensions.get('window');
 
@@ -15,10 +17,32 @@ const ToolMockupScreen = () => {
   const { theme } = useTheme();
   const { colors, typography, spacing } = theme;
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
+  const scrollBottomPadding = useScrollBottomPadding();
   const scrollViewRef = useRef<ScrollView>(null);
-  const [selectedTab, setSelectedTab] = useState<'hub' | 'detail' | 'search'>('hub');
+  const [selectedTab, setSelectedTab] = useState<'hub' | 'detail'>('hub');
   const [selectedToolDetail, setSelectedToolDetail] = useState<string | null>(null); // Track which tool detail to show
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null); // Track selected image for mockup
+
+  // Enable swipe gesture - always enabled like other Settings stack screens
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      gestureEnabled: true, // Always enable swipe gesture
+    });
+  }, [navigation]);
+
+  // Track when we switch tabs - for UI state only
+  const prevSelectedTabRef = useRef<'hub' | 'detail'>(selectedTab);
+  useEffect(() => {
+    // Track tab changes for UI state
+    if (prevSelectedTabRef.current === 'hub' && selectedTab === 'detail') {
+      // Scroll to top for detail view
+      setTimeout(() => {
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      }, 100);
+    }
+    prevSelectedTabRef.current = selectedTab;
+  }, [selectedTab]);
 
   // Scroll to top when detail view is opened
   useEffect(() => {
@@ -36,8 +60,6 @@ const ToolMockupScreen = () => {
     { id: 2, icon: '🖼️', name: 'Replace BG', time: '4s', uses: '1.8k', trending: false, description: 'Swap scenes with AI' },
     { id: 3, icon: '👗', name: 'Try-On', time: '3s', uses: '3.1k', trending: true, description: 'Preview outfits instantly' },
     { id: 4, icon: '🎨', name: 'Transform', time: '3s', uses: '2.8k', trending: false, description: 'Apply art styles' },
-    { id: 5, icon: '💼', name: 'Headshots', time: '3.5s', uses: '1.5k', trending: false, description: 'Professional portraits' },
-    { id: 6, icon: '✨', name: 'Enhance', time: '2s', uses: '2.1k', trending: true, description: 'Upscale & sharpen' },
   ];
 
   const renderMockupHeader = (title: string, subtitle: string) => (
@@ -51,41 +73,29 @@ const ToolMockupScreen = () => {
     </View>
   );
 
-  // Handle tool card click - navigate to detail view for Remove BG
+  // Handle tool card click - navigate to separate screen for Remove BG detail view
   const handleToolCardPress = (tool: typeof mockTools[0]) => {
     haptic.medium();
     if (tool.name === 'Remove BG') {
-      setSelectedToolDetail('remove-bg');
-      setSelectedTab('detail');
+      // Navigate to separate screen with slide transition (like Settings -> ToolMockup)
+      // Native navigation will automatically preserve scroll position when we return
+      (navigation as any).navigate('RemoveBackgroundMockupDetail');
     } else {
-      // For other tools, just show haptic feedback
+      // For other tools, show mockup detail view
       haptic.light();
       Alert.alert('Coming Soon', `The ${tool.name} tool mockup detail view is coming soon!`);
     }
   };
 
-  // Handle Take Photo button
+  // Handle Take Photo button - navigate to detail screen
   const handleTakePhoto = () => {
     haptic.medium();
-    // In real app, this would open camera - for mockup, we'll show a mock image selection
-    Alert.alert(
-      'Take Photo',
-      'This would open the camera. For this mockup, we\'ll simulate selecting a photo.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Simulate Photo',
-          onPress: () => {
-            // Simulate selecting a mock image
-            setSelectedImageUri('mockup://photo-from-camera');
-            haptic.success();
-          }
-        }
-      ]
-    );
+    // Navigate to RemoveBackgroundMockupDetail screen
+    // Native navigation will automatically preserve scroll position when we return
+    (navigation as any).navigate('RemoveBackgroundMockupDetail');
   };
 
-  // Handle Choose from Library button
+  // Handle Choose from Library button - navigate to detail screen with image
   const handleChooseFromLibrary = async () => {
     try {
       haptic.light();
@@ -97,7 +107,11 @@ const ToolMockupScreen = () => {
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        setSelectedImageUri(result.assets[0].uri);
+        // Navigate to RemoveBackgroundMockupDetail screen with selected image
+        // Native navigation will automatically preserve scroll position when we return
+        (navigation as any).navigate('RemoveBackgroundMockupDetail', {
+          imageUri: result.assets[0].uri,
+        });
         haptic.success();
       }
     } catch (error) {
@@ -252,10 +266,8 @@ const ToolMockupScreen = () => {
               onPress={(e) => {
                 e.stopPropagation(); // Prevent card press
                 if (tool.name === 'Remove BG') {
-                  setSelectedToolDetail('remove-bg');
-                  setSelectedTab('detail');
-                  // Small delay to show detail view, then trigger photo action
-                  setTimeout(() => handleTakePhoto(), 300);
+                  // Navigate directly to detail screen
+                  handleTakePhoto();
                 } else {
                   handleTakePhoto();
                 }
@@ -271,10 +283,8 @@ const ToolMockupScreen = () => {
               onPress={(e) => {
                 e.stopPropagation(); // Prevent card press
                 if (tool.name === 'Remove BG') {
-                  setSelectedToolDetail('remove-bg');
-                  setSelectedTab('detail');
-                  // Small delay to show detail view, then trigger library action
-                  setTimeout(() => handleChooseFromLibrary(), 300);
+                  // Navigate directly to detail screen
+                  handleChooseFromLibrary();
                 } else {
                   handleChooseFromLibrary();
                 }
@@ -324,7 +334,6 @@ const ToolMockupScreen = () => {
           <View style={{ paddingHorizontal: spacing.base, flexDirection: 'row', gap: spacing.sm }}>
             {[
               { icon: '👗', label: 'Try-On' },
-              { icon: '✨', label: 'Enhance' },
               { icon: '🎯', label: 'Remove BG' },
               { icon: '🎨', label: 'Transform' },
             ].map((item, index) => (
@@ -445,8 +454,21 @@ const ToolMockupScreen = () => {
               ) : (
                 <Image source={{ uri: selectedImageUri }} style={{ width: '100%', height: '100%', borderRadius: 12 }} resizeMode="cover" />
               )}
-              <View style={{ position: 'absolute', top: 8, left: 8, backgroundColor: colors.primary + '20', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
-                <Text style={{ color: colors.primary, fontSize: typography.scaled.xs, fontWeight: typography.weight.bold }}>BEFORE</Text>
+              <View style={{ 
+                position: 'absolute', 
+                top: 8, 
+                left: 8, 
+                backgroundColor: 'rgba(0, 0, 0, 0.75)', 
+                paddingHorizontal: 10, 
+                paddingVertical: 6, 
+                borderRadius: 8,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.3,
+                shadowRadius: 4,
+                elevation: 4,
+              }}>
+                <Text style={{ color: '#FFFFFF', fontSize: typography.scaled.xs, fontWeight: typography.weight.bold }}>BEFORE</Text>
               </View>
             </View>
             <View style={styles.sliderLine}>
@@ -458,7 +480,20 @@ const ToolMockupScreen = () => {
                 <Text style={{ color: colors.text, marginTop: spacing.xs, fontSize: typography.scaled.sm, fontWeight: typography.weight.medium }}>Background Removed</Text>
                 <Text style={{ color: colors.textSecondary, fontSize: typography.scaled.xs, marginTop: 4 }}>Transparent PNG</Text>
               </View>
-              <View style={{ position: 'absolute', top: 8, right: 8, backgroundColor: colors.primary, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+              <View style={{ 
+                position: 'absolute', 
+                top: 8, 
+                right: 8, 
+                backgroundColor: colors.primary, 
+                paddingHorizontal: 10, 
+                paddingVertical: 6, 
+                borderRadius: 8,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.3,
+                shadowRadius: 4,
+                elevation: 4,
+              }}>
                 <Text style={{ color: '#FFFFFF', fontSize: typography.scaled.xs, fontWeight: typography.weight.bold }}>AFTER</Text>
               </View>
             </View>
@@ -486,30 +521,37 @@ const ToolMockupScreen = () => {
       </View>
 
       {/* Stats Bar */}
-      <View style={[styles.statsBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <View style={styles.statItem}>
-          <Ionicons name="flash" size={16} color={colors.primary} />
-          <Text style={[styles.statLabel, { color: colors.textSecondary, fontSize: typography.scaled.xs }]}>
-            2.5 sec
-          </Text>
-        </View>
-        <View style={styles.statItem}>
-          <Ionicons name="diamond" size={16} color={colors.primary} />
-          <Text style={[styles.statLabel, { color: colors.textSecondary, fontSize: typography.scaled.xs }]}>
-            0.1 credit
-          </Text>
-        </View>
-        <View style={styles.statItem}>
-          <Ionicons name="star" size={16} color={colors.primary} />
-          <Text style={[styles.statLabel, { color: colors.textSecondary, fontSize: typography.scaled.xs }]}>
-            4.9/5
-          </Text>
-        </View>
-        <View style={styles.statItem}>
-          <Ionicons name="flame" size={16} color={colors.primary} />
-          <Text style={[styles.statLabel, { color: colors.textSecondary, fontSize: typography.scaled.xs }]}>
-            2.3k today
-          </Text>
+      <View style={{ paddingHorizontal: spacing.base, marginBottom: spacing.base }}>
+        <View style={[styles.statsBar, { 
+          backgroundColor: colors.surface, 
+          borderColor: colors.border,
+          borderRadius: 12,
+          borderWidth: 1,
+        }]}>
+          <View style={styles.statItem}>
+            <Ionicons name="flash" size={16} color={colors.primary} />
+            <Text style={[styles.statLabel, { color: colors.textSecondary, fontSize: typography.scaled.xs }]}>
+              2.5 sec
+            </Text>
+          </View>
+          <View style={styles.statItem}>
+            <Ionicons name="diamond" size={16} color={colors.primary} />
+            <Text style={[styles.statLabel, { color: colors.textSecondary, fontSize: typography.scaled.xs }]}>
+              0.1 credit
+            </Text>
+          </View>
+          <View style={styles.statItem}>
+            <Ionicons name="star" size={16} color={colors.primary} />
+            <Text style={[styles.statLabel, { color: colors.textSecondary, fontSize: typography.scaled.xs }]}>
+              4.9/5
+            </Text>
+          </View>
+          <View style={styles.statItem}>
+            <Ionicons name="flame" size={16} color={colors.primary} />
+            <Text style={[styles.statLabel, { color: colors.textSecondary, fontSize: typography.scaled.xs }]}>
+              2.3k today
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -610,7 +652,7 @@ const ToolMockupScreen = () => {
   );
 
   const renderDetailView = () => (
-    <View style={[styles.detailContainer, { backgroundColor: colors.surface }]}>
+    <View style={[styles.detailContainer, { backgroundColor: 'transparent' }]}>
       {/* Hero Section */}
       <View style={[styles.detailHero, { backgroundColor: colors.backgroundSecondary }]}>
         <View style={styles.beforeAfterLarge}>
@@ -630,30 +672,37 @@ const ToolMockupScreen = () => {
       </View>
 
       {/* Stats Bar */}
-      <View style={[styles.statsBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <View style={styles.statItem}>
-          <Ionicons name="flash" size={16} color={colors.primary} />
-          <Text style={[styles.statLabel, { color: colors.textSecondary, fontSize: typography.scaled.xs }]}>
-            2-5 sec
-          </Text>
-        </View>
-        <View style={styles.statItem}>
-          <Ionicons name="diamond" size={16} color={colors.primary} />
-          <Text style={[styles.statLabel, { color: colors.textSecondary, fontSize: typography.scaled.xs }]}>
-            0.1 credit
-          </Text>
-        </View>
-        <View style={styles.statItem}>
-          <Ionicons name="star" size={16} color={colors.primary} />
-          <Text style={[styles.statLabel, { color: colors.textSecondary, fontSize: typography.scaled.xs }]}>
-            4.9/5
-          </Text>
-        </View>
-        <View style={styles.statItem}>
-          <Ionicons name="flame" size={16} color={colors.primary} />
-          <Text style={[styles.statLabel, { color: colors.textSecondary, fontSize: typography.scaled.xs }]}>
-            2.3k today
-          </Text>
+      <View style={{ paddingHorizontal: spacing.base, marginBottom: spacing.base }}>
+        <View style={[styles.statsBar, { 
+          backgroundColor: colors.surface, 
+          borderColor: colors.border,
+          borderRadius: 12,
+          borderWidth: 1,
+        }]}>
+          <View style={styles.statItem}>
+            <Ionicons name="flash" size={16} color={colors.primary} />
+            <Text style={[styles.statLabel, { color: colors.textSecondary, fontSize: typography.scaled.xs }]}>
+              2-5 sec
+            </Text>
+          </View>
+          <View style={styles.statItem}>
+            <Ionicons name="diamond" size={16} color={colors.primary} />
+            <Text style={[styles.statLabel, { color: colors.textSecondary, fontSize: typography.scaled.xs }]}>
+              0.1 credit
+            </Text>
+          </View>
+          <View style={styles.statItem}>
+            <Ionicons name="star" size={16} color={colors.primary} />
+            <Text style={[styles.statLabel, { color: colors.textSecondary, fontSize: typography.scaled.xs }]}>
+              4.9/5
+            </Text>
+          </View>
+          <View style={styles.statItem}>
+            <Ionicons name="flame" size={16} color={colors.primary} />
+            <Text style={[styles.statLabel, { color: colors.textSecondary, fontSize: typography.scaled.xs }]}>
+              2.3k today
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -670,7 +719,7 @@ const ToolMockupScreen = () => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.secondaryButton, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
+          style={[styles.secondaryButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={() => haptic.light()}
         >
           <Ionicons name="images" size={20} color={colors.text} />
@@ -682,7 +731,7 @@ const ToolMockupScreen = () => {
 
       {/* Collapsible Sections */}
       <View style={{ padding: spacing.base }}>
-        <View style={[styles.infoSection, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}>
+        <View style={[styles.infoSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.infoTitle, { color: colors.text, fontSize: typography.scaled.sm, fontWeight: typography.weight.bold }]}>
             ✓ What You Get
           </Text>
@@ -696,7 +745,7 @@ const ToolMockupScreen = () => {
           ))}
         </View>
 
-        <View style={[styles.infoSection, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, marginTop: spacing.sm }]}>
+        <View style={[styles.infoSection, { backgroundColor: colors.surface, borderColor: colors.border, marginTop: spacing.sm }]}>
           <Text style={[styles.infoTitle, { color: colors.text, fontSize: typography.scaled.sm, fontWeight: typography.weight.bold }]}>
             💡 Best For
           </Text>
@@ -710,77 +759,25 @@ const ToolMockupScreen = () => {
     </View>
   );
 
-  const renderSearchView = () => (
-    <View style={{ padding: spacing.base }}>
-      {/* Search Bar */}
-      <View style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <Ionicons name="search" size={20} color={colors.textSecondary} />
-        <Text style={{ color: colors.textSecondary, fontSize: typography.scaled.base, marginLeft: spacing.sm }}>
-          What do you want to do?
-        </Text>
-      </View>
-
-      {/* Suggestions */}
-      <View style={{ marginTop: spacing.lg }}>
-        <Text style={[styles.sectionTitle, { color: colors.text, fontSize: typography.scaled.sm, fontWeight: typography.weight.bold, marginBottom: spacing.sm }]}>
-          💡 Try searching:
-        </Text>
-        {[
-          'remove person from photo',
-          'make professional headshot',
-          'change background',
-          'try on clothes'
-        ].map((suggestion, index) => (
-          <TouchableOpacity
-            key={index}
-            style={[styles.suggestion, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            onPress={() => haptic.light()}
-          >
-            <Ionicons name="search" size={16} color={colors.textSecondary} />
-            <Text style={{ color: colors.textSecondary, fontSize: typography.scaled.sm, marginLeft: spacing.sm }}>
-              {suggestion}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Browse by Goal */}
-      <View style={{ marginTop: spacing.xl }}>
-        <Text style={[styles.sectionTitle, { color: colors.text, fontSize: typography.scaled.sm, fontWeight: typography.weight.bold, marginBottom: spacing.sm }]}>
-          🎯 Browse by Goal
-        </Text>
-        {[
-          { icon: '📸', title: 'Perfect for Social Media', tools: 'Remove BG, Filters, Style' },
-          { icon: '💼', title: 'Professional & Business', tools: 'Headshots, Enhance, Face' },
-          { icon: '🎨', title: 'Creative & Artistic', tools: 'Transform, Style, Filters' },
-          { icon: '🛍️', title: 'E-commerce & Products', tools: 'Remove BG, Replace BG' },
-        ].map((goal, index) => (
-          <TouchableOpacity
-            key={index}
-            style={[styles.goalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            onPress={() => haptic.light()}
-          >
-            <Text style={{ fontSize: 24, marginRight: spacing.sm }}>{goal.icon}</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.goalTitle, { color: colors.text, fontSize: typography.scaled.sm, fontWeight: typography.weight.semibold }]}>
-                {goal.title}
-              </Text>
-              <Text style={{ color: colors.textSecondary, fontSize: typography.scaled.xs, marginTop: 2 }}>
-                → {goal.tools}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
-  );
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundSecondary }]} edges={[]}>
       <AIToolHeader
         title="Tool Mockups"
         backgroundColor={colors.backgroundSecondary}
+        showBackButton={false}
+        onBack={() => {
+          // Navigate back within Settings stack to SettingsMain
+          if (navigation.canGoBack()) {
+            navigation.goBack();
+          } else {
+            // Fallback: navigate to SettingsMain
+            const parentNav = navigation.getParent();
+            if (parentNav) {
+              (parentNav as any).navigate('Settings', { screen: 'SettingsMain' });
+            }
+          }
+        }}
       />
 
       {/* Tab Selector */}
@@ -788,7 +785,6 @@ const ToolMockupScreen = () => {
         {[
           { key: 'hub', label: 'AI Tools Hub', icon: 'grid' },
           { key: 'detail', label: 'Detail View', icon: 'document-text' },
-          { key: 'search', label: 'Search', icon: 'search' },
         ].map((tab) => (
           <TouchableOpacity
             key={tab.key}
@@ -821,19 +817,19 @@ const ToolMockupScreen = () => {
       <ScrollView
         ref={scrollViewRef}
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: spacing['3xl'] }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottomPadding }]}
         showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
       >
         {/* AI Tools Hub View */}
         {selectedTab === 'hub' && (
           <View>
             {renderMockupHeader(
               'AI Tools Hub',
-              'Visual-first discovery with trending, quick actions, and personalized recommendations'
+              'Visual-first discovery with trending and personalized recommendations'
             )}
 
             {renderTrendingSection()}
-            {renderQuickActions()}
             {renderRecommendedCard()}
 
             {/* All Tools Section - Using same padding pattern as Features page */}
@@ -846,7 +842,7 @@ const ToolMockupScreen = () => {
                 {/* Filter Chips */}
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.base, marginHorizontal: -spacing.base }}>
                   <View style={{ paddingHorizontal: spacing.base, flexDirection: 'row', gap: spacing.sm }}>
-                    {['All', 'Edit', 'Style', 'Enhance'].map((filter, index) => (
+                    {['All', 'Edit', 'Style'].map((filter, index) => (
                       <TouchableOpacity
                         key={index}
                         style={[
@@ -880,26 +876,22 @@ const ToolMockupScreen = () => {
                     {renderPolishedToolCard(mockTools[2], 'compact')}
                     {renderPolishedToolCard(mockTools[3], 'compact')}
                   </View>
-
-                  {/* Last two: Full-width polished cards */}
-                  {renderPolishedToolCard(mockTools[4], 'full')}
-                  {renderPolishedToolCard(mockTools[5], 'full')}
                 </View>
               </View>
             </View>
           </View>
         )}
 
-        {/* Detail View */}
-        {selectedTab === 'detail' && (
+        {/* Detail View - Only for non-Remove BG tools (Remove BG uses separate screen) */}
+        {selectedTab === 'detail' && selectedToolDetail !== 'remove-bg' && (
           <View>
             <View style={{ marginBottom: spacing.lg, paddingHorizontal: spacing.base, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <View style={{ flex: 1 }}>
                 <TouchableOpacity
                   onPress={() => {
+                    haptic.light();
                     setSelectedTab('hub');
                     setSelectedToolDetail(null);
-                    haptic.light();
                   }}
                   style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs }}
                 >
@@ -909,27 +901,16 @@ const ToolMockupScreen = () => {
                   </Text>
                 </TouchableOpacity>
                 <Text style={[styles.mockupTitle, { color: colors.text, fontSize: typography.scaled.xl, fontWeight: typography.weight.bold }]}>
-                  {selectedToolDetail === 'remove-bg' ? 'Remove Background' : 'Tool Detail View'}
+                  Tool Detail View
                 </Text>
                 <Text style={[styles.mockupSubtitle, { color: colors.textSecondary, fontSize: typography.scaled.sm, marginTop: spacing.xs }]}>
-                  {selectedToolDetail === 'remove-bg' 
-                    ? 'Remove backgrounds with AI-powered precision. Perfect for product photos and portraits.'
-                    : 'Comprehensive information with interactive before/after, stats, and progressive disclosure'}
+                  Comprehensive information with interactive before/after, stats, and progressive disclosure
                 </Text>
               </View>
             </View>
-            {selectedToolDetail === 'remove-bg' ? renderRemoveBGDetailView() : renderDetailView()}
-          </View>
-        )}
-
-        {/* Search View */}
-        {selectedTab === 'search' && (
-          <View>
-            {renderMockupHeader(
-              'Smart Search & Discovery',
-              'Intent-based search with suggestions and goal-based browsing'
-            )}
-            {renderSearchView()}
+            <View style={{ paddingHorizontal: spacing.base, marginBottom: spacing['3xl'] }}>
+              {renderDetailView()}
+            </View>
           </View>
         )}
 
@@ -1186,6 +1167,7 @@ const styles = StyleSheet.create({
   detailContainer: {
     borderRadius: 16,
     overflow: 'hidden',
+    width: '100%',
   },
   detailHero: {
     padding: 24,
@@ -1232,7 +1214,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     paddingVertical: 16,
-    borderBottomWidth: 1,
+    paddingHorizontal: 16,
   },
   statItem: {
     flexDirection: 'row',

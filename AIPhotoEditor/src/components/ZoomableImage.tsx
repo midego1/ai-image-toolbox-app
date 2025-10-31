@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   Image,
@@ -9,8 +9,11 @@ import {
   GestureResponderEvent,
   TouchableOpacity,
   Text,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { haptic } from '../utils/haptics';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -18,6 +21,10 @@ interface ZoomableImageProps {
   uri: string;
   onClose: () => void;
   watermark?: React.ReactNode;
+  onSave?: () => void;
+  onShare?: () => void;
+  isSaving?: boolean;
+  hasSaved?: boolean;
 }
 
 const MIN_SCALE = 1;
@@ -27,6 +34,10 @@ export const ZoomableImage: React.FC<ZoomableImageProps> = ({
   uri,
   onClose,
   watermark,
+  onSave,
+  onShare,
+  isSaving = false,
+  hasSaved = false,
 }) => {
   const scale = useRef(new Animated.Value(1)).current;
   const translateX = useRef(new Animated.Value(0)).current;
@@ -39,6 +50,7 @@ export const ZoomableImage: React.FC<ZoomableImageProps> = ({
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
   const doubleTapRef = useRef<number | null>(null);
   const doubleTapDetected = useRef(false);
+  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pinchRef = useRef<{
     initialDistance: number;
     initialScale: number;
@@ -46,25 +58,46 @@ export const ZoomableImage: React.FC<ZoomableImageProps> = ({
     initialCenterY: number;
   } | null>(null);
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+        closeTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
   const getImageDimensions = () => {
     if (imageSize.width === 0 || imageSize.height === 0) {
-      return { width: SCREEN_WIDTH * 0.9, height: SCREEN_HEIGHT * 0.7 };
+      return { width: SCREEN_WIDTH * 0.95, height: SCREEN_HEIGHT * 0.75 };
     }
 
     const imageAspect = imageSize.width / imageSize.height;
     const screenAspect = SCREEN_WIDTH / SCREEN_HEIGHT;
-    const containerWidth = SCREEN_WIDTH * 0.9;
-    const containerHeight = SCREEN_HEIGHT * 0.7;
+    
+    // Use more screen space for better viewing
+    const containerWidth = SCREEN_WIDTH * 0.95;
+    const containerHeight = SCREEN_HEIGHT * 0.75;
 
     let displayWidth: number;
     let displayHeight: number;
 
+    // Fit image to container while maintaining aspect ratio
     if (imageAspect > containerWidth / containerHeight) {
+      // Image is wider than container aspect ratio
       displayWidth = containerWidth;
       displayHeight = containerWidth / imageAspect;
     } else {
+      // Image is taller than container aspect ratio
       displayHeight = containerHeight;
       displayWidth = containerHeight * imageAspect;
+    }
+
+    // Ensure minimum size for very small images
+    if (displayWidth < SCREEN_WIDTH * 0.3) {
+      displayWidth = SCREEN_WIDTH * 0.3;
+      displayHeight = displayWidth / imageAspect;
     }
 
     return { width: displayWidth, height: displayHeight };
@@ -76,18 +109,27 @@ export const ZoomableImage: React.FC<ZoomableImageProps> = ({
     const scaledWidth = displayWidth * currentScale;
     const scaledHeight = displayHeight * currentScale;
 
-    const maxTranslateX = Math.max(0, (scaledWidth - SCREEN_WIDTH) / 2);
-    const maxTranslateY = Math.max(0, (scaledHeight - SCREEN_HEIGHT) / 2);
+    // Calculate bounds more accurately
+    // Only allow translation if scaled image is larger than screen
+    const maxTranslateX = scaledWidth > SCREEN_WIDTH 
+      ? (scaledWidth - SCREEN_WIDTH) / 2 
+      : 0;
+    const maxTranslateY = scaledHeight > SCREEN_HEIGHT 
+      ? (scaledHeight - SCREEN_HEIGHT) / 2 
+      : 0;
 
     return {
       minX: -maxTranslateX,
       maxX: maxTranslateX,
       minY: -maxTranslateY,
       maxY: maxTranslateY,
+      scaledWidth,
+      scaledHeight,
     };
   };
 
   const panStartRef = useRef({ x: 0, y: 0, time: 0 });
+  const panStartTranslate = useRef({ x: 0, y: 0 });
   const isPanningRef = useRef(false);
 
   const panResponder = useRef(
@@ -112,12 +154,25 @@ export const ZoomableImage: React.FC<ZoomableImageProps> = ({
           y: evt.nativeEvent.pageY,
           time: Date.now(),
         };
+        // Store initial translation position for this gesture
+        panStartTranslate.current = {
+          x: lastTranslateX.current,
+          y: lastTranslateY.current,
+        };
         isPanningRef.current = false;
-        // Use extractOffset for smoother gesture handling
+        
+        // Cancel any pending close timeout when a new gesture starts
+        // This prevents accidental closes during double-tap sequences
+        if (closeTimeoutRef.current) {
+          clearTimeout(closeTimeoutRef.current);
+          closeTimeoutRef.current = null;
+        }
+        
+        // Extract offset to make current value the base for new gestures
         translateX.setOffset(lastTranslateX.current);
         translateY.setOffset(lastTranslateY.current);
-        translateX.extractOffset();
-        translateY.extractOffset();
+        translateX.flattenOffset();
+        translateY.flattenOffset();
       },
       onPanResponderMove: (_, gestureState) => {
         isPanningRef.current = true;
@@ -126,17 +181,33 @@ export const ZoomableImage: React.FC<ZoomableImageProps> = ({
           // Pan when zoomed - use offset-based approach for smoother dragging
           const bounds = calculateBounds();
           
-          // Calculate new position with offset included
-          const newX = lastTranslateX.current + gestureState.dx;
-          const newY = lastTranslateY.current + gestureState.dy;
+          // Calculate new position relative to gesture start (gestureState.dx/dy is cumulative)
+          let newX = panStartTranslate.current.x + gestureState.dx;
+          let newY = panStartTranslate.current.y + gestureState.dy;
 
-          // Constrain to bounds
-          const constrainedX = Math.max(bounds.minX, Math.min(bounds.maxX, newX));
-          const constrainedY = Math.max(bounds.minY, Math.min(bounds.maxY, newY));
+          // Constrain to bounds with proper clamping
+          // Only constrain if the scaled image is actually larger than the screen
+          if (bounds.scaledWidth > SCREEN_WIDTH) {
+            newX = Math.max(bounds.minX, Math.min(bounds.maxX, newX));
+          } else {
+            // If image fits in screen, center it
+            newX = 0;
+          }
+          
+          if (bounds.scaledHeight > SCREEN_HEIGHT) {
+            newY = Math.max(bounds.minY, Math.min(bounds.maxY, newY));
+          } else {
+            // If image fits in screen, center it
+            newY = 0;
+          }
 
-          // Set value directly for immediate response during drag
-          translateX.setValue(constrainedX - lastTranslateX.current);
-          translateY.setValue(constrainedY - lastTranslateY.current);
+          // Set absolute position (after flattenOffset, value represents total translation)
+          translateX.setValue(newX);
+          translateY.setValue(newY);
+
+          // Update refs to track current position
+          lastTranslateX.current = newX;
+          lastTranslateY.current = newY;
         } else {
           // Swipe down to dismiss - be more responsive
           if (gestureState.dy > 0) {
@@ -153,8 +224,13 @@ export const ZoomableImage: React.FC<ZoomableImageProps> = ({
         translateX.flattenOffset();
         translateY.flattenOffset();
 
-        const finalX = lastTranslateX.current + gestureState.dx;
-        const finalY = lastTranslateX.current + gestureState.dy;
+        // Calculate final position relative to gesture start
+        const finalX = lastScale.current > MIN_SCALE 
+          ? panStartTranslate.current.x + gestureState.dx 
+          : 0;
+        const finalY = lastScale.current > MIN_SCALE 
+          ? panStartTranslate.current.y + gestureState.dy 
+          : gestureState.dy;
         const totalDistance = Math.sqrt(
           Math.pow(gestureState.dx, 2) + Math.pow(gestureState.dy, 2)
         );
@@ -173,25 +249,49 @@ export const ZoomableImage: React.FC<ZoomableImageProps> = ({
         ) {
           // Check if this is part of a double tap
           const now = Date.now();
-          if (doubleTapRef.current && now - doubleTapRef.current < 300) {
-            // This is a double tap, let the double tap handler deal with it
-            // Don't close on double tap
+          
+          // If a double tap was already detected by handleTouchStart, don't process this tap
+          if (doubleTapDetected.current) {
+            // Don't reset immediately - let handleTouchStart manage it
             return;
           }
           
-          // Set up double tap detection window
+          // Check if we're within a double-tap window - if so, this might be a double tap
+          if (doubleTapRef.current && now - doubleTapRef.current < 400) {
+            // This is likely a double tap, cancel any pending close timeout immediately
+            if (closeTimeoutRef.current) {
+              clearTimeout(closeTimeoutRef.current);
+              closeTimeoutRef.current = null;
+            }
+            // Mark that a double tap is in progress - handleTouchStart will handle the zoom
+            doubleTapDetected.current = true;
+            // Don't clear doubleTapRef yet - let handleTouchStart clear it
+            return;
+          }
+          
+          // This appears to be a single tap, but wait to see if a second tap comes
+          // Cancel any existing close timeout first
+          if (closeTimeoutRef.current) {
+            clearTimeout(closeTimeoutRef.current);
+            closeTimeoutRef.current = null;
+          }
+          
+          // Set up double tap detection window with longer timeout to prevent race conditions
           doubleTapRef.current = now;
           doubleTapDetected.current = false;
-          setTimeout(() => {
+          closeTimeoutRef.current = setTimeout(() => {
             // Only close if no second tap occurred (i.e., it was a single tap)
+            // Double check that doubleTapDetected wasn't set during the timeout
             if (!doubleTapDetected.current && doubleTapRef.current === now) {
               doubleTapRef.current = null;
+              closeTimeoutRef.current = null;
               onClose();
             } else {
               doubleTapRef.current = null;
               doubleTapDetected.current = false;
+              closeTimeoutRef.current = null;
             }
-          }, 300);
+          }, 400); // Increased timeout to 400ms for better double-tap detection
           return;
         }
 
@@ -247,31 +347,50 @@ export const ZoomableImage: React.FC<ZoomableImageProps> = ({
         // Constrain to bounds when zoomed - use smoother spring for snap-back
         if (lastScale.current > MIN_SCALE) {
           const bounds = calculateBounds();
-          const constrainedX = Math.max(bounds.minX, Math.min(bounds.maxX, finalX));
-          const constrainedY = Math.max(bounds.minY, Math.min(bounds.maxY, finalY));
+          
+          // Only constrain if image is larger than screen
+          let constrainedX = finalX;
+          let constrainedY = finalY;
+          
+          if (bounds.scaledWidth > SCREEN_WIDTH) {
+            constrainedX = Math.max(bounds.minX, Math.min(bounds.maxX, finalX));
+          } else {
+            constrainedX = 0;
+          }
+          
+          if (bounds.scaledHeight > SCREEN_HEIGHT) {
+            constrainedY = Math.max(bounds.minY, Math.min(bounds.maxY, finalY));
+          } else {
+            constrainedY = 0;
+          }
 
           // Update refs immediately
           lastTranslateX.current = constrainedX;
           lastTranslateY.current = constrainedY;
 
-          if (constrainedX !== finalX || constrainedY !== finalY) {
-            // Smooth snap-back to bounds with less friction for smoother feel
+          if (Math.abs(constrainedX - finalX) > 0.5 || Math.abs(constrainedY - finalY) > 0.5) {
+            // Smooth snap-back to bounds with optimized spring animation
             Animated.parallel([
               Animated.spring(translateX, {
                 toValue: constrainedX,
                 useNativeDriver: true,
-                tension: 65,
-                friction: 8,
+                tension: 80,
+                friction: 9,
               }),
               Animated.spring(translateY, {
                 toValue: constrainedY,
                 useNativeDriver: true,
-                tension: 65,
-                friction: 8,
+                tension: 80,
+                friction: 9,
               }),
-            ]).start();
+            ]).start(() => {
+              // Ensure refs are in sync after animation
+              lastTranslateX.current = constrainedX;
+              lastTranslateY.current = constrainedY;
+            });
           }
         } else {
+          // Reset to center when not zoomed
           lastTranslateX.current = 0;
           lastTranslateY.current = 0;
         }
@@ -317,32 +436,63 @@ export const ZoomableImage: React.FC<ZoomableImageProps> = ({
     const screenCenterX = SCREEN_WIDTH / 2;
     const screenCenterY = SCREEN_HEIGHT / 2;
     
+    // Get current image dimensions
+    const { width: displayWidth, height: displayHeight } = getImageDimensions();
+    
     // Calculate the focal point (where user is pinching) relative to image center
+    // Image is centered at screen center + current translation
     const imageCenterX = screenCenterX + lastTranslateX.current;
     const imageCenterY = screenCenterY + lastTranslateY.current;
     
-    // Calculate distance from focal point to image center
+    // Calculate distance from focal point to image center in image coordinates
     const focalOffsetX = centerX - imageCenterX;
     const focalOffsetY = centerY - imageCenterY;
     
-    // When scaling, the focal point should stay under the pinch center
+    // When scaling, maintain the focal point under the pinch center
     const scaleRatio = newScale / lastScale.current;
-    const newFocalOffsetX = focalOffsetX * scaleRatio;
-    const newFocalOffsetY = focalOffsetY * scaleRatio;
     
-    // Calculate new translation to keep focal point under finger
-    const newTranslateX = lastTranslateX.current - (newFocalOffsetX - focalOffsetX);
-    const newTranslateY = lastTranslateY.current - (newFocalOffsetY - focalOffsetY);
+    // Calculate new translation to keep focal point fixed during zoom
+    // Formula: newTranslate = oldTranslate - (focalOffset * (newScale/oldScale - 1))
+    const newTranslateX = lastTranslateX.current - (focalOffsetX * (scaleRatio - 1));
+    const newTranslateY = lastTranslateY.current - (focalOffsetY * (scaleRatio - 1));
+    
+    // Calculate bounds with the new scale
+    const scaledWidth = displayWidth * newScale;
+    const scaledHeight = displayHeight * newScale;
+    
+    // Calculate max translation for new scale
+    const maxTranslateX = scaledWidth > SCREEN_WIDTH 
+      ? (scaledWidth - SCREEN_WIDTH) / 2 
+      : 0;
+    const maxTranslateY = scaledHeight > SCREEN_HEIGHT 
+      ? (scaledHeight - SCREEN_HEIGHT) / 2 
+      : 0;
+    
+    // Constrain the new translation to bounds
+    let constrainedX = newTranslateX;
+    let constrainedY = newTranslateY;
+    
+    if (scaledWidth > SCREEN_WIDTH) {
+      constrainedX = Math.max(-maxTranslateX, Math.min(maxTranslateX, newTranslateX));
+    } else {
+      constrainedX = 0;
+    }
+    
+    if (scaledHeight > SCREEN_HEIGHT) {
+      constrainedY = Math.max(-maxTranslateY, Math.min(maxTranslateY, newTranslateY));
+    } else {
+      constrainedY = 0;
+    }
 
     // Apply transforms immediately for smooth zoom
     scale.setValue(newScale);
-    translateX.setValue(newTranslateX);
-    translateY.setValue(newTranslateY);
+    translateX.setValue(constrainedX);
+    translateY.setValue(constrainedY);
 
-    // Update refs
+    // Update refs with constrained values
     lastScale.current = newScale;
-    lastTranslateX.current = newTranslateX;
-    lastTranslateY.current = newTranslateY;
+    lastTranslateX.current = constrainedX;
+    lastTranslateY.current = constrainedY;
   };
 
   const handleDoubleTap = () => {
@@ -384,19 +534,31 @@ export const ZoomableImage: React.FC<ZoomableImageProps> = ({
 
   const handleTouchStart = () => {
     const now = Date.now();
-    if (doubleTapRef.current && now - doubleTapRef.current < 300) {
+    if (doubleTapRef.current && now - doubleTapRef.current < 400) {
       // Second tap detected - double tap zoom
+      // Cancel any pending close timeout immediately
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+        closeTimeoutRef.current = null;
+      }
+      // Mark double tap as detected BEFORE handling it
       doubleTapDetected.current = true;
+      // Perform the zoom
       handleDoubleTap();
-      doubleTapRef.current = null;
+      // Clear the ref after a short delay to allow onPanResponderRelease to see the flag
+      setTimeout(() => {
+        doubleTapRef.current = null;
+        doubleTapDetected.current = false;
+      }, 100);
     } else {
+      // First tap - set up detection window
       doubleTapRef.current = now;
       doubleTapDetected.current = false;
       setTimeout(() => {
         if (doubleTapRef.current === now && !doubleTapDetected.current) {
           doubleTapRef.current = null;
         }
-      }, 300);
+      }, 400); // Match the timeout in onPanResponderRelease
     }
   };
 
@@ -410,6 +572,7 @@ export const ZoomableImage: React.FC<ZoomableImageProps> = ({
   };
 
   const { width: displayWidth, height: displayHeight } = getImageDimensions();
+  const insets = useSafeAreaInsets();
 
   return (
     <View style={styles.container} {...panResponder.panHandlers}>
@@ -433,13 +596,63 @@ export const ZoomableImage: React.FC<ZoomableImageProps> = ({
           style={[styles.image, { width: displayWidth, height: displayHeight }]}
           resizeMode="contain"
           onLoad={handleImageLoad}
+          // Improve performance for large images
+          resizeMethod="resize"
         />
         {watermark && <View style={styles.watermarkContainer}>{watermark}</View>}
       </Animated.View>
 
-      <View style={styles.hintContainer}>
+      <View style={[styles.hintContainer, { bottom: insets.bottom + 12 }]}>
         <View style={styles.hintBubble}>
-          <Text style={styles.hintText}>Pinch to zoom • Double tap to zoom in/out • Swipe down to close</Text>
+          {/* Save Button */}
+          {onSave && (
+            <>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => {
+                  haptic.light();
+                  onSave();
+                }}
+                disabled={isSaving || hasSaved}
+                activeOpacity={0.7}
+              >
+                {isSaving ? (
+                  <ActivityIndicator size="small" color="rgba(255, 255, 255, 0.9)" />
+                ) : (
+                  <Ionicons
+                    name={hasSaved ? 'checkmark-circle' : 'download-outline'}
+                    size={18}
+                    color={hasSaved ? '#4CAF50' : 'rgba(255, 255, 255, 0.9)'}
+                  />
+                )}
+              </TouchableOpacity>
+              <View style={styles.divider} />
+            </>
+          )}
+
+          {/* Hint Text */}
+          <Text style={styles.hintText}>Pinch to zoom • Double tap to zoom • Swipe down to close</Text>
+
+          {/* Share Button */}
+          {onShare && (
+            <>
+              <View style={styles.divider} />
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => {
+                  haptic.light();
+                  onShare();
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="share-outline"
+                  size={18}
+                  color="rgba(255, 255, 255, 0.9)"
+                />
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </View>
     </View>
@@ -468,21 +681,37 @@ const styles = StyleSheet.create({
   },
   hintContainer: {
     position: 'absolute',
-    bottom: 50,
     left: 0,
     right: 0,
     alignItems: 'center',
   },
   hintBubble: {
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   hintText: {
     color: 'rgba(255, 255, 255, 0.9)',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
     textAlign: 'center',
+    flexShrink: 1,
+  },
+  actionButton: {
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 28,
+    minHeight: 28,
+  },
+  divider: {
+    width: 1,
+    height: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
   },
 });
