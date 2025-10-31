@@ -2,7 +2,7 @@
   "expo": {
     "name": "AI Photo Editor",
     "slug": "aiphotoeditor",
-    "version": "0.1.4",
+    "version": "0.1.5",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -12,7 +12,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.midego.aiphotoeditor",
-      "buildNumber": "12"
+      "buildNumber": "13"
     },
     "web": {
       "favicon": "./assets/images/icon.png",
