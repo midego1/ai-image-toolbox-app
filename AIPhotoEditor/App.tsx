@@ -10,7 +10,7 @@ import LanguageSelectionScreen from './src/screens/LanguageSelectionScreen';
 import SubscriptionScreen from './src/screens/SubscriptionScreen';
 import { SubscriptionService } from './src/services/subscriptionService';
 import { AIService } from './src/services/aiService';
-import { getReplicateApiKey, isApiKeyConfigured } from './src/config/apiKeys';
+import { getReplicateApiKey, getKieAIApiKey } from './src/config/apiKeys';
 import { RootStackParamList } from './src/types/navigation';
 import { AnalyticsService } from './src/services/analyticsService';
 
@@ -87,7 +87,56 @@ export default function App() {
       }
     };
     
+    // Initialize Kie.ai API key from config (production-ready)
+    const initializeKieAIApiKey = async () => {
+      try {
+        console.log('🔍 Initializing Kie.ai API key...');
+        
+        // Check all possible sources
+        const camelCase = Constants.expoConfig?.extra?.kieAIApiKey;
+        const uppercase = Constants.expoConfig?.extra?.KIE_AI_API_KEY;
+        
+        console.log('📋 Kie.ai Configuration sources check:');
+        console.log('   - extra.kieAIApiKey (camelCase):', 
+          camelCase ? `${typeof camelCase} (length: ${camelCase.length})` : 'missing');
+        console.log('   - extra.KIE_AI_API_KEY (uppercase):', 
+          uppercase ? `${typeof uppercase} (length: ${uppercase.length})` : 'missing');
+        
+        const apiKey = getKieAIApiKey();
+        
+        // Log what we found (masked for security)
+        if (apiKey) {
+          console.log('🔑 Kie.ai API key found:', apiKey.substring(0, 5) + '...' + apiKey.substring(apiKey.length - 3));
+          console.log('   Key length:', apiKey.length);
+          console.log('✅ Kie.ai API key loaded successfully');
+          console.log('   Ready for Kie.ai features');
+        } else {
+          // Key not configured - log detailed warning
+          console.error('⚠️ Kie.ai API key not configured.');
+          console.error('📝 Configuration check:');
+          console.error('   - Constants.expoConfig?.extra?.kieAIApiKey:', 
+            camelCase ? `"${camelCase.substring(0, 10)}..." (${camelCase.length} chars)` : 'missing');
+          console.error('   - Constants.expoConfig?.extra?.KIE_AI_API_KEY:', 
+            uppercase ? `"${uppercase.substring(0, 10)}..." (${uppercase.length} chars)` : 'missing');
+          console.error('   - Constants.expoConfig?.extra keys:', 
+            Object.keys(Constants.expoConfig?.extra || {}).join(', ') || 'none');
+          console.error('');
+          console.error('💡 Solutions:');
+          console.error('   1. For TestFlight/Production: Configure EAS Secret or Environment Variable');
+          console.error('      - Go to expo.dev → Your Project → Secrets (or Environment Variables)');
+          console.error('      - Add KIE_AI_API_KEY for "production" and "preview" environments');
+          console.error('      - Or use: eas secret:create --scope project --name KIE_AI_API_KEY --value your-key');
+          console.error('   2. Rebuild after setting: eas build --platform ios --profile production-ios --clear-cache');
+          console.error('   3. Verify secret exists: eas secret:list');
+        }
+      } catch (error: any) {
+        console.error('❌ Error initializing Kie.ai API key:', error);
+        console.error('   Error details:', JSON.stringify(error, null, 2));
+      }
+    };
+    
     initializeApiKey();
+    initializeKieAIApiKey();
   }, []);
 
   return (

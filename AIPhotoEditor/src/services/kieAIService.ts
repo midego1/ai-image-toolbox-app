@@ -30,7 +30,7 @@ export class KieAIService {
       if (!apiKey) {
         return {
           success: false,
-          error: 'Kie.ai API key not configured. Please set it in app settings (Settings → Developer → Kie.ai API Key), or configure it via EAS Secrets before building.',
+          error: 'Kie.ai API key not configured. Please configure it via EAS Secrets or Environment Variables before building.',
         };
       }
 
@@ -122,7 +122,7 @@ export class KieAIService {
       if (!apiKey) {
         return {
           success: false,
-          error: 'Kie.ai API key not configured. Please set it in app settings (Settings → Developer → Kie.ai API Key), or configure it via EAS Secrets before building.',
+          error: 'Kie.ai API key not configured. Please configure it via EAS Secrets or Environment Variables before building.',
         };
       }
 
@@ -236,7 +236,7 @@ export class KieAIService {
       if (!apiKey) {
         return {
           success: false,
-          error: 'Kie.ai API key not configured. Please set it in app settings.',
+          error: 'Kie.ai API key not configured. Please configure it via EAS Secrets or Environment Variables before building.',
         };
       }
 
@@ -434,7 +434,7 @@ export class KieAIService {
       if (!apiKey) {
         return {
           success: false,
-          error: 'Kie.ai API key not configured. Please set it in app settings.',
+          error: 'Kie.ai API key not configured. Please configure it via EAS Secrets or Environment Variables before building.',
         };
       }
 
@@ -490,7 +490,7 @@ export class KieAIService {
       if (!apiKey) {
         return {
           success: false,
-          error: 'Kie.ai API key not configured. Please set it in app settings.',
+          error: 'Kie.ai API key not configured. Please configure it via EAS Secrets or Environment Variables before building.',
         };
       }
 
@@ -542,7 +542,7 @@ export class KieAIService {
       if (!apiKey) {
         return {
           success: false,
-          error: 'Kie.ai API key not configured. Please set it in app settings.',
+          error: 'Kie.ai API key not configured. Please configure it via EAS Secrets or Environment Variables before building.',
         };
       }
 
@@ -596,7 +596,7 @@ export class KieAIService {
       if (!apiKey) {
         return {
           success: false,
-          error: 'Kie.ai API key not configured. Please set it in app settings.',
+          error: 'Kie.ai API key not configured. Please configure it via EAS Secrets or Environment Variables before building.',
         };
       }
 
