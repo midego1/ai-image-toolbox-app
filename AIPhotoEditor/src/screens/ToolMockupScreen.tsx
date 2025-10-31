@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Image, Modal, Pressable, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../theme';
 import { AIToolHeader } from '../components/AIToolHeader';
 import { haptic } from '../utils/haptics';
@@ -15,6 +16,8 @@ const ToolMockupScreen = () => {
   const { colors, typography, spacing } = theme;
   const navigation = useNavigation();
   const [selectedTab, setSelectedTab] = useState<'hub' | 'detail' | 'search'>('hub');
+  const [selectedToolDetail, setSelectedToolDetail] = useState<string | null>(null); // Track which tool detail to show
+  const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null); // Track selected image for mockup
 
   // Mock data for demonstrations
   const mockTools = [
@@ -37,12 +40,83 @@ const ToolMockupScreen = () => {
     </View>
   );
 
+  // Handle tool card click - navigate to detail view for Remove BG
+  const handleToolCardPress = (tool: typeof mockTools[0]) => {
+    haptic.medium();
+    if (tool.name === 'Remove BG') {
+      setSelectedToolDetail('remove-bg');
+      setSelectedTab('detail');
+    } else {
+      // For other tools, just show haptic feedback
+      haptic.light();
+      Alert.alert('Coming Soon', `The ${tool.name} tool mockup detail view is coming soon!`);
+    }
+  };
+
+  // Handle Take Photo button
+  const handleTakePhoto = () => {
+    haptic.medium();
+    // In real app, this would open camera - for mockup, we'll show a mock image selection
+    Alert.alert(
+      'Take Photo',
+      'This would open the camera. For this mockup, we\'ll simulate selecting a photo.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Simulate Photo',
+          onPress: () => {
+            // Simulate selecting a mock image
+            setSelectedImageUri('mockup://photo-from-camera');
+            haptic.success();
+          }
+        }
+      ]
+    );
+  };
+
+  // Handle Choose from Library button
+  const handleChooseFromLibrary = async () => {
+    try {
+      haptic.light();
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.9,
+        selectionLimit: 1,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setSelectedImageUri(result.assets[0].uri);
+        haptic.success();
+      }
+    } catch (error) {
+      console.error('Error picking from library:', error);
+      Alert.alert('Error', 'Failed to select image from library');
+    }
+  };
+
+  // Handle processing (Remove Background action)
+  const handleProcessRemoveBG = () => {
+    if (!selectedImageUri) {
+      Alert.alert('No Image', 'Please select an image first using Take Photo or Choose from Library');
+      return;
+    }
+    haptic.medium();
+    Alert.alert(
+      'Processing Mockup',
+      'In the real app, this would process the image and remove the background. For this mockup, we\'re showing the concept.',
+      [{ text: 'OK', onPress: () => haptic.light() }]
+    );
+  };
+
   const renderPolishedToolCard = (tool: typeof mockTools[0], variant: 'full' | 'compact' = 'full') => {
     if (variant === 'compact') {
       // Compact 2-column card for variety
-      // Calculate width: full container width minus section padding (both sides) and gap between cards
+      // Calculate width: full container width minus section padding (both sides)
+      // Using space-between for gap, so we calculate available space and split evenly with a small gap
       const containerWidth = width - (spacing.base * 2); // Account for section paddingHorizontal
-      const cardWidth = (containerWidth - spacing.sm) / 2; // Subtract gap, divide by 2
+      const gapBetweenCards = spacing.sm;
+      const cardWidth = (containerWidth - gapBetweenCards) / 2;
 
       return (
         <TouchableOpacity
@@ -53,7 +127,7 @@ const ToolMockupScreen = () => {
             width: cardWidth,
           }]}
           activeOpacity={0.8}
-          onPress={() => haptic.light()}
+          onPress={() => handleToolCardPress(tool)}
         >
           {/* Icon & Title */}
           <Text style={{ fontSize: 32, marginBottom: spacing.xs }}>{tool.icon}</Text>
@@ -102,7 +176,7 @@ const ToolMockupScreen = () => {
           elevation: 3,
         }]}
         activeOpacity={0.85}
-        onPress={() => haptic.light()}
+        onPress={() => handleToolCardPress(tool)}
       >
         {/* Before/After Preview Section */}
         <View style={[styles.polishedPreview, { backgroundColor: colors.backgroundSecondary }]}>
@@ -164,7 +238,17 @@ const ToolMockupScreen = () => {
           <View style={{ flexDirection: 'row', gap: spacing.sm }}>
             <TouchableOpacity
               style={[styles.polishedPrimaryButton, { backgroundColor: colors.primary, flex: 1 }]}
-              onPress={() => haptic.medium()}
+              onPress={(e) => {
+                e.stopPropagation(); // Prevent card press
+                if (tool.name === 'Remove BG') {
+                  setSelectedToolDetail('remove-bg');
+                  setSelectedTab('detail');
+                  // Small delay to show detail view, then trigger photo action
+                  setTimeout(() => handleTakePhoto(), 300);
+                } else {
+                  handleTakePhoto();
+                }
+              }}
             >
               <Ionicons name="camera" size={16} color="#FFFFFF" />
               <Text style={{ color: '#FFFFFF', fontSize: typography.scaled.sm, fontWeight: typography.weight.bold, marginLeft: spacing.xs }}>
@@ -173,7 +257,17 @@ const ToolMockupScreen = () => {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.polishedSecondaryButton, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
-              onPress={() => haptic.light()}
+              onPress={(e) => {
+                e.stopPropagation(); // Prevent card press
+                if (tool.name === 'Remove BG') {
+                  setSelectedToolDetail('remove-bg');
+                  setSelectedTab('detail');
+                  // Small delay to show detail view, then trigger library action
+                  setTimeout(() => handleChooseFromLibrary(), 300);
+                } else {
+                  handleChooseFromLibrary();
+                }
+              }}
             >
               <Ionicons name="images" size={16} color={colors.text} />
             </TouchableOpacity>
@@ -284,7 +378,10 @@ const ToolMockupScreen = () => {
         💡 Recommended for You
       </Text>
       <TouchableOpacity
-        style={[styles.recommendedCard, { backgroundColor: colors.surface, borderColor: colors.primary + '30' }]}
+        style={[styles.recommendedCard, {
+          backgroundColor: colors.surface,
+          borderColor: colors.primary + '30',
+        }]}
         onPress={() => haptic.light()}
       >
         <View style={[styles.recommendedPreview, { backgroundColor: colors.primary + '15' }]}>
@@ -315,24 +412,59 @@ const ToolMockupScreen = () => {
     </View>
   );
 
-  const renderDetailView = () => (
+  const renderRemoveBGDetailView = () => (
     <View style={[styles.detailContainer, { backgroundColor: colors.surface }]}>
-      {/* Hero Section */}
+      {/* Hero Section - Before/After Preview */}
       <View style={[styles.detailHero, { backgroundColor: colors.backgroundSecondary }]}>
-        <View style={styles.beforeAfterLarge}>
-          <View style={[styles.beforeLarge, { backgroundColor: colors.primary + '20' }]}>
-            <Text style={{ color: colors.textSecondary }}>Before</Text>
+        {selectedImageUri ? (
+          <View style={styles.beforeAfterLarge}>
+            <View style={[styles.beforeLarge, { backgroundColor: colors.primary + '20', justifyContent: 'center', alignItems: 'center' }]}>
+              {selectedImageUri.startsWith('mockup://') ? (
+                <View style={{ alignItems: 'center' }}>
+                  <Ionicons name="image" size={40} color={colors.primary} />
+                  <Text style={{ color: colors.textSecondary, marginTop: spacing.xs, fontSize: typography.scaled.sm }}>Selected Photo</Text>
+                </View>
+              ) : (
+                <Image source={{ uri: selectedImageUri }} style={{ width: '100%', height: '100%', borderRadius: 12 }} resizeMode="cover" />
+              )}
+              <View style={{ position: 'absolute', top: 8, left: 8, backgroundColor: colors.primary + '20', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                <Text style={{ color: colors.primary, fontSize: typography.scaled.xs, fontWeight: typography.weight.bold }}>BEFORE</Text>
+              </View>
+            </View>
+            <View style={styles.sliderLine}>
+              <Ionicons name="arrow-forward" size={24} color={colors.primary} />
+            </View>
+            <View style={[styles.afterLarge, { backgroundColor: colors.primary + '10', justifyContent: 'center', alignItems: 'center', borderStyle: 'dashed', borderWidth: 2, borderColor: colors.primary + '40' }]}>
+              <View style={{ alignItems: 'center' }}>
+                <Ionicons name="checkmark-circle" size={40} color={colors.primary} />
+                <Text style={{ color: colors.text, marginTop: spacing.xs, fontSize: typography.scaled.sm, fontWeight: typography.weight.medium }}>Background Removed</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: typography.scaled.xs, marginTop: 4 }}>Transparent PNG</Text>
+              </View>
+              <View style={{ position: 'absolute', top: 8, right: 8, backgroundColor: colors.primary, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                <Text style={{ color: '#FFFFFF', fontSize: typography.scaled.xs, fontWeight: typography.weight.bold }}>AFTER</Text>
+              </View>
+            </View>
           </View>
-          <View style={styles.sliderLine}>
-            <Ionicons name="swap-horizontal" size={24} color={colors.primary} />
+        ) : (
+          <View style={styles.beforeAfterLarge}>
+            <View style={[styles.beforeLarge, { backgroundColor: colors.primary + '20', justifyContent: 'center', alignItems: 'center' }]}>
+              <Ionicons name="camera-outline" size={48} color={colors.primary + '60'} />
+              <Text style={{ color: colors.textSecondary, marginTop: spacing.sm, fontSize: typography.scaled.sm }}>Select a photo to see preview</Text>
+            </View>
+            <View style={styles.sliderLine}>
+              <Ionicons name="arrow-forward" size={24} color={colors.primary + '60'} />
+            </View>
+            <View style={[styles.afterLarge, { backgroundColor: colors.primary + '10', justifyContent: 'center', alignItems: 'center' }]}>
+              <Ionicons name="cut-outline" size={48} color={colors.primary + '60'} />
+              <Text style={{ color: colors.textSecondary, marginTop: spacing.sm, fontSize: typography.scaled.sm }}>Background removed</Text>
+            </View>
           </View>
-          <View style={[styles.afterLarge, { backgroundColor: colors.primary + '40' }]}>
-            <Text style={{ color: colors.text }}>After</Text>
-          </View>
-        </View>
-        <Text style={[styles.sliderHint, { color: colors.textSecondary, fontSize: typography.scaled.xs, marginTop: spacing.sm }]}>
-          ← Drag to compare →
-        </Text>
+        )}
+        {selectedImageUri && (
+          <Text style={[styles.sliderHint, { color: colors.textSecondary, fontSize: typography.scaled.xs, marginTop: spacing.sm }]}>
+            ← Drag to compare →
+          </Text>
+        )}
       </View>
 
       {/* Stats Bar */}
@@ -581,7 +713,7 @@ const ToolMockupScreen = () => {
                   {renderPolishedToolCard(mockTools[1], 'full')}
 
                   {/* Next two: Compact 2-column */}
-                  <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.sm }}>
                     {renderPolishedToolCard(mockTools[2], 'compact')}
                     {renderPolishedToolCard(mockTools[3], 'compact')}
                   </View>
@@ -618,26 +750,28 @@ const ToolMockupScreen = () => {
         )}
 
         {/* Design Notes */}
-        <View style={[styles.designNotes, { backgroundColor: colors.surface, borderColor: colors.primary + '30', marginTop: spacing.xl }]}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
-            <Ionicons name="information-circle" size={20} color={colors.primary} />
-            <Text style={[styles.notesTitle, { color: colors.text, fontSize: typography.scaled.base, fontWeight: typography.weight.bold, marginLeft: spacing.xs }]}>
-              Design Notes
+        <View style={{ paddingHorizontal: spacing.base, marginTop: spacing.xl }}>
+          <View style={[styles.designNotes, { backgroundColor: colors.surface, borderColor: colors.primary + '30' }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
+              <Ionicons name="information-circle" size={20} color={colors.primary} />
+              <Text style={[styles.notesTitle, { color: colors.text, fontSize: typography.scaled.base, fontWeight: typography.weight.bold, marginLeft: spacing.xs }]}>
+                Design Notes
+              </Text>
+            </View>
+            <Text style={[styles.notesText, { color: colors.textSecondary, fontSize: typography.scaled.sm, lineHeight: 20 }]}>
+              These mockups demonstrate the proposed redesign from AI_TOOLS_PAGE_REDESIGN.md. Key improvements include:
+            </Text>
+            <Text style={[styles.notesText, { color: colors.textSecondary, fontSize: typography.scaled.sm, marginTop: spacing.xs }]}>
+              • Polished card layouts (full-width + compact variants){'\n'}
+              • Visual before/after previews on every card{'\n'}
+              • Prominent "Take Photo" CTAs for quick access{'\n'}
+              • Real-time stats (speed, usage, trending indicators){'\n'}
+              • Trending section at top with live activity{'\n'}
+              • Personalized recommendations with rich visuals{'\n'}
+              • Smart search with goal-based browsing{'\n'}
+              • Consistent spacing, shadows, and visual hierarchy
             </Text>
           </View>
-          <Text style={[styles.notesText, { color: colors.textSecondary, fontSize: typography.scaled.sm, lineHeight: 20 }]}>
-            These mockups demonstrate the proposed redesign from AI_TOOLS_PAGE_REDESIGN.md. Key improvements include:
-          </Text>
-          <Text style={[styles.notesText, { color: colors.textSecondary, fontSize: typography.scaled.sm, marginTop: spacing.xs }]}>
-            • Polished card layouts (full-width + compact variants){'\n'}
-            • Visual before/after previews on every card{'\n'}
-            • Prominent "Take Photo" CTAs for quick access{'\n'}
-            • Real-time stats (speed, usage, trending indicators){'\n'}
-            • Trending section at top with live activity{'\n'}
-            • Personalized recommendations with rich visuals{'\n'}
-            • Smart search with goal-based browsing{'\n'}
-            • Consistent spacing, shadows, and visual hierarchy
-          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -652,7 +786,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    paddingTop: 16,
+    paddingHorizontal: 0, // No horizontal padding - sections handle their own paddingHorizontal
   },
   tabContainer: {
     flexDirection: 'row',
@@ -671,9 +806,6 @@ const styles = StyleSheet.create({
   },
   mockupSubtitle: {
     // Dynamic
-  },
-  section: {
-    paddingHorizontal: 16,
   },
   sectionTitle: {
     // Dynamic
@@ -739,6 +871,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     borderWidth: 1.5,
+    width: '100%', // Ensure full width like FeaturesScreen cards
   },
   recommendedPreview: {
     width: 60,
@@ -765,13 +898,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   polishedToolGrid: {
-    gap: 16,
+    width: '100%', // Ensure grid takes full width
   },
   polishedCard: {
     borderRadius: 16,
     borderWidth: 1,
     overflow: 'hidden',
     marginBottom: 16,
+    width: '100%', // Ensure card takes full width of container
   },
   polishedPreview: {
     padding: 20,
