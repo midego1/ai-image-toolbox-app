@@ -12,10 +12,12 @@ yarn-error.log*
 .expo-shared/
 
 # Native folders (for Prebuild/CNG workflow)
+# Note: In CNG workflow, ios/ and android/ folders are typically gitignored
+# But we need Podfile for EAS Build, so we use exceptions below
 AIPhotoEditor/ios/
 AIPhotoEditor/android/
 
-# But keep Podfile for EAS Build
+# But keep essential files for EAS Build
 !AIPhotoEditor/ios/Podfile
 !AIPhotoEditor/ios/Podfile.lock
 !AIPhotoEditor/ios/Podfile.properties.json
