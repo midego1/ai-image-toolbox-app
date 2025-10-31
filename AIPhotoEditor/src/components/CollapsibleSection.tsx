@@ -10,6 +10,8 @@ export interface CollapsibleSectionProps {
   children: React.ReactNode;
   defaultExpanded?: boolean;
   containerStyle?: any;
+  /** Optional preview text to show when collapsed (e.g., "16-bit • RPG • Scene") */
+  previewText?: string;
 }
 
 export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
@@ -17,6 +19,7 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   children,
   defaultExpanded = true,
   containerStyle,
+  previewText,
 }) => {
   const { theme } = useTheme();
   const { colors, typography, spacing } = theme;
@@ -37,7 +40,7 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
         onPress={toggle}
         activeOpacity={0.7}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={styles.headerContent}>
           <Ionicons name="settings-outline" size={18} color={colors.primary} />
           <Text style={[styles.title, {
             color: colors.text,
@@ -47,10 +50,19 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
           }]}>
             {title}
           </Text>
+          {!isExpanded && previewText && (
+            <Text style={[styles.previewText, {
+              color: colors.textSecondary,
+              fontSize: typography.scaled.xs,
+              marginLeft: spacing.xs,
+            }]}>
+              {previewText}
+            </Text>
+          )}
         </View>
         <Ionicons
-          name={isExpanded ? 'chevron-down' : 'chevron-forward'}
-          size={20}
+          name={isExpanded ? 'chevron-up' : 'chevron-down'}
+          size={18}
           color={colors.textSecondary}
         />
       </TouchableOpacity>
@@ -79,7 +91,16 @@ const styles = StyleSheet.create({
     paddingVertical: baseSpacing.sm,
     minHeight: 48,
   },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    flexWrap: 'wrap',
+  },
   title: {
+    // Dynamic styles applied inline
+  },
+  previewText: {
     // Dynamic styles applied inline
   },
   content: {

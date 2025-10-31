@@ -10,9 +10,11 @@ import { MainHeader } from '../components/MainHeader';
 import { SectionHeader } from '../components/SectionHeader';
 import { FeaturedBlock } from '../components/FeaturedBlock';
 import { Card } from '../components/Card';
+import { MediaTypeTabs, MediaType } from '../components/MediaTypeTabs';
 import { EditMode, EditModeCategory, getEditModesByCategory, PHASE1_FEATURES } from '../constants/editModes';
 import { SubscriptionService } from '../services/subscriptionService';
 import { ImageProcessingService } from '../services/imageProcessingService';
+import { VideoProcessingService } from '../services/videoProcessingService';
 import { haptic } from '../utils/haptics';
 import { useScrollBottomPadding } from '../utils/scrollPadding';
 
@@ -23,6 +25,7 @@ const FeaturesScreen = () => {
   const scrollBottomPadding = useScrollBottomPadding();
   const styles = createStyles(theme, insets, scrollBottomPadding);
   const [isPremium, setIsPremium] = useState(false);
+  const [activeMediaType, setActiveMediaType] = useState<MediaType>('image');
   const scrollViewRef = useRef<ScrollView>(null);
   const scrollOffsetRef = useRef<number>(0);
 
@@ -54,6 +57,23 @@ const FeaturesScreen = () => {
     if (requiresPremium && !isPremium) {
       // Show upgrade prompt
       haptic.error();
+      return;
+    }
+
+    // Handle video modes
+    if (
+      editMode === EditMode.TEXT_TO_VIDEO_VEO ||
+      editMode === EditMode.TEXT_TO_VIDEO_VEO_FAST ||
+      editMode === EditMode.TEXT_TO_VIDEO_KLING
+    ) {
+      // Text-to-video: go to prompt screen
+      (navigation as any).navigate('VideoPrompt', { editMode });
+      return;
+    }
+
+    if (editMode === EditMode.EDIT_VIDEO_RUNWAY) {
+      // Video editing: go to video selection screen
+      (navigation as any).navigate('VideoSelection', { editMode });
       return;
     }
 
@@ -133,13 +153,24 @@ const FeaturesScreen = () => {
 
     if (modes.length === 0) return null;
 
+    // Filter by media type
+    const isVideoCategory = category === EditModeCategory.VIDEO;
+    const isImageCategory = category !== EditModeCategory.VIDEO;
+    
+    if (activeMediaType === 'image' && isVideoCategory) return null;
+    if (activeMediaType === 'video' && isImageCategory) return null;
+
     return (
       <View key={category} style={styles.categorySection}>
         <SectionHeader title={categoryName} />
         <View style={styles.categoryContainer}>
           {modes.map((mode, index) => {
             const isLocked = mode.isPremium && !isPremium;
-            const isNotWorking = !ImageProcessingService.isModeSupported(mode.id);
+            // Check support: video modes use VideoProcessingService, others use ImageProcessingService
+            const isVideoMode = mode.category === EditModeCategory.VIDEO;
+            const isNotWorking = isVideoMode 
+              ? !VideoProcessingService.isModeSupported(mode.id)
+              : !ImageProcessingService.isModeSupported(mode.id);
             const isDisabled = isLocked || isNotWorking;
             return (
               <Card
@@ -178,6 +209,9 @@ const FeaturesScreen = () => {
         }}
         scrollEventThrottle={16}
       >
+        {/* Media Type Tabs */}
+        <MediaTypeTabs activeTab={activeMediaType} onTabChange={setActiveMediaType} />
+
         {/* Removed Featured Block */}
 
         {/* Subscription Status Banner */}
@@ -218,17 +252,29 @@ const FeaturesScreen = () => {
           </View>
         )}
 
-        {/* Transform Category */}
-        {renderCategory('🎨 TRANSFORM', EditModeCategory.TRANSFORM)}
+        {/* Image Categories - shown when Image tab is active */}
+        {activeMediaType === 'image' && (
+          <>
+            {/* Transform Category */}
+            {renderCategory('🎨 TRANSFORM', EditModeCategory.TRANSFORM)}
 
-        {/* Edit Category */}
-        {renderCategory('✏️ EDIT', EditModeCategory.EDIT)}
+            {/* Edit Category */}
+            {renderCategory('✏️ EDIT', EditModeCategory.EDIT)}
 
-        {/* Enhance Category */}
-        {renderCategory('✨ ENHANCE', EditModeCategory.ENHANCE)}
+            {/* Enhance Category */}
+            {renderCategory('✨ ENHANCE', EditModeCategory.ENHANCE)}
 
-        {/* Stylize Category */}
-        {renderCategory('🖌️ STYLIZE', EditModeCategory.STYLIZE)}
+            {/* Stylize Category */}
+            {renderCategory('🖌️ STYLIZE', EditModeCategory.STYLIZE)}
+          </>
+        )}
+
+        {/* Video Category - shown when Video tab is active */}
+        {activeMediaType === 'video' && (
+          <>
+            {renderCategory('🎬 VIDEO', EditModeCategory.VIDEO)}
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

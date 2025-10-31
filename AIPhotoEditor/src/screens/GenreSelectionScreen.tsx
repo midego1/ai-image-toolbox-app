@@ -18,6 +18,7 @@ import { ToolStatsBar } from '../components/ToolStatsBar';
 import { TopTabSwitcher } from '../components/TopTabSwitcher';
 import { ToolGuideTab } from '../components/ToolGuideTab';
 import { ToolExamplesTab } from '../components/ToolExamplesTab';
+import { ToolHistoryTab } from '../components/ToolHistoryTab';
 import { TabView } from '../components/TabView';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
@@ -100,7 +101,7 @@ const GenreSelectionScreen = () => {
   const [expandedGenreId, setExpandedGenreId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'carousel' | 'grid'>('carousel');
   const [carouselIndex, setCarouselIndex] = useState(0);
-  const [activeTopTab, setActiveTopTab] = useState<'tool' | 'guide'>('tool');
+  const [activeTopTab, setActiveTopTab] = useState<'tool' | 'guide' | 'history'>('tool');
   const carouselRef = useRef<FlatList>(null);
   const thumbnailsScrollRef = useRef<ScrollView>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
@@ -287,15 +288,16 @@ const GenreSelectionScreen = () => {
         tabs={[
           { id: 'tool', label: 'Tool', icon: 'create-outline' },
           { id: 'guide', label: 'Guide', icon: 'book-outline' },
+          { id: 'history', label: 'History', icon: 'time-outline' },
         ]}
         activeTab={activeTopTab}
-        onTabChange={(tabId) => setActiveTopTab(tabId as 'tool' | 'guide')}
+        onTabChange={(tabId) => setActiveTopTab(tabId as 'tool' | 'guide' | 'history')}
       />
 
       {/* Add top padding to content to account for floating tab bar */}
       <View style={{ height: 12 + 48 + 12 }} />
 
-      {activeTopTab === 'tool' ? (
+      {activeTopTab === 'tool' && (
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -431,18 +433,6 @@ const GenreSelectionScreen = () => {
         </View>
 
       {/* Removed search, sorting, featured and recent sections */}
-
-      {/* Modern Information Card */}
-        <AIToolInfoCard
-          icon="color-palette-outline"
-          whatDescription={`Transform your photo into stunning artistic styles while preserving your identity. Choose from ${GENRES.length} unique transformations ranging from classic art styles to futuristic themes.`}
-          howDescription="The system analyzes your photo’s content and structure, then applies learned style patterns to blend artistic elements while preserving important details like facial features and composition."
-          howItems={[
-            { text: 'Face recognition preserved' },
-            { text: `${GENRES.length} unique art styles` },
-            { text: 'High-quality AI rendering' },
-          ]}
-        />
 
         {/* Style Selection Section */}
         <View style={{ marginHorizontal: spacing.base, marginTop: spacing.lg }}>
@@ -739,8 +729,9 @@ const GenreSelectionScreen = () => {
 
 
       </ScrollView>
-      ) : (
-        /* Guide View */
+      )}
+
+      {activeTopTab === 'guide' && (
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={[
@@ -756,12 +747,13 @@ const GenreSelectionScreen = () => {
               { id: 'examples', label: 'Examples', icon: 'images-outline' },
               { id: 'info', label: 'Info', icon: 'information-circle-outline' },
             ]}
+            defaultTab="guide"
             containerStyle={{ marginHorizontal: spacing.base, marginTop: spacing.lg }}
           >
             {/* Guide Tab */}
             <ToolGuideTab
               title="How to Transform Your Photo"
-              content="Transform your photos into stunning artistic styles with 20+ unique transformations, from classic art to futuristic themes.\n\n📸 Step 1: Select Your Photo\nChoose a photo from your library or take a new one. Portrait photos work beautifully with most artistic styles.\n\n🎨 Step 2: Browse Styles\nExplore our collection of artistic transformations:\nClassic Art: Oil Painting, Watercolor, Renaissance\nFuturistic: Cyberpunk, Neon Tokyo, Matrix\nRetro: Vintage, 90s, Disco\nFantasy: Medieval, Gothic, Anime\nAnd many more\n\n👀 Step 3: Preview Styles\nUse the carousel view to see how each style previews on your photo. Swipe through to find your favorite.\n\n✨ Step 4: Generate\nTap Generate with your chosen style name and wait 5-10 seconds for your transformed photo.\n\n🎯 Pro Tips\nPortrait photos produce the most impressive results.\nYour face and identity are always preserved.\nTry the carousel view to preview styles before choosing.\nEach style has unique characteristics. Experiment to find favorites.\nPerfect for creating artistic profile photos or social media content."
+              content={`Transform your photo into stunning artistic styles while preserving your identity.\n\n📸 Step 1: Select Your Photo\nChoose a photo from your library or take a new one. Portrait photos work best.\n\n🎨 Step 2: Choose Art Style\nSelect from multiple artistic genres:\n• Cyberpunk - Futuristic neon aesthetics\n• Oil Painting - Classic artistic textures\n• Anime - Cartoon art style\n• Watercolor - Soft painted effects\n• And many more styles\n\n✨ Step 3: Generate\nTap Generate and wait 5-10 seconds. The AI will apply the selected style while preserving your facial features and identity.\n\n🎯 Pro Tips\n• Portrait photos produce the best transformations\n• Your identity and facial features are preserved\n• Each style has unique characteristics\n• Try different styles to find your favorite\n• Works great for profile pictures and artistic projects`}
             />
 
             {/* Examples Tab */}
@@ -813,6 +805,10 @@ const GenreSelectionScreen = () => {
           {/* Extra bottom padding */}
           <View style={{ height: spacing.xl }} />
         </ScrollView>
+      )}
+
+      {activeTopTab === 'history' && (
+        <ToolHistoryTab editMode={EditMode.TRANSFORM} />
       )}
 
       <ActionButtonBar

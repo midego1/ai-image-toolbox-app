@@ -13,10 +13,13 @@ import { Button } from '../components/Button';
 import { CaptureLibraryButtons } from '../components/CaptureLibraryButtons';
 import { ActionButtonBar } from '../components/ActionButtonBar';
 import { CollapsibleSection } from '../components/CollapsibleSection';
+import { AdvancedOptionsSelector } from '../components/AdvancedOptionsSelector';
+import ColorPicker from '../components/ColorPicker';
 import { ToolStatsBar } from '../components/ToolStatsBar';
 import { TopTabSwitcher } from '../components/TopTabSwitcher';
 import { ToolGuideTab } from '../components/ToolGuideTab';
 import { ToolExamplesTab } from '../components/ToolExamplesTab';
+import { ToolHistoryTab } from '../components/ToolHistoryTab';
 import { TabView } from '../components/TabView';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
@@ -37,7 +40,11 @@ const PopFigureScreen = () => {
   const [localImageUri, setLocalImageUri] = useState<string | undefined>(imageUri);
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [includeBox, setIncludeBox] = useState(true);
-  const [activeTopTab, setActiveTopTab] = useState<'tool' | 'guide'>('tool');
+  const [backgroundType, setBackgroundType] = useState<'studio' | 'marble' | 'glossy' | 'simple' | 'color'>('studio');
+  const [backgroundColor, setBackgroundColor] = useState<string>('#FFFFFF');
+  const [isTransparent, setIsTransparent] = useState<boolean>(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [activeTopTab, setActiveTopTab] = useState<'tool' | 'guide' | 'history'>('tool');
   const cardScale = useRef(new Animated.Value(0.96)).current;
   const hintAnim = useRef(new Animated.Value(0)).current;
 
@@ -96,6 +103,9 @@ const PopFigureScreen = () => {
       editMode: EditMode.POP_FIGURE,
       config: {
         includeBox: includeBox,
+        backgroundType: backgroundType,
+        backgroundColor: backgroundColor,
+        isTransparent: isTransparent,
       }
     } as any;
     (navigation as any).navigate('Processing', params);
@@ -160,15 +170,16 @@ const PopFigureScreen = () => {
         tabs={[
           { id: 'tool', label: 'Tool', icon: 'create-outline' },
           { id: 'guide', label: 'Guide', icon: 'book-outline' },
+          { id: 'history', label: 'History', icon: 'time-outline' },
         ]}
         activeTab={activeTopTab}
-        onTabChange={(tabId) => setActiveTopTab(tabId as 'tool' | 'guide')}
+        onTabChange={(tabId) => setActiveTopTab(tabId as 'tool' | 'guide' | 'history')}
       />
 
       {/* Add top padding to content to account for floating tab bar */}
       <View style={{ height: 12 + 48 + 12 }} />
 
-      {activeTopTab === 'tool' ? (
+      {activeTopTab === 'tool' && (
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -260,82 +271,151 @@ const PopFigureScreen = () => {
           </View>
         </View>
 
-        {/* Box Option Toggle - Always visible */}
+        {/* Advanced Options */}
         <View style={{ paddingHorizontal: spacing.base, marginTop: spacing.lg }}>
           <CollapsibleSection
             title="Advanced Options"
             defaultExpanded={true}
             containerStyle={{ marginBottom: spacing.base }}
           >
-            <View style={styles.toggleContainer}>
-                <TouchableOpacity
-                  onPress={() => {
-                    haptic.light();
-                    setIncludeBox(true);
-                  }}
-                  style={[styles.toggleOption, {
-                    backgroundColor: includeBox ? colors.primary : colors.background,
-                    borderColor: includeBox ? colors.primary : colors.border,
-                  }]}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons 
-                    name="cube" 
-                    size={16} 
-                    color={includeBox ? '#FFFFFF' : colors.textSecondary} 
-                  />
-                  <Text style={[styles.toggleText, {
-                    color: includeBox ? '#FFFFFF' : colors.text,
-                    fontSize: typography.scaled.sm,
+            {/* Box Option Toggle */}
+            <AdvancedOptionsSelector
+              label="Box"
+              options={[
+                { id: 'with', label: 'With Box', icon: 'cube' },
+                { id: 'without', label: 'Without Box', icon: 'cube-outline' },
+              ]}
+              selectedId={includeBox ? 'with' : 'without'}
+              onSelect={(id) => setIncludeBox(id === 'with')}
+              layout="toggle"
+              showSeparator={true}
+            />
+
+            {/* Background Selection */}
+            <AdvancedOptionsSelector
+              label="Background"
+              labelIcon="🖼️"
+              options={[
+                { id: 'studio', label: 'Studio', icon: '🎬' },
+                { id: 'marble', label: 'Marble', icon: '🪨' },
+                { id: 'glossy', label: 'Glossy', icon: '✨' },
+                { id: 'simple', label: 'Simple', icon: '⬜' },
+                {
+                  id: 'color',
+                  label: 'Color',
+                  icon: '🎨',
+                  renderCustom: (isSelected: boolean, onPress: () => void) => (
+                    <TouchableOpacity
+                      onPress={onPress}
+                      style={[styles.bitDepthButton, {
+                        backgroundColor: isSelected ? colors.primary : colors.background,
+                        borderColor: isSelected ? colors.primary : colors.border,
+                      }]}
+                    >
+                      <View style={[styles.colorIndicator, { 
+                        backgroundColor: isTransparent ? 'transparent' : backgroundColor,
+                        borderWidth: isTransparent ? 1 : 0,
+                        borderColor: isSelected ? '#FFFFFF' : colors.border,
+                      }]} />
+                      <Text style={[styles.bitDepthText, {
+                        color: isSelected ? '#FFFFFF' : colors.text,
+                        fontSize: typography.scaled.xs,
+                        fontWeight: typography.weight.medium,
+                      }]}>
+                        Color
+                      </Text>
+                    </TouchableOpacity>
+                  ),
+                },
+              ]}
+              selectedId={backgroundType}
+              onSelect={(id) => {
+                if (id === 'color') {
+                  setBackgroundType('color');
+                } else {
+                  setBackgroundType(id as 'studio' | 'marble' | 'glossy' | 'simple' | 'color');
+                }
+              }}
+              layout="horizontal"
+            />
+
+            {/* Background Sub-options */}
+            {backgroundType === 'color' && (
+              <>
+                <View style={[styles.bitDepthContainer]}>
+                  <Text style={[styles.bitDepthLabel, {
+                    color: colors.text,
+                    fontSize: typography.scaled.xs,
                     fontWeight: typography.weight.medium,
-                    marginLeft: spacing.xs,
                   }]}>
-                    With Box
+                    🎨 Color
                   </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => {
-                    haptic.light();
-                    setIncludeBox(false);
-                  }}
-                  style={[styles.toggleOption, {
-                    backgroundColor: !includeBox ? colors.primary : colors.background,
-                    borderColor: !includeBox ? colors.primary : colors.border,
-                  }]}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons 
-                    name="cube-outline" 
-                    size={16} 
-                    color={!includeBox ? '#FFFFFF' : colors.textSecondary} 
-                  />
-                  <Text style={[styles.toggleText, {
-                    color: !includeBox ? '#FFFFFF' : colors.text,
-                    fontSize: typography.scaled.sm,
+                  <TouchableOpacity
+                    style={[styles.colorPickerButton, {
+                      backgroundColor: colors.background,
+                      borderColor: colors.border,
+                      flex: 1,
+                      minHeight: 36,
+                    }]}
+                    onPress={() => {
+                      haptic.light();
+                      setShowColorPicker(true);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.colorSwatchSmall, { 
+                      backgroundColor: isTransparent ? 'transparent' : backgroundColor,
+                      borderWidth: isTransparent ? 1 : 0,
+                      borderColor: colors.border,
+                    }]} />
+                    <Text style={[styles.compactChipLabel, {
+                      color: colors.text,
+                      fontSize: typography.scaled.xs * 0.9,
+                      fontWeight: typography.weight.medium,
+                      flex: 1,
+                    }]}>
+                      {isTransparent ? 'Transparent' : backgroundColor}
+                    </Text>
+                    <Ionicons name="color-palette-outline" size={14} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+                {/* Transparent Toggle */}
+                <View style={[styles.bitDepthContainer]}>
+                  <Text style={[styles.bitDepthLabel, {
+                    color: colors.text,
+                    fontSize: typography.scaled.xs,
                     fontWeight: typography.weight.medium,
-                    marginLeft: spacing.xs,
                   }]}>
-                    Without Box
+                    🔲 Transparent
                   </Text>
-                </TouchableOpacity>
-              </View>
+                  <TouchableOpacity
+                    onPress={() => {
+                      haptic.light();
+                      setIsTransparent(!isTransparent);
+                    }}
+                    style={[styles.bitDepthButton, {
+                      backgroundColor: isTransparent ? colors.primary : colors.background,
+                      borderColor: isTransparent ? colors.primary : colors.border,
+                      minWidth: 100,
+                    }]}
+                  >
+                    <Text style={[styles.bitDepthText, {
+                      color: isTransparent ? '#FFFFFF' : colors.text,
+                      fontSize: typography.scaled.xs,
+                      fontWeight: typography.weight.medium,
+                    }]}>
+                      {isTransparent ? 'Enabled' : 'Disabled'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
           </CollapsibleSection>
         </View>
-
-        {/* Information Card */}
-        <AIToolInfoCard
-          icon="cube-outline"
-          whatDescription="Transform your photo into a detailed 3D render of a chibi pop figure. The figure will accurately represent you or your subject with authentic pop figure styling, oversized head, and collectible appearance."
-          howDescription="Our AI analyzes your reference photo and creates a professional 3D render in the classic pop figure style, preserving facial features, clothing, and distinctive characteristics while applying the signature chibi proportions and smooth, toy-like finish."
-          howItems={[
-            { text: 'Accurate representation of your photo' },
-            { text: 'Authentic pop figure chibi proportions' },
-            { text: 'Professional 3D rendering quality' },
-          ]}
-        />
       </ScrollView>
-      ) : (
-        /* Guide View */
+      )}
+
+      {activeTopTab === 'guide' && (
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={[
@@ -351,12 +431,13 @@ const PopFigureScreen = () => {
               { id: 'examples', label: 'Examples', icon: 'images-outline' },
               { id: 'info', label: 'Info', icon: 'information-circle-outline' },
             ]}
+            defaultTab="guide"
             containerStyle={{ marginHorizontal: spacing.base, marginTop: spacing.lg }}
           >
             {/* Guide Tab */}
             <ToolGuideTab
               title="How to Create Pop Figure"
-              content="Transform yourself into a collectible 3D pop figure with authentic chibi proportions and professional rendering.\n\n📸 Step 1: Select Your Photo\nChoose a clear, well-lit portrait photo. Face-forward photos with good contrast work best.\n\n📦 Step 2: Choose Display Option\nWith Box - Classic collectible look with display case\nWithout Box - Standalone figure perfect for digital use\n\n✨ Step 3: Generate\nTap Create Pop Figure and wait 15-20 seconds for processing.\n\nThe AI will create a professional 3D render with:\nAuthentic chibi proportions (oversized head, cute style)\nAccurate representation of your features\nSmooth, toy-like finish\nCollectible-quality appearance\n\n🎯 Pro Tips\nPortrait photos with clear faces produce the best results.\nGood lighting and contrast improve detail preservation.\nDisplay box adds that authentic collectible look.\nPerfect for creating personalized gifts or avatars.\nYour distinctive features are preserved in the 3D style."
+              content={`Transform your photo into a detailed 3D render of a chibi pop figure.\n\n📸 Step 1: Select Your Photo\nChoose a portrait photo from your library or take a new one. Photos with clear faces work best.\n\n🎨 Step 2: Choose Options (Optional)\nYou can customize your pop figure:\n• Display box - Include a collectible display box\n• Without box - Standalone figure for digital use\n• Chibi proportions - Classic oversized head style\n\n✨ Step 3: Generate\nTap Create Pop Figure and wait 5-15 seconds. The AI will create a professional 3D render in authentic pop figure style, preserving your facial features and distinctive characteristics.\n\n🎯 Pro Tips\n• Portrait photos with clear faces produce the best results\n• Your identity is accurately represented\n• Display boxes are perfect for collectible looks\n• Standalone figures work great for digital avatars\n• Chibi proportions create the classic pop figure appearance`}
             />
 
             {/* Examples Tab */}
@@ -410,6 +491,10 @@ const PopFigureScreen = () => {
         </ScrollView>
       )}
 
+      {activeTopTab === 'history' && (
+        <ToolHistoryTab editMode={EditMode.POP_FIGURE} />
+      )}
+
       <ActionButtonBar
         visible={activeTopTab === 'tool' && !!localImageUri}
         bottomContent={
@@ -458,6 +543,24 @@ const PopFigureScreen = () => {
           </SafeAreaView>
         </Pressable>
       </Modal>
+
+      <ColorPicker
+        visible={showColorPicker}
+        initialColor={isTransparent ? 'transparent' : backgroundColor}
+        onColorSelect={(color) => {
+          // If color is 'transparent' string, set transparent
+          if (color === 'transparent') {
+            setIsTransparent(true);
+            setBackgroundColor('#FFFFFF'); // Keep a default color for fallback
+          } else {
+            setIsTransparent(false);
+            setBackgroundColor(color);
+          }
+          setBackgroundType('color'); // Ensure color option is selected
+          setShowColorPicker(false);
+        }}
+        onClose={() => setShowColorPicker(false)}
+      />
     </SafeAreaView>
   );
 };
@@ -584,6 +687,76 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   toggleText: {
+    // Dynamic styles applied inline
+  },
+  bitDepthContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: baseSpacing.md,
+    paddingVertical: 0,
+    minHeight: 44,
+    height: 44,
+  },
+  bitDepthLabel: {
+    // Dynamic styles applied inline
+    minWidth: 90,
+  },
+  bitDepthScrollView: {
+    flex: 1,
+  },
+  bitDepthOptions: {
+    flexDirection: 'row',
+    gap: baseSpacing.sm,
+    paddingRight: baseSpacing.md,
+  },
+  bitDepthButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: baseSpacing.sm,
+    paddingHorizontal: baseSpacing.base,
+    borderRadius: 20,
+    borderWidth: 1,
+    flexShrink: 0,
+    minHeight: 36,
+    gap: baseSpacing.xs,
+  },
+  bitDepthIcon: {
+    fontSize: 14,
+  },
+  bitDepthText: {
+    // Dynamic styles applied inline
+  },
+  separatorLine: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: -baseSpacing.base,
+    marginRight: -baseSpacing.base,
+    marginVertical: baseSpacing.xs,
+  },
+  colorPickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: baseSpacing.sm,
+    paddingVertical: baseSpacing.xs,
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: baseSpacing.xs,
+    minHeight: 36,
+  },
+  colorSwatchSmall: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  colorIndicator: {
+    width: 16,
+    height: 16,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  compactChipLabel: {
     // Dynamic styles applied inline
   },
 });

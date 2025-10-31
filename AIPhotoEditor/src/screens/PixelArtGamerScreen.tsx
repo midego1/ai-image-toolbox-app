@@ -13,12 +13,14 @@ import { Button } from '../components/Button';
 import { CaptureLibraryButtons } from '../components/CaptureLibraryButtons';
 import { ActionButtonBar } from '../components/ActionButtonBar';
 import ColorPicker from '../components/ColorPicker';
-import { CollapsibleSection } from '../components/CollapsibleSection';
 import { TopTabSwitcher } from '../components/TopTabSwitcher';
 import { ToolGuideTab } from '../components/ToolGuideTab';
 import { ToolExamplesTab, Example } from '../components/ToolExamplesTab';
+import { ToolHistoryTab } from '../components/ToolHistoryTab';
 import { TabView } from '../components/TabView';
 import { ToolStatsBar } from '../components/ToolStatsBar';
+import { CollapsibleSection } from '../components/CollapsibleSection';
+import { AdvancedOptionsSelector } from '../components/AdvancedOptionsSelector';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
 import { spacing as baseSpacing } from '../theme/spacing';
@@ -50,7 +52,7 @@ const PixelArtGamerScreen = () => {
   const [sceneType, setSceneType] = useState<'gaming' | 'fantasy' | 'cyberpunk' | 'nature'>((routeConfig?.sceneType as any) || 'gaming');
   const [gradientType, setGradientType] = useState<'sunset' | 'ocean' | 'forest' | 'neon'>((routeConfig?.gradientType as any) || 'sunset');
   const [showColorPicker, setShowColorPicker] = useState(false);
-  const [activeTopTab, setActiveTopTab] = useState<'tool' | 'guide'>('tool');
+  const [activeTopTab, setActiveTopTab] = useState<'tool' | 'guide' | 'history'>('tool');
   const cardScale = useRef(new Animated.Value(0.96)).current;
   const hintAnim = useRef(new Animated.Value(0)).current;
 
@@ -107,17 +109,20 @@ const PixelArtGamerScreen = () => {
     const config: any = {
       bitDepth: selectedBitDepth,
       gameStyle: selectedGameStyle,
-      backgroundStyle: selectedBackground,
     };
     
-    // Add sub-options based on selected background
+    // Map background selection to processor's expected format
     if (selectedBackground === 'color') {
-      config.backgroundColor = backgroundColor;
-      config.isTransparent = isTransparent;
-    } else if (selectedBackground === 'scene') {
-      config.sceneType = sceneType;
-    } else if (selectedBackground === 'gradient') {
-      config.gradientType = gradientType;
+      // Convert 'color' to 'transparent' or 'solid' based on isTransparent flag
+      config.backgroundStyle = isTransparent ? 'transparent' : 'solid';
+      config.transparentColor = backgroundColor;
+    } else {
+      config.backgroundStyle = selectedBackground; // 'scene' or 'gradient'
+      if (selectedBackground === 'scene') {
+        config.sceneType = sceneType;
+      } else if (selectedBackground === 'gradient') {
+        config.gradientType = gradientType;
+      }
     }
     
     const params = {
@@ -153,6 +158,26 @@ const PixelArtGamerScreen = () => {
     }
   );
 
+  // Helper to format labels (e.g., "rpg" -> "RPG", "gaming" -> "Gaming")
+  const formatLabel = (value?: string, fallback: string = ''): string => {
+    const v = (value || fallback).toString().toLowerCase();
+    if (!v.length) return '';
+    
+    // Special cases for acronyms
+    const acronyms: Record<string, string> = {
+      'rpg': 'RPG',
+      'nes': 'NES',
+      'snes': 'SNES',
+    };
+    
+    if (acronyms[v]) {
+      return acronyms[v];
+    }
+    
+    // Capitalize first letter
+    return v.charAt(0).toUpperCase() + v.slice(1);
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundSecondary }]} edges={[]}> 
       <AIToolHeader
@@ -187,15 +212,16 @@ const PixelArtGamerScreen = () => {
         tabs={[
           { id: 'tool', label: 'Tool', icon: 'create-outline' },
           { id: 'guide', label: 'Guide', icon: 'book-outline' },
+          { id: 'history', label: 'History', icon: 'time-outline' },
         ]}
         activeTab={activeTopTab}
-        onTabChange={(tabId) => setActiveTopTab(tabId as 'tool' | 'guide')}
+        onTabChange={(tabId) => setActiveTopTab(tabId as 'tool' | 'guide' | 'history')}
       />
 
       {/* Add top padding to content to account for floating tab bar */}
       <View style={{ height: 12 + 48 + 12 }} />
 
-      {activeTopTab === 'tool' ? (
+      {activeTopTab === 'tool' && (
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -287,179 +313,102 @@ const PixelArtGamerScreen = () => {
           </View>
         </View>
 
-        {/* Configuration Section - Always visible */}
+        {/* Advanced Options - Using Reusable CollapsibleSection Component */}
         <View style={{ paddingHorizontal: spacing.base, marginTop: spacing.lg }}>
           <CollapsibleSection
             title="Advanced Options"
             defaultExpanded={true}
             containerStyle={{ marginBottom: spacing.base }}
+            previewText={[
+              selectedBitDepth === '8-bit' ? '8-bit' : '16-bit',
+              formatLabel(selectedGameStyle),
+              formatLabel(selectedBackground === 'color' ? (isTransparent ? 'Transparent' : 'Color') : selectedBackground),
+            ].filter(Boolean).join(' • ')}
           >
-            {/* Bit Depth - Custom Inline Layout */}
-            <View style={[styles.bitDepthContainer]}>
-              <Text style={[styles.bitDepthLabel, {
-                color: colors.text,
-                fontSize: typography.scaled.xs,
-                fontWeight: typography.weight.medium,
-              }]}>
-                📊 Bit Depth
-              </Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={true}
-                style={styles.bitDepthScrollView}
-                contentContainerStyle={styles.bitDepthOptions}
-              >
-                {(['8-bit', '16-bit'] as const).map((bit) => {
-                  const isSelected = selectedBitDepth === bit;
-                  return (
+            {/* Bit Depth */}
+            <AdvancedOptionsSelector
+              label="Bit Depth"
+              labelIcon="📊"
+              options={[
+                { id: '8-bit', label: '8-bit', icon: '📱' },
+                { id: '16-bit', label: '16-bit', icon: '🎮' },
+              ]}
+              selectedId={selectedBitDepth}
+              onSelect={(id) => {
+                haptic.light();
+                setSelectedBitDepth(id as '8-bit' | '16-bit');
+              }}
+              layout="horizontal"
+              showSeparator={true}
+            />
+
+            {/* Game Style */}
+            <AdvancedOptionsSelector
+              label="Game Style"
+              labelIcon="🎮"
+              options={[
+                { id: 'rpg', label: 'RPG', icon: '⚔️' },
+                { id: 'platformer', label: 'Platformer', icon: '🏃' },
+                { id: 'fighter', label: 'Fighter', icon: '👊' },
+                { id: 'adventure', label: 'Adventure', icon: '🗡️' },
+                { id: 'arcade', label: 'Arcade', icon: '🎯' },
+                { id: 'indie', label: 'Indie', icon: '🎨' },
+              ]}
+              selectedId={selectedGameStyle}
+              onSelect={(id) => {
+                haptic.light();
+                setSelectedGameStyle(id as any);
+              }}
+              layout="horizontal"
+              showSeparator={true}
+            />
+
+            {/* Background */}
+            <AdvancedOptionsSelector
+              label="Background"
+              labelIcon="🖼️"
+              options={[
+                {
+                  id: 'color',
+                  label: 'Color',
+                  icon: '🎨',
+                  renderCustom: (isSelected: boolean, onPress: () => void) => (
                     <TouchableOpacity
-                      key={bit}
-                      onPress={() => {
-                        haptic.light();
-                        setSelectedBitDepth(bit);
-                      }}
+                      onPress={onPress}
                       style={[styles.bitDepthButton, {
                         backgroundColor: isSelected ? colors.primary : colors.background,
                         borderColor: isSelected ? colors.primary : colors.border,
                       }]}
                     >
-                      <Text style={styles.bitDepthIcon}>
-                        {bit === '8-bit' ? '📱' : '🎮'}
-                      </Text>
+                      <View style={[styles.colorIndicator, { 
+                        backgroundColor: isTransparent ? 'transparent' : backgroundColor,
+                        borderWidth: isTransparent ? 1 : 0,
+                        borderColor: colors.border,
+                      }]} />
                       <Text style={[styles.bitDepthText, {
                         color: isSelected ? '#FFFFFF' : colors.text,
                         fontSize: typography.scaled.xs,
                         fontWeight: typography.weight.medium,
                       }]}>
-                        {bit}
+                        Color
                       </Text>
                     </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </View>
-
-            {/* Separator Line */}
-            <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
-
-            {/* Game Style - Custom Inline Layout */}
-            <View style={[styles.bitDepthContainer]}>
-              <Text style={[styles.bitDepthLabel, {
-                color: colors.text,
-                fontSize: typography.scaled.xs,
-                fontWeight: typography.weight.medium,
-              }]}>
-                🎮 Game Style
-              </Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={true}
-                style={styles.bitDepthScrollView}
-                contentContainerStyle={styles.bitDepthOptions}
-              >
-                {([
-                  { id: 'rpg', label: 'RPG', icon: '⚔️' },
-                  { id: 'platformer', label: 'Platformer', icon: '🏃' },
-                  { id: 'fighter', label: 'Fighter', icon: '👊' },
-                  { id: 'adventure', label: 'Adventure', icon: '🗡️' },
-                  { id: 'arcade', label: 'Arcade', icon: '🎯' },
-                  { id: 'indie', label: 'Indie', icon: '🎨' },
-                ] as const).map((style) => {
-                  const isSelected = selectedGameStyle === style.id;
-                  return (
-                    <TouchableOpacity
-                      key={style.id}
-                      onPress={() => {
-                        haptic.light();
-                        setSelectedGameStyle(style.id as any);
-                      }}
-                      style={[styles.bitDepthButton, {
-                        backgroundColor: isSelected ? colors.primary : colors.background,
-                        borderColor: isSelected ? colors.primary : colors.border,
-                      }]}
-                    >
-                      <Text style={styles.bitDepthIcon}>{style.icon}</Text>
-                      <Text style={[styles.bitDepthText, {
-                        color: isSelected ? '#FFFFFF' : colors.text,
-                        fontSize: typography.scaled.xs,
-                        fontWeight: typography.weight.medium,
-                      }]}>
-                        {style.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </View>
-
-            {/* Separator Line */}
-            <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
-
-            {/* Background - Custom Inline Layout */}
-            <View style={[styles.bitDepthContainer]}>
-              <Text style={[styles.bitDepthLabel, {
-                color: colors.text,
-                fontSize: typography.scaled.xs,
-                fontWeight: typography.weight.medium,
-              }]}>
-                🖼️ Background
-              </Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={true}
-                style={styles.bitDepthScrollView}
-                contentContainerStyle={styles.bitDepthOptions}
-              >
-                {[
-                  { 
-                    id: 'color', 
-                    label: 'Color', 
-                    icon: '🎨',
-                  },
-                  { id: 'scene', label: 'Gaming Scene', icon: '🎮' },
-                  { id: 'gradient', label: 'Gradient', icon: '🌈' },
-                ].map((bg) => {
-                  const isSelected = selectedBackground === bg.id;
-                  const isColorOption = bg.id === 'color';
-                  
-                  return (
-                    <TouchableOpacity
-                      key={bg.id}
-                      onPress={() => {
-                        haptic.light();
-                        if (isColorOption) {
-                          // Set color as selected (don't open picker immediately)
-                          setSelectedBackground('color');
-                        } else {
-                          setSelectedBackground(bg.id as any);
-                        }
-                      }}
-                      style={[styles.bitDepthButton, {
-                        backgroundColor: isSelected ? colors.primary : colors.background,
-                        borderColor: isSelected ? colors.primary : colors.border,
-                      }]}
-                    >
-                      {isColorOption ? (
-                        <View style={[styles.colorIndicator, { 
-                          backgroundColor: isTransparent ? 'transparent' : backgroundColor,
-                          borderWidth: isTransparent ? 1 : 0,
-                          borderColor: colors.border,
-                        }]} />
-                      ) : (
-                        <Text style={styles.bitDepthIcon}>{bg.icon}</Text>
-                      )}
-                      <Text style={[styles.bitDepthText, {
-                        color: isSelected ? '#FFFFFF' : colors.text,
-                        fontSize: typography.scaled.xs,
-                        fontWeight: typography.weight.medium,
-                      }]}>
-                        {bg.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </View>
+                  ),
+                },
+                { id: 'scene', label: 'Gaming Scene', icon: '🎮' },
+                { id: 'gradient', label: 'Gradient', icon: '🌈' },
+              ]}
+              selectedId={selectedBackground}
+              onSelect={(id) => {
+                haptic.light();
+                if (id === 'color') {
+                  setSelectedBackground('color');
+                } else {
+                  setSelectedBackground(id as any);
+                }
+              }}
+              layout="horizontal"
+            />
 
             {/* Background Sub-options */}
             {selectedBackground === 'color' && (
@@ -502,7 +451,7 @@ const PixelArtGamerScreen = () => {
                   </TouchableOpacity>
                 </View>
                 {/* Transparent Toggle */}
-                <View style={[styles.bitDepthContainer]}>
+                <View style={[styles.bitDepthContainer, { marginTop: spacing.sm }]}>
                   <Text style={[styles.bitDepthLabel, {
                     color: colors.text,
                     fontSize: typography.scaled.xs,
@@ -534,122 +483,51 @@ const PixelArtGamerScreen = () => {
             )}
 
             {selectedBackground === 'scene' && (
-              <View style={[styles.bitDepthContainer]}>
-                <Text style={[styles.bitDepthLabel, {
-                  color: colors.text,
-                  fontSize: typography.scaled.xs,
-                  fontWeight: typography.weight.medium,
-                }]}>
-                  🎮 Type
-                </Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={true}
-                  style={styles.bitDepthScrollView}
-                  contentContainerStyle={styles.bitDepthOptions}
-                >
-                  {([
-                    { id: 'gaming', label: 'Gaming', icon: '🎮' },
-                    { id: 'fantasy', label: 'Fantasy', icon: '🧙' },
-                    { id: 'cyberpunk', label: 'Cyberpunk', icon: '🤖' },
-                    { id: 'nature', label: 'Nature', icon: '🌲' },
-                  ] as const).map((scene) => {
-                    const isSelected = sceneType === scene.id;
-                    return (
-                      <TouchableOpacity
-                        key={scene.id}
-                        onPress={() => {
-                          haptic.light();
-                          setSceneType(scene.id as any);
-                        }}
-                        style={[styles.bitDepthButton, {
-                          backgroundColor: isSelected ? colors.primary : colors.background,
-                          borderColor: isSelected ? colors.primary : colors.border,
-                        }]}
-                      >
-                        <Text style={styles.bitDepthIcon}>{scene.icon}</Text>
-                        <Text style={[styles.bitDepthText, {
-                          color: isSelected ? '#FFFFFF' : colors.text,
-                          fontSize: typography.scaled.xs,
-                          fontWeight: typography.weight.medium,
-                        }]}>
-                          {scene.label}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              </View>
+              <AdvancedOptionsSelector
+                label="Scene Type"
+                labelIcon="🎮"
+                options={[
+                  { id: 'gaming', label: 'Gaming', icon: '🎮' },
+                  { id: 'fantasy', label: 'Fantasy', icon: '🧙' },
+                  { id: 'cyberpunk', label: 'Cyberpunk', icon: '🤖' },
+                  { id: 'nature', label: 'Nature', icon: '🌲' },
+                ]}
+                selectedId={sceneType}
+                onSelect={(id) => {
+                  haptic.light();
+                  setSceneType(id as any);
+                }}
+                layout="horizontal"
+              />
             )}
 
             {selectedBackground === 'gradient' && (
-              <View style={[styles.bitDepthContainer]}>
-                <Text style={[styles.bitDepthLabel, {
-                  color: colors.text,
-                  fontSize: typography.scaled.xs,
-                  fontWeight: typography.weight.medium,
-                }]}>
-                  🌈 Gradient Type
-                </Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={true}
-                  style={styles.bitDepthScrollView}
-                  contentContainerStyle={styles.bitDepthOptions}
-                >
-                  {([
-                    { id: 'sunset', label: 'Sunset', icon: '🌅' },
-                    { id: 'ocean', label: 'Ocean', icon: '🌊' },
-                    { id: 'forest', label: 'Forest', icon: '🌲' },
-                    { id: 'neon', label: 'Neon', icon: '💫' },
-                  ] as const).map((gradient) => {
-                    const isSelected = gradientType === gradient.id;
-                    return (
-                      <TouchableOpacity
-                        key={gradient.id}
-                        onPress={() => {
-                          haptic.light();
-                          setGradientType(gradient.id as any);
-                        }}
-                        style={[styles.bitDepthButton, {
-                          backgroundColor: isSelected ? colors.primary : colors.background,
-                          borderColor: isSelected ? colors.primary : colors.border,
-                        }]}
-                      >
-                        <Text style={styles.bitDepthIcon}>{gradient.icon}</Text>
-                        <Text style={[styles.bitDepthText, {
-                          color: isSelected ? '#FFFFFF' : colors.text,
-                          fontSize: typography.scaled.xs,
-                          fontWeight: typography.weight.medium,
-                        }]}>
-                          {gradient.label}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              </View>
+              <AdvancedOptionsSelector
+                label="Gradient Type"
+                labelIcon="🌈"
+                options={[
+                  { id: 'sunset', label: 'Sunset', icon: '🌅' },
+                  { id: 'ocean', label: 'Ocean', icon: '🌊' },
+                  { id: 'forest', label: 'Forest', icon: '🌲' },
+                  { id: 'neon', label: 'Neon', icon: '💫' },
+                ]}
+                selectedId={gradientType}
+                onSelect={(id) => {
+                  haptic.light();
+                  setGradientType(id as any);
+                }}
+                layout="horizontal"
+              />
             )}
           </CollapsibleSection>
         </View>
-
-        {/* Information Card - kept for quick reference */}
-        <AIToolInfoCard
-          icon="game-controller-outline"
-          whatDescription="Transform your photo into a retro 16-bit video game sprite in the style of classic RPG games like Final Fantasy."
-          howDescription="Our AI analyzes your reference photo and creates a pixelated character sprite in classic 16-bit RPG style."
-          howItems={[
-            { text: 'Accurate representation of your photo' },
-            { text: 'Authentic 16-bit pixel art style' },
-            { text: 'Classic RPG character presentation' },
-          ]}
-        />
         
         {/* Extra bottom padding to ensure scrolling */}
         <View style={{ height: spacing.xl }} />
       </ScrollView>
-      ) : (
-        /* Guide View */
+      )}
+
+      {activeTopTab === 'guide' && (
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={[
@@ -665,12 +543,13 @@ const PixelArtGamerScreen = () => {
               { id: 'examples', label: 'Examples', icon: 'images-outline' },
               { id: 'info', label: 'Info', icon: 'information-circle-outline' },
             ]}
+            defaultTab="guide"
             containerStyle={{ marginHorizontal: spacing.base, marginTop: spacing.lg }}
           >
             {/* Guide Tab */}
             <ToolGuideTab
               title="How to Use"
-              content="Transform yourself into a retro video game character sprite with authentic 16-bit pixel art styling.\n\n📸 Step 1: Select Your Photo\nChoose a portrait photo from your library or take a new one. Photos with clear faces work best.\n\n🎮 Step 2: Choose Game Style\nSelect from authentic game styles:\nRPG - Classic Final Fantasy style\nPlatformer - Side-scrolling adventure hero\nArcade - Retro arcade game character\nFighter - Fighting game champion\nAdventure - Epic quest protagonist\nIndie - Modern indie game aesthetic\n\n🎨 Step 3: Set Bit Depth\n8-bit - Classic retro look, more pixelated\n16-bit - More detail, smoother appearance\n\n🖼️ Step 4: Configure Background\nColor - Solid color (with transparency option)\nScene - Gaming-themed background\nGradient - Colorful gradient backdrop\n\n✨ Step 5: Generate\nTap Create Pixel Art Sprite and wait 5-15 seconds for your retro game character.\n\n🎯 Pro Tips\nPortrait photos with clear faces produce the best sprites.\n16-bit works great for detailed photos.\nTransparent backgrounds are perfect for game integration.\nRPG style works beautifully with fantasy-themed photos.\nEach game style has unique characteristics. Try them all.\nPerfect for creating game avatars or unique profile pictures."
+              content={`Transform yourself into a retro video game character sprite with authentic 16-bit pixel art styling.\n\n📸 Step 1: Select Your Photo\nChoose a portrait photo from your library or take a new one. Photos with clear faces work best.\n\n🎮 Step 2: Choose Game Style\nSelect from authentic game styles:\nRPG - Classic Final Fantasy style\nPlatformer - Side-scrolling adventure hero\nArcade - Retro arcade game character\nFighter - Fighting game champion\nAdventure - Epic quest protagonist\nIndie - Modern indie game aesthetic\n\n🎨 Step 3: Set Bit Depth\n8-bit - Classic retro look, more pixelated\n16-bit - More detail, smoother appearance\n\n🖼️ Step 4: Configure Background\nColor - Solid color (with transparency option)\nScene - Gaming-themed background\nGradient - Colorful gradient backdrop\n\n✨ Step 5: Generate\nTap Create Pixel Art Sprite and wait 5-15 seconds for your retro game character.\n\n🎯 Pro Tips\nPortrait photos with clear faces produce the best sprites.\n16-bit works great for detailed photos.\nTransparent backgrounds are perfect for game integration.\nRPG style works beautifully with fantasy-themed photos.\nEach game style has unique characteristics. Try them all.\nPerfect for creating game avatars or unique profile pictures.`}
               images={[
                 // Add your guide images here when ready
                 // { source: { uri: 'https://example.com/guide-image.jpg' }, caption: 'Example: RPG style sprite' },
@@ -733,6 +612,10 @@ const PixelArtGamerScreen = () => {
           {/* Extra bottom padding */}
           <View style={{ height: spacing.xl }} />
         </ScrollView>
+      )}
+
+      {activeTopTab === 'history' && (
+        <ToolHistoryTab editMode={EditMode.PIXEL_ART_GAMER} />
       )}
 
       <ActionButtonBar
@@ -1003,8 +886,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: baseSpacing.md,
     paddingVertical: 0,
-    minHeight: 44,
-    height: 44,
+    minHeight: 36,
   },
   bitDepthLabel: {
     // Dynamic styles applied inline
@@ -1037,9 +919,9 @@ const styles = StyleSheet.create({
   },
   separatorLine: {
     height: StyleSheet.hairlineWidth,
-    marginLeft: -baseSpacing.base,
-    marginRight: -baseSpacing.base,
-    marginVertical: baseSpacing.xs,
+    marginLeft: -baseSpacing.sm,
+    marginRight: -baseSpacing.sm,
+    marginVertical: baseSpacing.xs / 2,
   },
 });
 

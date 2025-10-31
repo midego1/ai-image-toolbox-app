@@ -18,6 +18,7 @@ import { ToolStatsBar } from '../components/ToolStatsBar';
 import { TopTabSwitcher } from '../components/TopTabSwitcher';
 import { ToolGuideTab } from '../components/ToolGuideTab';
 import { ToolExamplesTab } from '../components/ToolExamplesTab';
+import { ToolHistoryTab } from '../components/ToolHistoryTab';
 import { TabView } from '../components/TabView';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
@@ -44,7 +45,7 @@ const VirtualTryOnSelectionScreen = () => {
   const [pendingClothingUri, setPendingClothingUri] = useState<string | null>(null);
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
   const [showImagePreview, setShowImagePreview] = useState(false);
-  const [activeTopTab, setActiveTopTab] = useState<'tool' | 'guide'>('tool');
+  const [activeTopTab, setActiveTopTab] = useState<'tool' | 'guide' | 'history'>('tool');
   const cardScale = useRef(new Animated.Value(0.96)).current;
   const hintAnim = useRef(new Animated.Value(0)).current;
 
@@ -347,15 +348,16 @@ const VirtualTryOnSelectionScreen = () => {
         tabs={[
           { id: 'tool', label: 'Tool', icon: 'create-outline' },
           { id: 'guide', label: 'Guide', icon: 'book-outline' },
+          { id: 'history', label: 'History', icon: 'time-outline' },
         ]}
         activeTab={activeTopTab}
-        onTabChange={(tabId) => setActiveTopTab(tabId as 'tool' | 'guide')}
+        onTabChange={(tabId) => setActiveTopTab(tabId as 'tool' | 'guide' | 'history')}
       />
 
       {/* Add top padding to content to account for floating tab bar */}
       <View style={{ height: 12 + 48 + 12 }} />
 
-      {activeTopTab === 'tool' ? (
+      {activeTopTab === 'tool' && (
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -452,18 +454,6 @@ const VirtualTryOnSelectionScreen = () => {
           </View>
         </View>
 
-        {/* Information Card */}
-        <AIToolInfoCard
-          icon="shirt-outline"
-          whatDescription="Try on clothing items virtually with realistic fit and appearance. Upload a person photo and one or more clothing items to see how they look together."
-          howDescription="Our AI analyzes the person's pose and body structure, then accurately places clothing items with realistic fit, shadows, and lighting to create a natural try-on effect."
-          howItems={[
-            { text: 'Realistic fit and appearance' },
-            { text: 'Multiple clothing items supported' },
-            { text: 'Natural lighting and shadows' },
-          ]}
-        />
-
         {/* Clothing Selection Section */}
         <View style={{ marginHorizontal: spacing.base, marginTop: spacing.lg }}>
           <View style={[styles.sectionContainer, {
@@ -512,8 +502,9 @@ const VirtualTryOnSelectionScreen = () => {
           </View>
         </View>
       </ScrollView>
-      ) : (
-        /* Guide View */
+      )}
+
+      {activeTopTab === 'guide' && (
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={[
@@ -529,12 +520,13 @@ const VirtualTryOnSelectionScreen = () => {
               { id: 'examples', label: 'Examples', icon: 'images-outline' },
               { id: 'info', label: 'Info', icon: 'information-circle-outline' },
             ]}
+            defaultTab="guide"
             containerStyle={{ marginHorizontal: spacing.base, marginTop: spacing.lg }}
           >
             {/* Guide Tab */}
             <ToolGuideTab
               title="How to Use Virtual Try-On"
-              content="Try on clothing virtually with realistic fit, shadows, and natural appearance. Perfect for shopping decisions.\n\n👤 Step 1: Select Person Photo\nChoose a full-body photo from your library or take a new one. Full-body photos provide the most accurate fitting.\n\n👕 Step 2: Add Clothing Items\nTap Add Clothing Item to upload clothing photos. You can add multiple items to try on complete outfits:\nShirts, T-shirts, Blouses\nPants, Jeans, Shorts\nDresses, Skirts\nJackets, Coats\nAccessories\n\n🏷️ Step 3: Specify Clothing Type\nFor each item, select the correct clothing type. This helps the AI place and fit items accurately.\n\n✨ Step 4: Generate Try-On\nTap Generate Try-On and wait 12-18 seconds. The AI will:\nAnalyze body pose and structure\nFit clothing with realistic wrinkles and draping\nApply natural lighting and shadows\nBlend everything seamlessly\n\n🎯 Pro Tips\nFull-body, front-facing photos work best.\nClear, well-lit photos improve accuracy.\nAdd multiple items to see complete outfit combinations.\nSpecify correct clothing type for best fit.\nWorks great for e-commerce and personal shopping.\nNatural lighting in photos produces more realistic results."
+              content={`Try on clothing items virtually with realistic fit and appearance.\n\n📸 Step 1: Select Person Photo\nChoose a photo showing a person (full body or upper body works best). Clear photos with good lighting produce better results.\n\n👕 Step 2: Add Clothing Items\nAdd one or more clothing items:\n• Tap "Add Clothing Item"\n• Choose from your library or take a photo\n• You can add multiple items for a complete outfit\n• Clothing items should be photographed on a plain background\n\n✨ Step 3: Generate Try-On\nTap Generate Try-On and wait 10-15 seconds. The AI will place the clothing on the person with realistic fit, shadows, and lighting.\n\n🎯 Pro Tips\n• Full-body or upper-body photos work best\n• Clothing items on plain backgrounds blend better\n• Multiple items create complete outfit looks\n• The AI automatically adjusts fit and lighting\n• Natural poses produce more realistic results`}
             />
 
             {/* Examples Tab */}
@@ -586,6 +578,10 @@ const VirtualTryOnSelectionScreen = () => {
           {/* Extra bottom padding */}
           <View style={{ height: spacing.xl }} />
         </ScrollView>
+      )}
+
+      {activeTopTab === 'history' && (
+        <ToolHistoryTab editMode={EditMode.VIRTUAL_TRY_ON} />
       )}
 
       <ActionButtonBar

@@ -49,3 +49,41 @@ export function isApiKeyConfigured(): boolean {
   const key = getReplicateApiKey();
   return key.length > 0 && key !== 'YOUR_REPLICATE_API_KEY';
 }
+
+/**
+ * Get Kie.ai API key from app configuration
+ */
+export function getKieAIApiKey(): string {
+  // Try camelCase first
+  let apiKey = Constants.expoConfig?.extra?.kieAIApiKey;
+  
+  // If not found, try uppercase
+  if (!apiKey || typeof apiKey !== 'string' || apiKey.length === 0) {
+    apiKey = Constants.expoConfig?.extra?.KIE_AI_API_KEY;
+  }
+  
+  // Check process.env as fallback
+  if (!apiKey || typeof apiKey !== 'string' || apiKey.length === 0) {
+    // @ts-ignore
+    const envKey = typeof process !== 'undefined' && process.env?.KIE_AI_API_KEY;
+    if (envKey && typeof envKey === 'string') {
+      apiKey = envKey;
+    }
+  }
+  
+  if (apiKey && typeof apiKey === 'string' && apiKey.length > 0) {
+    if (apiKey !== 'YOUR_KIE_AI_API_KEY' && apiKey.trim().length > 0) {
+      return apiKey.trim();
+    }
+  }
+  
+  return '';
+}
+
+/**
+ * Check if Kie.ai API key is configured
+ */
+export function isKieAIKeyConfigured(): boolean {
+  const key = getKieAIApiKey();
+  return key.length > 0 && key !== 'YOUR_KIE_AI_API_KEY';
+}

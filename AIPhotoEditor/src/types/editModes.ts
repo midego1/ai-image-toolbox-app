@@ -8,6 +8,7 @@ export enum EditModeCategory {
   ENHANCE = 'enhance',
   EDIT = 'edit',
   STYLIZE = 'stylize',
+  VIDEO = 'video',
 }
 
 export enum EditMode {
@@ -25,6 +26,11 @@ export enum EditMode {
   PROFESSIONAL_HEADSHOTS = 'professional_headshots',
   POP_FIGURE = 'pop_figure',
   PIXEL_ART_GAMER = 'pixel_art_gamer',
+  // Video modes
+  TEXT_TO_VIDEO_VEO = 'text_to_video_veo',
+  TEXT_TO_VIDEO_VEO_FAST = 'text_to_video_veo_fast',
+  TEXT_TO_VIDEO_KLING = 'text_to_video_kling',
+  EDIT_VIDEO_RUNWAY = 'edit_video_runway',
 }
 
 export interface EditModeData {

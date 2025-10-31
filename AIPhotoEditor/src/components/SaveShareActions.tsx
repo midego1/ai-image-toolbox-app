@@ -47,7 +47,7 @@ export const SaveShareActions: React.FC<SaveShareActionsProps> = ({
   compact = false,
 }) => {
   const { theme } = useTheme();
-  const { colors, typography, spacing } = theme;
+  const { colors, typography, spacing, isDark } = theme;
   const insets = useSafeAreaInsets();
 
   // Calculate bottom offset to account for floating tab bar
@@ -80,10 +80,11 @@ export const SaveShareActions: React.FC<SaveShareActionsProps> = ({
 
   // Floating variant - absolutely positioned, overlays content
   if (variant === 'floating') {
-    // Use a darker, richer background with blur effect
-    const barBackgroundColor = colors.isDark 
-      ? 'rgba(28, 28, 30, 0.95)' // Dark with slight transparency
-      : 'rgba(255, 255, 255, 0.95)'; // Light with slight transparency
+    // Compact design with icon + text labels - separate buttons
+    const buttonHeight = 44; // Minimum touch target (accessibility)
+    const iconSize = 18;
+    const buttonWidth = 90;
+    const gap = spacingConstants.sm;
     
     return (
       <View
@@ -91,123 +92,108 @@ export const SaveShareActions: React.FC<SaveShareActionsProps> = ({
           styles.floatingContainer,
           {
             bottom: floatingBottom,
-            left: spacing.base,
-            right: spacing.base,
+            left: spacing['4xl'],
+            right: spacing['4xl'],
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: gap,
           },
           containerStyle,
         ]}
         pointerEvents="box-none"
       >
-        <View
+        {/* Save Button - Icon + Text */}
+        <TouchableOpacity
           style={[
-            styles.floatingBar,
+            styles.floatingButton,
             {
-              backgroundColor: barBackgroundColor,
-              borderRadius: compact ? 20 : 28,
+              backgroundColor: hasSaved 
+                ? colors.primary + '20' 
+                : isDark 
+                  ? 'rgba(28, 28, 30, 0.95)' 
+                  : 'rgba(255, 255, 255, 0.95)',
+              paddingHorizontal: spacingConstants.sm,
+              paddingVertical: spacingConstants.xs,
+              height: buttonHeight,
+              borderRadius: 22,
+              minWidth: buttonWidth,
               shadowColor: '#000',
-              shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: 0.3,
-              shadowRadius: 16,
-              elevation: 12,
-              borderWidth: 1,
-              borderColor: colors.isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-              paddingHorizontal: compact ? spacingConstants.xs / 2 : spacingConstants.xs,
-              paddingVertical: compact ? spacingConstants.xs / 2 : spacingConstants.xs,
-              minHeight: compact ? 44 : 56,
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.25,
+              shadowRadius: 12,
+              elevation: 10,
             },
+            (isSaving || hasSaved) && { opacity: hasSaved ? 1 : 0.6 },
           ]}
+          onPress={handleSave}
+          disabled={isSaving || hasSaved}
+          activeOpacity={0.7}
         >
-          {/* Save Button */}
-          <TouchableOpacity
-            style={[
-              styles.floatingButton,
-              {
-                backgroundColor: hasSaved 
-                  ? colors.primary + '20' 
-                  : colors.isDark 
-                    ? 'rgba(255, 255, 255, 0.08)' 
-                    : 'rgba(0, 0, 0, 0.04)',
-                paddingVertical: compact ? spacingConstants.xs / 2 : spacingConstants.sm,
-                paddingHorizontal: compact ? spacingConstants.xs : spacingConstants.sm,
-                minHeight: compact ? 36 : 48,
-                borderRadius: 20,
-              },
-              (isSaving || hasSaved) && { opacity: hasSaved ? 1 : 0.6 },
-            ]}
-            onPress={handleSave}
-            disabled={isSaving || hasSaved}
-            activeOpacity={0.7}
-          >
-            {isSaving ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <View style={styles.floatingButtonContent}>
-                <Ionicons
-                  name={hasSaved ? 'checkmark-circle' : 'download-outline'}
-                  size={compact ? 18 : 22}
-                  color={hasSaved ? colors.primary : colors.text}
-                />
-                <Text
-                  style={[
-                    styles.floatingButtonLabel,
-                    {
-                      color: hasSaved ? colors.primary : colors.text,
-                      fontSize: compact ? typography.scaled.xs * 0.85 : typography.scaled.xs,
-                      fontWeight: typography.weight.semibold,
-                    },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {hasSaved ? 'Saved' : 'Save'}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-
-          {/* Divider */}
-          <View style={[styles.divider, { 
-            backgroundColor: colors.isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)',
-            height: compact ? 24 : 32,
-          }]} />
-
-          {/* Share Button */}
-          <TouchableOpacity
-            style={[
-              styles.floatingButton,
-              {
-                backgroundColor: colors.primary,
-                paddingVertical: compact ? spacingConstants.xs / 2 : spacingConstants.sm,
-                paddingHorizontal: compact ? spacingConstants.xs : spacingConstants.sm,
-                minHeight: compact ? 36 : 48,
-                borderRadius: 20,
-                shadowColor: colors.primary,
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.4,
-                shadowRadius: 8,
-                elevation: 6,
-              },
-            ]}
-            onPress={handleShare}
-            activeOpacity={0.8}
-          >
+          {isSaving ? (
+            <ActivityIndicator size="small" color={colors.primary} />
+          ) : (
             <View style={styles.floatingButtonContent}>
-              <Ionicons name="share-outline" size={compact ? 18 : 22} color="#FFFFFF" />
+              <Ionicons
+                name={hasSaved ? 'checkmark-circle' : 'download-outline'}
+                size={iconSize}
+                color={hasSaved ? colors.primary : colors.text}
+              />
               <Text
                 style={[
                   styles.floatingButtonLabel,
                   {
-                    color: '#FFFFFF',
-                    fontSize: compact ? typography.scaled.xs * 0.85 : typography.scaled.xs,
+                    color: hasSaved ? colors.primary : colors.text,
+                    fontSize: typography.scaled.sm,
                     fontWeight: typography.weight.semibold,
                   },
                 ]}
                 numberOfLines={1}
               >
-                Share
+                {hasSaved ? 'Saved' : 'Save'}
               </Text>
             </View>
-          </TouchableOpacity>
-        </View>
+          )}
+        </TouchableOpacity>
+
+        {/* Share Button - Icon + Text with primary background */}
+        <TouchableOpacity
+          style={[
+            styles.floatingButton,
+            {
+              backgroundColor: colors.primary,
+              paddingHorizontal: spacingConstants.sm,
+              paddingVertical: spacingConstants.xs,
+              height: buttonHeight,
+              borderRadius: 22,
+              minWidth: buttonWidth,
+              shadowColor: colors.primary,
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.35,
+              shadowRadius: 12,
+              elevation: 10,
+            },
+          ]}
+          onPress={handleShare}
+          activeOpacity={0.8}
+        >
+          <View style={styles.floatingButtonContent}>
+            <Ionicons name="share-outline" size={iconSize} color="#FFFFFF" />
+            <Text
+              style={[
+                styles.floatingButtonLabel,
+                {
+                  color: '#FFFFFF',
+                  fontSize: typography.scaled.sm,
+                  fontWeight: typography.weight.semibold,
+                },
+              ]}
+              numberOfLines={1}
+            >
+              Share
+            </Text>
+          </View>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -323,31 +309,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacingConstants.xs,
-    paddingVertical: spacingConstants.xs,
-    minHeight: 56,
   },
   floatingButton: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacingConstants.sm,
-    paddingHorizontal: spacingConstants.sm,
-    borderRadius: 24,
-    minHeight: 48,
   },
   floatingButtonContent: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
   },
   floatingButtonLabel: {
-    marginTop: 2,
-  },
-  divider: {
-    width: StyleSheet.hairlineWidth,
-    height: 32,
-    marginHorizontal: spacingConstants.xs,
+    marginLeft: 4,
   },
   // Inline variant styles
   inlineContainer: {

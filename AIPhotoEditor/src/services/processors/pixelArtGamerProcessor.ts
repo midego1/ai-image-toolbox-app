@@ -26,7 +26,8 @@ export class PixelArtGamerProcessor extends BaseProcessor {
       const bitDepth = (config?.bitDepth as string) || '16-bit';
       const gameStyle = (config?.gameStyle as string) || 'rpg';
       const backgroundStyle = (config?.backgroundStyle as string) || 'transparent';
-      const transparentColor = (config?.transparentColor as string) || '#FFFFFF';
+      // Support both transparentColor and backgroundColor (for backward compatibility)
+      const transparentColor = (config?.transparentColor as string) || (config?.backgroundColor as string) || '#FFFFFF';
       const sceneType = (config?.sceneType as string) || 'gaming';
       const gradientType = (config?.gradientType as string) || 'sunset';
       

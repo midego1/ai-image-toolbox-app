@@ -10,6 +10,7 @@ export interface TopTab {
   id: string;
   label: string;
   icon?: keyof typeof Ionicons.glyphMap;
+  badge?: string; // Optional badge text (e.g., count)
 }
 
 export interface TopTabSwitcherProps {
@@ -87,6 +88,30 @@ export const TopTabSwitcher: React.FC<TopTabSwitcherProps> = ({
                   >
                     {tab.label}
                   </Text>
+                  {tab.badge && (
+                    <View
+                      style={[
+                        styles.badge,
+                        {
+                          backgroundColor: isActive ? colors.primary : colors.textSecondary,
+                          marginLeft: spacing.xs / 2,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.badgeText,
+                          {
+                            color: '#FFFFFF',
+                            fontSize: typography.scaled.xs,
+                            fontWeight: typography.weight.bold,
+                          },
+                        ]}
+                      >
+                        {tab.badge}
+                      </Text>
+                    </View>
+                  )}
                 </View>
               </TouchableOpacity>
             );
@@ -140,6 +165,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tabLabel: {
+    // Dynamic styles applied inline
+  },
+  badge: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
     // Dynamic styles applied inline
   },
 });

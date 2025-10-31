@@ -12,12 +12,13 @@ import { AIToolInfoCard } from '../components/AIToolInfoCard';
 import { Button } from '../components/Button';
 import { CaptureLibraryButtons } from '../components/CaptureLibraryButtons';
 import { ActionButtonBar } from '../components/ActionButtonBar';
-import { OptionGroup } from '../components/OptionGroup';
+import { AdvancedOptionsSelector } from '../components/AdvancedOptionsSelector';
 import { CollapsibleSection } from '../components/CollapsibleSection';
 import { ToolStatsBar } from '../components/ToolStatsBar';
 import { TopTabSwitcher } from '../components/TopTabSwitcher';
 import { ToolGuideTab } from '../components/ToolGuideTab';
 import { ToolExamplesTab } from '../components/ToolExamplesTab';
+import { ToolHistoryTab } from '../components/ToolHistoryTab';
 import { TabView } from '../components/TabView';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
@@ -40,7 +41,7 @@ const ProfessionalHeadshotsScreen = () => {
   const [headshotStyle, setHeadshotStyle] = useState<'corporate' | 'creative' | 'casual' | 'executive'>('corporate');
   const [backgroundStyle, setBackgroundStyle] = useState<'office' | 'studio' | 'outdoor' | 'neutral'>('neutral');
   const [lightingStyle, setLightingStyle] = useState<'professional' | 'soft' | 'dramatic' | 'natural'>('professional');
-  const [activeTopTab, setActiveTopTab] = useState<'tool' | 'guide'>('tool');
+  const [activeTopTab, setActiveTopTab] = useState<'tool' | 'guide' | 'history'>('tool');
   const cardScale = useRef(new Animated.Value(0.96)).current;
   const hintAnim = useRef(new Animated.Value(0)).current;
 
@@ -113,15 +114,16 @@ const ProfessionalHeadshotsScreen = () => {
         tabs={[
           { id: 'tool', label: 'Tool', icon: 'create-outline' },
           { id: 'guide', label: 'Guide', icon: 'book-outline' },
+          { id: 'history', label: 'History', icon: 'time-outline' },
         ]}
         activeTab={activeTopTab}
-        onTabChange={(tabId) => setActiveTopTab(tabId as 'tool' | 'guide')}
+        onTabChange={(tabId) => setActiveTopTab(tabId as 'tool' | 'guide' | 'history')}
       />
 
       {/* Add top padding to content to account for floating tab bar */}
       <View style={{ height: 12 + 48 + 12 }} />
 
-      {activeTopTab === 'tool' ? (
+      {activeTopTab === 'tool' && (
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -221,58 +223,52 @@ const ProfessionalHeadshotsScreen = () => {
             title="Advanced Options"
             defaultExpanded={true}
             containerStyle={{ marginBottom: spacing.base }}
+            previewText={[
+              headshotStyle.charAt(0).toUpperCase() + headshotStyle.slice(1),
+              backgroundStyle.charAt(0).toUpperCase() + backgroundStyle.slice(1),
+              lightingStyle.charAt(0).toUpperCase() + lightingStyle.slice(1),
+            ].filter(Boolean).join(' • ')}
           >
-            <OptionGroup
-              selectors={[
-                {
-                  label: 'Headshot Style',
-                  options: ['corporate', 'creative', 'casual', 'executive'].map(style => ({
-                    id: style,
-                    label: style.charAt(0).toUpperCase() + style.slice(1),
-                  })),
-                  selectedId: headshotStyle,
-                  onSelect: (id) => setHeadshotStyle(id as any),
-                  columns: 4,
-                },
-                {
-                  label: 'Background',
-                  options: ['office', 'studio', 'outdoor', 'neutral'].map(style => ({
-                    id: style,
-                    label: style.charAt(0).toUpperCase() + style.slice(1),
-                  })),
-                  selectedId: backgroundStyle,
-                  onSelect: (id) => setBackgroundStyle(id as any),
-                  columns: 4,
-                },
-                {
-                  label: 'Lighting',
-                  options: ['professional', 'soft', 'dramatic', 'natural'].map(style => ({
-                    id: style,
-                    label: style.charAt(0).toUpperCase() + style.slice(1),
-                  })),
-                  selectedId: lightingStyle,
-                  onSelect: (id) => setLightingStyle(id as any),
-                  columns: 4,
-                },
-              ]}
+            <AdvancedOptionsSelector
+              label="Headshot Style"
+              options={['corporate', 'creative', 'casual', 'executive'].map(style => ({
+                id: style,
+                label: style.charAt(0).toUpperCase() + style.slice(1),
+              }))}
+              selectedId={headshotStyle}
+              onSelect={(id) => setHeadshotStyle(id as any)}
+              layout="horizontal"
+              showSeparator={true}
+            />
+
+            <AdvancedOptionsSelector
+              label="Background"
+              options={['office', 'studio', 'outdoor', 'neutral'].map(style => ({
+                id: style,
+                label: style.charAt(0).toUpperCase() + style.slice(1),
+              }))}
+              selectedId={backgroundStyle}
+              onSelect={(id) => setBackgroundStyle(id as any)}
+              layout="horizontal"
+              showSeparator={true}
+            />
+
+            <AdvancedOptionsSelector
+              label="Lighting"
+              options={['professional', 'soft', 'dramatic', 'natural'].map(style => ({
+                id: style,
+                label: style.charAt(0).toUpperCase() + style.slice(1),
+              }))}
+              selectedId={lightingStyle}
+              onSelect={(id) => setLightingStyle(id as any)}
+              layout="horizontal"
             />
           </CollapsibleSection>
         </View>
-
-        {/* Information Card */}
-        <AIToolInfoCard
-          icon="person-outline"
-          whatDescription="Create professional headshots perfect for LinkedIn, resumes, and business profiles. Enhance your appearance while preserving your identity with AI-powered face enhancement and background replacement."
-          howDescription="Our AI enhances facial clarity, improves lighting, and applies professional backgrounds while maintaining your natural appearance. Choose from multiple styles and backgrounds for the perfect professional look."
-          howItems={[
-            { text: 'Identity-preserving face enhancement' },
-            { text: 'Multiple professional styles' },
-            { text: 'Studio-quality backgrounds' },
-          ]}
-        />
       </ScrollView>
-      ) : (
-        /* Guide View */
+      )}
+
+      {activeTopTab === 'guide' && (
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={[
@@ -288,12 +284,13 @@ const ProfessionalHeadshotsScreen = () => {
               { id: 'examples', label: 'Examples', icon: 'images-outline' },
               { id: 'info', label: 'Info', icon: 'information-circle-outline' },
             ]}
+            defaultTab="guide"
             containerStyle={{ marginHorizontal: spacing.base, marginTop: spacing.lg }}
           >
             {/* Guide Tab */}
             <ToolGuideTab
               title="How to Create Professional Headshots"
-              content="Create LinkedIn-ready professional headshots with AI-powered enhancement and studio-quality backgrounds.\n\n📸 Step 1: Select Your Photo\nChoose a clear, well-lit photo from your library or take a new one. Face-forward portraits work best.\n\n👔 Step 2: Choose Headshot Style\nCorporate - Traditional business look, perfect for LinkedIn\nCreative - Modern, artistic professional style\nCasual - Friendly, approachable professional vibe\nExecutive - High-level professional appearance\n\n🏢 Step 3: Select Background\nOffice - Professional workspace setting\nStudio - Clean, professional studio background\nOutdoor - Natural outdoor professional setting\nNeutral - Simple, versatile background\n\n💡 Step 4: Choose Lighting\nProfessional - Studio-quality lighting\nSoft - Gentle, flattering light\nDramatic - Bold, impactful lighting\nNatural - Realistic outdoor lighting\n\n✨ Step 5: Generate\nTap Generate Headshot and wait 10-15 seconds for your professional result.\n\n🎯 Pro Tips\nCorporate + Studio + Professional equals perfect LinkedIn headshot.\nClear face photos produce the most realistic results.\nYour identity is preserved while enhancing appearance.\nStudio backgrounds are most versatile for professional use.\nNatural lighting works great with Outdoor backgrounds."
+              content={`Create professional headshots perfect for LinkedIn, resumes, and business profiles.\n\n📸 Step 1: Select Your Photo\nChoose a portrait photo from your library or take a new one. Clear, well-lit photos work best.\n\n🎨 Step 2: Choose Style (Optional)\nSelect a professional style that suits your needs:\n• Corporate - Traditional business look\n• Creative - Modern, artistic style\n• Executive - Premium professional appearance\n\n✨ Step 3: Generate\nTap Generate Headshot and wait 10-15 seconds. The AI will enhance facial clarity, improve lighting, and apply professional backgrounds while preserving your natural appearance.\n\n💼 Step 4: Use Your Headshot\nYour professional headshot is perfect for:\n• LinkedIn profiles\n• Resume photos\n• Business cards\n• Professional websites\n• Email signatures\n\n🎯 Pro Tips\n• Your identity is preserved while enhancing quality\n• Multiple styles let you match your profession\n• Studio-quality backgrounds create a polished look\n• Enhanced lighting makes you look professional\n• Works great even with casual photos`}
             />
 
             {/* Examples Tab */}
@@ -345,6 +342,10 @@ const ProfessionalHeadshotsScreen = () => {
           {/* Extra bottom padding */}
           <View style={{ height: spacing.xl }} />
         </ScrollView>
+      )}
+
+      {activeTopTab === 'history' && (
+        <ToolHistoryTab editMode={EditMode.PROFESSIONAL_HEADSHOTS} />
       )}
 
       <ActionButtonBar

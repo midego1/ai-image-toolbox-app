@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,11 +7,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme, Theme } from '../theme/ThemeProvider';
 import { MainHeader } from '../components/MainHeader';
 import { SectionHeader } from '../components/SectionHeader';
+import { MediaTypeTabs, MediaType } from '../components/MediaTypeTabs';
 import { HistoryService, HistoryEntry } from '../services/historyService';
 import { getEditMode } from '../constants/editModes';
-import { EditMode } from '../types/editModes';
+import { EditMode, EditModeCategory } from '../types/editModes';
 import { haptic } from '../utils/haptics';
 import { useScrollBottomPadding } from '../utils/scrollPadding';
+import { HistoryEntryCard } from '../components/HistoryEntryCard';
 
 const { width } = Dimensions.get('window');
 const ITEM_SIZE = (width - 48) / 2; // 2 columns with padding
@@ -23,6 +25,7 @@ const HistoryScreen = () => {
   const styles = createStyles(theme, scrollBottomPadding);
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
   const [selectedFilter, setSelectedFilter] = useState<EditMode | 'all'>('all');
+  const [activeMediaType, setActiveMediaType] = useState<MediaType>('image');
 
   const loadHistory = useCallback(async () => {
     try {
@@ -110,20 +113,34 @@ const HistoryScreen = () => {
     );
   };
 
-  // Filter entries by selected mode
+  // Filter entries by media type first, then by selected mode
+  const filteredByMediaType = historyEntries.filter(entry => {
+    const modeData = getEditMode(entry.editMode);
+    if (!modeData) return false;
+    
+    const isVideoEntry = modeData.category === EditModeCategory.VIDEO;
+    
+    if (activeMediaType === 'image') {
+      return !isVideoEntry; // Show non-video entries
+    } else {
+      return isVideoEntry; // Show video entries
+    }
+  });
+
+  // Then filter by selected mode
   const filteredEntries = selectedFilter === 'all'
-    ? historyEntries
-    : historyEntries.filter(entry => entry.editMode === selectedFilter);
+    ? filteredByMediaType
+    : filteredByMediaType.filter(entry => entry.editMode === selectedFilter);
 
-  // Get unique edit modes for filter buttons
-  const uniqueModes = Array.from(new Set(historyEntries.map(e => e.editMode)));
+  // Get unique edit modes for filter buttons (filtered by media type)
+  const uniqueModes = Array.from(new Set(filteredByMediaType.map(e => e.editMode)));
 
-  // Calculate counts for each filter
+  // Calculate counts for each filter (using media-type filtered entries)
   const getModeCount = (mode: EditMode | 'all') => {
     if (mode === 'all') {
-      return historyEntries.length;
+      return filteredByMediaType.length;
     }
-    return historyEntries.filter(entry => entry.editMode === mode).length;
+    return filteredByMediaType.filter(entry => entry.editMode === mode).length;
   };
 
   const renderEntry = (entry: HistoryEntry, index: number) => {
@@ -131,72 +148,43 @@ const HistoryScreen = () => {
     const isLastInRow = index % 2 === 1;
 
     return (
-      <TouchableOpacity
+      <View
         key={entry.id}
         style={[
-          styles.entryContainer,
           {
             marginLeft: isFirstInRow ? 0 : theme.spacing.xs,
             marginRight: isLastInRow ? 0 : theme.spacing.xs,
-            marginBottom: theme.spacing.base,
           }
         ]}
-        onPress={() => handleEntryPress(entry)}
-        activeOpacity={0.8}
       >
-        <View style={[styles.imageWrapper, { backgroundColor: theme.colors.surface }]}>
-          <Image
-            source={{ uri: entry.transformedImageUri }}
-            style={styles.entryImage}
-            resizeMode="cover"
-            onError={(error) => {
-              console.warn('[HistoryScreen] Failed to load image:', entry.id, error.nativeEvent.error);
-            }}
-          />
-          
-          {/* Edit mode badge */}
-          <View style={[styles.badge, { backgroundColor: 'rgba(0, 0, 0, 0.75)' }]}>
-            <Text style={[styles.badgeIcon, { fontSize: 14, color: '#FFFFFF' }]}>{entry.editModeIcon}</Text>
-            <Text style={[styles.badgeText, { color: '#FFFFFF', fontSize: theme.typography.scaled.xs }]} numberOfLines={1}>
-              {entry.editModeName}
-            </Text>
-          </View>
-
-          {/* Delete button */}
-          <TouchableOpacity
-            style={[styles.deleteButton, { backgroundColor: 'rgba(0, 0, 0, 0.6)' }]}
-            onPress={(e) => {
-              e.stopPropagation();
-              handleDeleteEntry(entry);
-            }}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="close-circle" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Timestamp */}
-        <Text style={[styles.timestamp, { color: theme.colors.textSecondary }]} numberOfLines={1}>
-          {formatTimestamp(entry.timestamp)}
-        </Text>
-      </TouchableOpacity>
+        <HistoryEntryCard
+          entry={entry}
+          onPress={handleEntryPress}
+          onDelete={handleDeleteEntry}
+          size={ITEM_SIZE}
+        />
+      </View>
     );
   };
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Ionicons name="images-outline" size={64} color={theme.colors.textSecondary} />
+      <Ionicons 
+        name={activeMediaType === 'image' ? 'images-outline' : 'videocam-outline'} 
+        size={64} 
+        color={theme.colors.textSecondary} 
+      />
       <Text style={[styles.emptyTitle, { color: theme.colors.text, fontSize: theme.typography.scaled.lg }]}>
         No History Yet
       </Text>
       <Text style={[styles.emptySubtitle, { color: theme.colors.textSecondary, fontSize: theme.typography.scaled.base }]}>
-        Your edited photos will appear here
+        Your {activeMediaType === 'image' ? 'edited photos' : 'edited videos'} will appear here
       </Text>
     </View>
   );
 
   const renderFilterButtons = () => {
-    if (historyEntries.length === 0) return null;
+    if (filteredByMediaType.length === 0) return null;
 
     return (
       <View style={styles.filterContainer}>
@@ -297,13 +285,23 @@ const HistoryScreen = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Media Type Tabs */}
+        <MediaTypeTabs activeTab={activeMediaType} onTabChange={(tab) => {
+          setActiveMediaType(tab);
+          setSelectedFilter('all'); // Reset filter when switching tabs
+        }} />
+
         {/* Filter Buttons */}
         {renderFilterButtons()}
 
         {/* History Entries Grid */}
         {filteredEntries.length > 0 ? (
           <View style={styles.gridContainer}>
-            {filteredEntries.map((entry, index) => renderEntry(entry, index))}
+            {filteredEntries.map((entry, index) => (
+              <View key={entry.id} style={{ marginBottom: theme.spacing.base }}>
+                {renderEntry(entry, index)}
+              </View>
+            ))}
           </View>
         ) : (
           renderEmptyState()
@@ -313,22 +311,6 @@ const HistoryScreen = () => {
   );
 };
 
-const formatTimestamp = (timestamp: number): string => {
-  const date = new Date(timestamp);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-  
-  // Format as date
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-};
 
 const createStyles = (theme: Theme, scrollBottomPadding: number) =>
   StyleSheet.create({
@@ -368,53 +350,6 @@ const createStyles = (theme: Theme, scrollBottomPadding: number) =>
       flexWrap: 'wrap',
       paddingHorizontal: theme.spacing.base,
       justifyContent: 'space-between',
-    },
-    entryContainer: {
-      width: ITEM_SIZE,
-    },
-    imageWrapper: {
-      width: ITEM_SIZE,
-      height: ITEM_SIZE,
-      borderRadius: 12,
-      overflow: 'hidden',
-      position: 'relative',
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-    },
-    entryImage: {
-      width: '100%',
-      height: '100%',
-    },
-    badge: {
-      position: 'absolute',
-      bottom: 8,
-      left: 8,
-      right: 8,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 8,
-      gap: 4,
-    },
-    badgeIcon: {
-      marginRight: 2,
-    },
-    badgeText: {
-      fontWeight: theme.typography.weight.medium,
-    },
-    deleteButton: {
-      position: 'absolute',
-      top: 8,
-      right: 8,
-      borderRadius: 12,
-      padding: 2,
-    },
-    timestamp: {
-      marginTop: theme.spacing.xs,
-      fontSize: theme.typography.scaled.xs,
-      textAlign: 'center',
     },
     emptyState: {
       flex: 1,

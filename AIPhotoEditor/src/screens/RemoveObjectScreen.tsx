@@ -16,6 +16,7 @@ import { ToolStatsBar } from '../components/ToolStatsBar';
 import { TopTabSwitcher } from '../components/TopTabSwitcher';
 import { ToolGuideTab } from '../components/ToolGuideTab';
 import { ToolExamplesTab } from '../components/ToolExamplesTab';
+import { ToolHistoryTab } from '../components/ToolHistoryTab';
 import { TabView } from '../components/TabView';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
@@ -36,7 +37,7 @@ const RemoveObjectScreen = () => {
   const [localImageUri, setLocalImageUri] = useState<string | undefined>(imageUri);
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [removalPrompt, setRemovalPrompt] = useState('');
-  const [activeTopTab, setActiveTopTab] = useState<'tool' | 'guide'>('tool');
+  const [activeTopTab, setActiveTopTab] = useState<'tool' | 'guide' | 'history'>('tool');
   const cardScale = useRef(new Animated.Value(0.96)).current;
   const hintAnim = useRef(new Animated.Value(0)).current;
 
@@ -113,15 +114,16 @@ const RemoveObjectScreen = () => {
         tabs={[
           { id: 'tool', label: 'Tool', icon: 'create-outline' },
           { id: 'guide', label: 'Guide', icon: 'book-outline' },
+          { id: 'history', label: 'History', icon: 'time-outline' },
         ]}
         activeTab={activeTopTab}
-        onTabChange={(tabId) => setActiveTopTab(tabId as 'tool' | 'guide')}
+        onTabChange={(tabId) => setActiveTopTab(tabId as 'tool' | 'guide' | 'history')}
       />
 
       {/* Add top padding to content to account for floating tab bar */}
       <View style={{ height: 12 + 48 + 12 }} />
 
-      {activeTopTab === 'tool' ? (
+      {activeTopTab === 'tool' && (
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -244,21 +246,10 @@ const RemoveObjectScreen = () => {
             />
           </View>
         </View>
-
-        {/* Information Card */}
-        <AIToolInfoCard
-          icon="remove-circle-outline"
-          whatDescription="Remove unwanted objects, people, or distractions from your photos with precision. Simply describe what to remove and our AI handles the rest."
-          howDescription="Our AI identifies the object you specify and intelligently removes it while filling in the background naturally, preserving the scene's integrity."
-          howItems={[
-            { text: 'Natural background filling' },
-            { text: 'Precise object detection' },
-            { text: 'Works with any object description' },
-          ]}
-        />
       </ScrollView>
-      ) : (
-        /* Guide View */
+      )}
+
+      {activeTopTab === 'guide' && (
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={[
@@ -274,12 +265,13 @@ const RemoveObjectScreen = () => {
               { id: 'examples', label: 'Examples', icon: 'images-outline' },
               { id: 'info', label: 'Info', icon: 'information-circle-outline' },
             ]}
+            defaultTab="guide"
             containerStyle={{ marginHorizontal: spacing.base, marginTop: spacing.lg }}
           >
             {/* Guide Tab */}
             <ToolGuideTab
               title="How to Remove Objects"
-              content="Clean up your photos by removing unwanted elements with AI precision.\n\n📸 Step 1: Select Your Photo\nChoose a photo from your library or take a new one. Make sure the object you want to remove is clearly visible.\n\n✍️ Step 2: Describe What to Remove\nType a clear description in the prompt field. For example:\nperson in the background\nred car\ntext sign on the wall\n\n✨ Step 3: Process\nTap Remove Object and our AI will intelligently remove the specified element.\n\n🎨 Step 4: Perfect Result\nThe AI automatically fills in the background naturally, preserving the scene's integrity.\n\n🎯 Pro Tips\nBe specific: 'red car' works better than just 'car'.\nDescribe location: 'person on the left' is clearer.\nWorks great for removing tourists, signs, or distractions.\nMultiple objects? Describe them all in one prompt.\nSimple, uncluttered backgrounds produce the best results."
+              content={`Remove unwanted objects, people, or distractions from your photos with AI precision.\n\n📸 Step 1: Select Your Photo\nChoose a photo from your library or take a new one.\n\n✏️ Step 2: Describe What to Remove\nEnter a description of what you want to remove. For example:\n• "person on the left"\n• "car in the background"\n• "text sign on the wall"\n• "trash can"\n\n✨ Step 3: Generate\nTap Remove Object and wait 5-10 seconds. Our AI will intelligently remove the specified object and fill in the background naturally.\n\n🎯 Pro Tips\n• Be specific about what to remove for better results\n• Works great for removing people from crowds\n• Perfect for cleaning up street scenes or backgrounds\n• The AI fills in backgrounds naturally\n• Complex objects may take slightly longer to process`}
             />
 
             {/* Examples Tab */}
@@ -331,6 +323,10 @@ const RemoveObjectScreen = () => {
           {/* Extra bottom padding */}
           <View style={{ height: spacing.xl }} />
         </ScrollView>
+      )}
+
+      {activeTopTab === 'history' && (
+        <ToolHistoryTab editMode={EditMode.REMOVE_OBJECT} />
       )}
 
       <ActionButtonBar

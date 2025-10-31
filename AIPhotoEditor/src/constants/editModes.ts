@@ -152,6 +152,51 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
     requiresSubscription: true, // Subscription-only
     creditCost: 1,
   },
+  // Video modes
+  [EditMode.TEXT_TO_VIDEO_VEO]: {
+    id: EditMode.TEXT_TO_VIDEO_VEO,
+    name: 'Text to Video (Veo)',
+    description: 'Create high-fidelity, cinematic videos from text prompts with synchronized audio and smooth motion.',
+    icon: '🎬',
+    category: EditModeCategory.VIDEO,
+    isPremium: true,
+    requiresConfig: true,
+    requiresSubscription: true, // Subscription-only
+    creditCost: 2, // Higher cost for video generation
+  },
+  [EditMode.TEXT_TO_VIDEO_VEO_FAST]: {
+    id: EditMode.TEXT_TO_VIDEO_VEO_FAST,
+    name: 'Text to Video (Fast)',
+    description: 'Generate videos quickly with faster rendering and lower cost. Perfect for rapid prototyping.',
+    icon: '🚀',
+    category: EditModeCategory.VIDEO,
+    isPremium: true,
+    requiresConfig: true,
+    requiresSubscription: true, // Subscription-only
+    creditCost: 1.5, // Slightly lower cost for fast variant
+  },
+  [EditMode.TEXT_TO_VIDEO_KLING]: {
+    id: EditMode.TEXT_TO_VIDEO_KLING,
+    name: 'Text to Video (Kling)',
+    description: 'Generate hyper-realistic videos with advanced physics simulation and high-resolution outputs.',
+    icon: '🎥',
+    category: EditModeCategory.VIDEO,
+    isPremium: true,
+    requiresConfig: true,
+    requiresSubscription: true, // Subscription-only
+    creditCost: 2,
+  },
+  [EditMode.EDIT_VIDEO_RUNWAY]: {
+    id: EditMode.EDIT_VIDEO_RUNWAY,
+    name: 'Edit Video (Runway)',
+    description: 'Advanced video editing: add/remove objects, relighting, angle changes, and style transformations.',
+    icon: '✂️',
+    category: EditModeCategory.VIDEO,
+    isPremium: true,
+    requiresConfig: true,
+    requiresSubscription: true, // Subscription-only
+    creditCost: 2,
+  },
 };
 
 /**

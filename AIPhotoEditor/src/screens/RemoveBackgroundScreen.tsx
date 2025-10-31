@@ -16,6 +16,7 @@ import { ToolStatsBar } from '../components/ToolStatsBar';
 import { TopTabSwitcher } from '../components/TopTabSwitcher';
 import { ToolGuideTab } from '../components/ToolGuideTab';
 import { ToolExamplesTab } from '../components/ToolExamplesTab';
+import { ToolHistoryTab } from '../components/ToolHistoryTab';
 import { TabView } from '../components/TabView';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
@@ -35,7 +36,7 @@ const RemoveBackgroundScreen = () => {
   const { imageUri, fromToolMockup } = (route.params as any) || {};
   const [localImageUri, setLocalImageUri] = useState<string | undefined>(imageUri);
   const [showImagePreview, setShowImagePreview] = useState(false);
-  const [activeTopTab, setActiveTopTab] = useState<'tool' | 'guide'>('tool');
+  const [activeTopTab, setActiveTopTab] = useState<'tool' | 'guide' | 'history'>('tool');
   const cardScale = useRef(new Animated.Value(0.96)).current;
   const hintAnim = useRef(new Animated.Value(0)).current;
 
@@ -156,15 +157,16 @@ const RemoveBackgroundScreen = () => {
         tabs={[
           { id: 'tool', label: 'Tool', icon: 'create-outline' },
           { id: 'guide', label: 'Guide', icon: 'book-outline' },
+          { id: 'history', label: 'History', icon: 'time-outline' },
         ]}
         activeTab={activeTopTab}
-        onTabChange={(tabId) => setActiveTopTab(tabId as 'tool' | 'guide')}
+        onTabChange={(tabId) => setActiveTopTab(tabId as 'tool' | 'guide' | 'history')}
       />
 
       {/* Add top padding to content to account for floating tab bar */}
       <View style={{ height: 12 + 48 + 12 }} />
 
-      {activeTopTab === 'tool' ? (
+      {activeTopTab === 'tool' && (
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -257,21 +259,10 @@ const RemoveBackgroundScreen = () => {
             />
           </View>
         </View>
-
-        {/* Information Card */}
-        <AIToolInfoCard
-          icon="cut-outline"
-          whatDescription="Remove the background from your photo with precise, edge‑aware AI. Export transparent PNGs or continue to replace the background."
-          howDescription="We detect the subject and separate it from the background using a segmentation model, preserving fine details like hair and edges."
-          howItems={[
-            { text: 'Transparent PNG export' },
-            { text: 'Edge-aware subject extraction' },
-            { text: 'Great for product photos and portraits' },
-          ]}
-        />
       </ScrollView>
-      ) : (
-        /* Guide View */
+      )}
+
+      {activeTopTab === 'guide' && (
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={[
@@ -287,12 +278,13 @@ const RemoveBackgroundScreen = () => {
               { id: 'examples', label: 'Examples', icon: 'images-outline' },
               { id: 'info', label: 'Info', icon: 'information-circle-outline' },
             ]}
+            defaultTab="guide"
             containerStyle={{ marginHorizontal: spacing.base, marginTop: spacing.lg }}
           >
             {/* Guide Tab */}
             <ToolGuideTab
               title="How to Remove Background"
-              content="Get clean, professional background removal in seconds.\n\n📸 Step 1: Choose Your Photo\nSelect a photo from your library or capture a new one. The AI works best with clear, well-lit images.\n\n✨ Step 2: Automatic Detection\nOur AI automatically identifies and extracts your subject with precision. No manual selection needed.\n\n⚡ Step 3: Process\nTap Remove Background and wait just 2-5 seconds for your result.\n\n💾 Step 4: Use Your Result\nExport as a transparent PNG for design work, or continue editing to replace with a new background.\n\n🎯 Pro Tips\nPortrait photos with clear subjects work best.\nHigh contrast between subject and background improves accuracy.\nPerfect for product photos, headshots, and social media.\nTransparent PNGs work great for design projects and overlays."
+              content={`Remove backgrounds from your photos with precision, preserving fine details like hair and edges.\n\n📸 Step 1: Select Your Photo\nChoose a photo from your library or take a new one. Photos with clear subjects against contrasting backgrounds work best.\n\n✂️ Step 2: Generate\nTap Remove Background and wait 2-5 seconds. Our AI will automatically detect your subject and remove the background, creating a transparent PNG.\n\n💾 Step 3: Save or Continue\nAfter processing, you can:\n• Save the transparent PNG to your library\n• Continue to replace the background with a new scene\n• Use the result in other apps\n\n🎯 Pro Tips\n• Photos with clear subject separation work best\n• Edge-aware AI preserves fine details like hair and fur\n• Perfect for product photos and portraits\n• Transparent PNGs are great for design projects\n• Works well with both simple and complex backgrounds`}
             />
 
             {/* Examples Tab */}
@@ -344,6 +336,10 @@ const RemoveBackgroundScreen = () => {
           {/* Extra bottom padding */}
           <View style={{ height: spacing.xl }} />
         </ScrollView>
+      )}
+
+      {activeTopTab === 'history' && (
+        <ToolHistoryTab editMode={EditMode.REMOVE_BACKGROUND} />
       )}
 
       <ActionButtonBar

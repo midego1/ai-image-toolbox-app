@@ -16,6 +16,9 @@ import ProfessionalHeadshotsScreen from '../screens/ProfessionalHeadshotsScreen'
 import PopFigureScreen from '../screens/PopFigureScreen';
 import PixelArtGamerScreen from '../screens/PixelArtGamerScreen';
 import StyleTransferScreen from '../screens/StyleTransferScreen';
+import VideoPromptScreen from '../screens/VideoPromptScreen';
+import VideoSelectionScreen from '../screens/VideoSelectionScreen';
+import VideoPreviewScreen from '../screens/VideoPreviewScreen';
 
 // Local stack for the Features tab so we can push screens
 // while keeping the bottom tab bar visible.
@@ -36,6 +39,11 @@ type FeaturesStackParamList = {
   PopFigure: { imageUri?: string; fromToolMockup?: boolean };
   PixelArtGamer: { imageUri?: string };
   StyleTransfer: { imageUri?: string };
+  // Video screens
+  VideoPrompt: { editMode?: any };
+  VideoSelection: { editMode?: any };
+  VideoPreview: { videoUri: string; editMode?: any };
+  VideoProcessing: { videoUri?: string; editMode?: any; config?: any };
 };
 
 const Stack = createNativeStackNavigator<any>();
@@ -59,6 +67,10 @@ export const FeaturesStackNavigator = () => {
       <Stack.Screen name="Processing" component={ProcessingScreen} />
       <Stack.Screen name="Result" component={ResultScreen} />
       <Stack.Screen name="QuickCameraLocal" component={QuickCameraScreen} />
+      {/* Video screens */}
+      <Stack.Screen name="VideoPrompt" component={VideoPromptScreen} />
+      <Stack.Screen name="VideoSelection" component={VideoSelectionScreen} />
+      <Stack.Screen name="VideoPreview" component={VideoPreviewScreen} />
     </Stack.Navigator>
   );
 };

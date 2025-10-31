@@ -14,6 +14,8 @@ import { Card } from '../components/Card';
 import { OutfitSummaryCard } from '../components/OutfitSummaryCard';
 import { SaveShareActions } from '../components/SaveShareActions';
 import { ZoomableImage } from '../components/ZoomableImage';
+import { OptionsUsed } from '../components/OptionsUsed';
+import { getOptionsSchema } from '../components/optionsSchemas';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
 import { ClothingItem } from '../services/processors/virtualTryOnProcessor';
@@ -75,6 +77,11 @@ const ResultScreen = () => {
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [historySaved, setHistorySaved] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [imageDimensions, setImageDimensions] = useState<{
+    width: number;
+    height: number;
+    aspectRatio: number;
+  } | null>(null);
   const isFree = transformedImage.includes('base64');
 
   // Animated gentle wobble (tilt) for diamond icon only
@@ -107,6 +114,48 @@ const ResultScreen = () => {
       };
     }
   }, [modeData]);
+
+  // Load image dimensions to calculate dynamic aspect ratio
+  React.useEffect(() => {
+    const loadImageDimensions = async () => {
+      const imageUri = showOriginal ? originalImage : transformedImage;
+      if (!imageUri) {
+        setImageDimensions(null);
+        return;
+      }
+
+      try {
+        await new Promise<void>((resolve, reject) => {
+          Image.getSize(
+            imageUri,
+            (width, height) => {
+              if (width > 0 && height > 0) {
+                const aspectRatio = width / height;
+                setImageDimensions({ width, height, aspectRatio });
+                console.log('[ResultScreen] Loaded image dimensions:', { width, height, aspectRatio });
+              } else {
+                console.warn('[ResultScreen] Invalid image dimensions:', { width, height });
+                setImageDimensions({ width: 4, height: 3, aspectRatio: 4 / 3 });
+              }
+              resolve();
+            },
+            (error) => {
+              console.error('[ResultScreen] Error loading image dimensions:', error);
+              // Fallback to default 4:3 if loading fails
+              setImageDimensions({ width: 4, height: 3, aspectRatio: 4 / 3 });
+              resolve(); // Don't reject, just use fallback
+            }
+          );
+        });
+      } catch (error) {
+        console.error('[ResultScreen] Error in loadImageDimensions:', error);
+        // Fallback to default 4:3
+        setImageDimensions({ width: 4, height: 3, aspectRatio: 4 / 3 });
+      }
+    };
+
+    loadImageDimensions();
+  }, [originalImage, transformedImage, showOriginal]);
 
   // Save to history when result screen loads (only once, and not if coming from history)
   React.useEffect(() => {
@@ -413,6 +462,17 @@ const ResultScreen = () => {
     return presetMap[presetId] || formatLabel(presetId);
   };
 
+  // Helper to format background style names
+  const formatBackgroundStyle = (style?: string): string => {
+    if (!style) return '';
+    const styleMap: Record<string, string> = {
+      'scene': 'Game Scene',
+      'color': 'Color',
+      'gradient': 'Gradient',
+    };
+    return styleMap[style] || formatLabel(style);
+  };
+
   // Get contextual completion badge text based on edit mode
   const getCompletionBadgeText = () => {
     switch (editMode) {
@@ -447,6 +507,54 @@ const ResultScreen = () => {
     if (creditCost === 0) return null;
     if (creditCost === 0.1) return '0.1 credit';
     return `${creditCost} credit${creditCost !== 1 ? 's' : ''}`;
+  };
+
+  // Calculate dynamic container style based on image dimensions
+  const getImageContainerStyle = (): ViewStyle => {
+    const maxWidth = width - (spacing.md * 2);
+    const maxHeight = Math.min(height * 0.6, 550);
+
+    // Use actual image aspect ratio if available, otherwise fallback to 4:3
+    const aspectRatio = imageDimensions?.aspectRatio || 4 / 3;
+
+    // Calculate dimensions that fit within constraints while preserving aspect ratio
+    let containerWidth: number;
+    let containerHeight: number;
+
+    if (aspectRatio > maxWidth / maxHeight) {
+      // Image is wider - fit to width
+      containerWidth = maxWidth;
+      containerHeight = maxWidth / aspectRatio;
+      
+      // Ensure we don't exceed max height
+      if (containerHeight > maxHeight) {
+        containerHeight = maxHeight;
+        containerWidth = maxHeight * aspectRatio;
+      }
+    } else {
+      // Image is taller - fit to height
+      containerHeight = maxHeight;
+      containerWidth = maxHeight * aspectRatio;
+      
+      // Ensure we don't exceed max width
+      if (containerWidth > maxWidth) {
+        containerWidth = maxWidth;
+        containerHeight = maxWidth / aspectRatio;
+      }
+    }
+
+    // Ensure minimum size for smaller devices
+    const minHeight = 300;
+    if (containerHeight < minHeight) {
+      containerHeight = minHeight;
+      containerWidth = minHeight * aspectRatio;
+    }
+
+    return {
+      width: containerWidth,
+      height: containerHeight,
+      aspectRatio: undefined, // Remove fixed aspect ratio
+    };
   };
 
   return (
@@ -486,138 +594,142 @@ const ResultScreen = () => {
             disabled={isSharing}
             style={{ alignSelf: 'center', opacity: isSharing ? 0.7 : 1 }}
           >
-            <View style={[styles.heroImageWrapper, {
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: 0.15,
-              shadowRadius: 20,
-              elevation: 8,
-            }]}>
-              <Image
-                source={{ uri: showOriginal ? originalImage : transformedImage }}
-                style={styles.heroImage}
-                resizeMode={isVirtualTryOn ? "contain" : "cover"}
-              />
-              <View style={[styles.expandOverlay, {
-                backgroundColor: 'transparent',
-              }]}>
-                <View style={[styles.expandButton, { backgroundColor: colors.primary }]}>
-                  <Ionicons name="expand" size={18} color="#FFFFFF" />
-                  <Text style={[styles.expandText, { color: '#FFFFFF', fontSize: typography.scaled.sm, fontWeight: typography.weight.medium }]}>
-                    Tap to view full size
-                  </Text>
+              <View style={[
+                styles.heroImageWrapper,
+                getImageContainerStyle(),
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 8 },
+                  shadowOpacity: 0.15,
+                  shadowRadius: 20,
+                  elevation: 8,
+                }
+              ]}>
+                <Image
+                  source={{ uri: showOriginal ? originalImage : transformedImage }}
+                  style={styles.heroImage}
+                  resizeMode="contain"
+                />
+                <View style={[styles.expandOverlay, {
+                  backgroundColor: 'transparent',
+                }]}>
+                  <View style={[styles.expandButton, { backgroundColor: colors.primary }]}>
+                    <Ionicons name="expand" size={18} color="#FFFFFF" />
+                    <Text style={[styles.expandText, { color: '#FFFFFF', fontSize: typography.scaled.sm, fontWeight: typography.weight.medium }]}>
+                      Tap to view full size
+                    </Text>
+                  </View>
                 </View>
+                {isFree && !showOriginal && (
+                  <View style={[styles.watermarkOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.7)' }]}>
+                    <Text style={[styles.watermarkText, { color: '#FFFFFF' }]}>FREE</Text>
+                  </View>
+                )}
               </View>
-              {isFree && !showOriginal && (
-                <View style={[styles.watermarkOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.7)' }]}>
-                  <Text style={[styles.watermarkText, { color: '#FFFFFF' }]}>FREE</Text>
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
 
-          {/* Quick Info Badges */}
-          <View style={[styles.badgesContainer, { marginTop: spacing.sm }]}>
-            <View style={[styles.badge, { 
-              backgroundColor: colors.primary + '15',
-              borderColor: colors.primary + '30',
-            }]}>
-              <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
-              <Text style={[styles.badgeText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}>
-                {getCompletionBadgeText()}
-              </Text>
-            </View>
-            <View style={[styles.badge, { 
-              backgroundColor: colors.primary + '15',
-              borderColor: colors.primary + '30',
-            }]}>
-              <Ionicons name="sparkles-outline" size={14} color={colors.primary} />
-              <Text style={[styles.badgeText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}>
-                AI-powered
-              </Text>
-            </View>
-            {getCreditCostText() && (
+            {/* Quick Info Badges */}
+            <View style={[styles.badgesContainer, { marginTop: spacing.sm }]}>
               <View style={[styles.badge, { 
                 backgroundColor: colors.primary + '15',
                 borderColor: colors.primary + '30',
               }]}>
-                <Animated.View style={{ transform: [{ rotate: diamondRotate }] }}>
-                  <Ionicons name="diamond-outline" size={14} color={colors.primary} />
-                </Animated.View>
-                <Text style={[styles.badgeText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}> 
-                  {getCreditCostText()}
+                <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
+                <Text style={[styles.badgeText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}>
+                  {getCompletionBadgeText()}
                 </Text>
               </View>
-            )}
-            {/* Created at timestamp */}
-            <View style={[styles.badge, {
-              backgroundColor: colors.surface,
+              <View style={[styles.badge, { 
+                backgroundColor: colors.primary + '15',
+                borderColor: colors.primary + '30',
+              }]}>
+                <Ionicons name="sparkles-outline" size={14} color={colors.primary} />
+                <Text style={[styles.badgeText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}>
+                  AI-powered
+                </Text>
+              </View>
+              {getCreditCostText() && (
+                <View style={[styles.badge, { 
+                  backgroundColor: colors.primary + '15',
+                  borderColor: colors.primary + '30',
+                }]}>
+                  <Animated.View style={{ transform: [{ rotate: diamondRotate }] }}>
+                    <Ionicons name="diamond-outline" size={14} color={colors.primary} />
+                  </Animated.View>
+                  <Text style={[styles.badgeText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}> 
+                    {getCreditCostText()}
+                  </Text>
+                </View>
+              )}
+              {/* Created at timestamp */}
+              <View style={[styles.badge, {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              }]}> 
+                <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
+                <Text style={[styles.badgeText, { color: colors.textSecondary, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}> 
+                  {formatTimestamp(createdAt)}
+                </Text>
+              </View>
+            </View>
+
+            {/* Image Toggle Tabs */}
+            <View style={[styles.toggleTabs, { 
+              backgroundColor: colors.surface, 
+              marginTop: spacing.md, 
+              borderRadius: 12, 
+              padding: 4,
+              borderWidth: 1,
               borderColor: colors.border,
-            }]}> 
-              <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
-              <Text style={[styles.badgeText, { color: colors.textSecondary, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}> 
-                {formatTimestamp(createdAt)}
-              </Text>
+            }]}>
+              <TouchableOpacity
+                style={[
+                  styles.toggleTab,
+                  !showOriginal && { backgroundColor: colors.primary },
+                  { borderRadius: 8, flex: 1, paddingVertical: 10 }
+                ]}
+                onPress={() => {
+                  if (showOriginal) {
+                    haptic.light();
+                    setShowOriginal(false);
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={[
+                  styles.toggleTabText,
+                  { color: !showOriginal ? '#FFFFFF' : colors.textSecondary, fontSize: typography.scaled.sm, fontWeight: typography.weight.semibold }
+                ]}>
+                  Result
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.toggleTab,
+                  showOriginal && { backgroundColor: colors.primary },
+                  { borderRadius: 8, flex: 1, paddingVertical: 10 }
+                ]}
+                onPress={() => {
+                  if (!showOriginal) {
+                    haptic.light();
+                    setShowOriginal(true);
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={[
+                  styles.toggleTabText,
+                  { color: showOriginal ? '#FFFFFF' : colors.textSecondary, fontSize: typography.scaled.sm, fontWeight: typography.weight.semibold }
+                ]}>
+                  Original
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
 
-          {/* Image Toggle Tabs */}
-          <View style={[styles.toggleTabs, { 
-            backgroundColor: colors.surface, 
-            marginTop: spacing.md, 
-            borderRadius: 12, 
-            padding: 4,
-            borderWidth: 1,
-            borderColor: colors.border,
-          }]}>
-            <TouchableOpacity
-              style={[
-                styles.toggleTab,
-                !showOriginal && { backgroundColor: colors.primary },
-                { borderRadius: 8, flex: 1, paddingVertical: 10 }
-              ]}
-              onPress={() => {
-                if (showOriginal) {
-                  haptic.light();
-                  setShowOriginal(false);
-                }
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={[
-                styles.toggleTabText,
-                { color: !showOriginal ? '#FFFFFF' : colors.textSecondary, fontSize: typography.scaled.sm, fontWeight: typography.weight.semibold }
-              ]}>
-                Result
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.toggleTab,
-                showOriginal && { backgroundColor: colors.primary },
-                { borderRadius: 8, flex: 1, paddingVertical: 10 }
-              ]}
-              onPress={() => {
-                if (!showOriginal) {
-                  haptic.light();
-                  setShowOriginal(true);
-                }
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={[
-                styles.toggleTabText,
-                { color: showOriginal ? '#FFFFFF' : colors.textSecondary, fontSize: typography.scaled.sm, fontWeight: typography.weight.semibold }
-              ]}>
-                Original
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Virtual Try-On Success Banner */}
+          {/* Virtual Try-On Success Banner */}
         {isVirtualTryOn && !showOriginal && (
           <View style={[styles.successBanner, {
             backgroundColor: colors.primary + '15',
@@ -659,245 +771,32 @@ const ResultScreen = () => {
         )}
 
         {/* Pixel Art Gamer Options Card */}
-        {isPixelArtGamerMode && config && (
-          <View style={{ marginHorizontal: spacing.base, marginBottom: spacing.base }}>
-            <Card style={[{
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
-              borderWidth: 1,
-              borderRadius: 12,
-              padding: spacing.base,
-            }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
-                <Ionicons name="settings-outline" size={20} color={colors.primary} />
-                <Text style={[{
-                  color: colors.text,
-                  fontSize: typography.scaled.base,
-                  fontWeight: typography.weight.semibold,
-                  marginLeft: spacing.sm,
-                }]}>
-                  Options Used
-                </Text>
-              </View>
-              
-              <View style={{ gap: spacing.sm }}>
-                {config.bitDepth && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                      <Ionicons name="grid-outline" size={16} color={colors.textSecondary} />
-                      <Text style={[{
-                        color: colors.textSecondary,
-                        fontSize: typography.scaled.sm,
-                        marginLeft: spacing.xs,
-                      }]}>
-                        Bit Depth
-                      </Text>
-                    </View>
-                    <Text style={[{
-                      color: colors.text,
-                      fontSize: typography.scaled.sm,
-                      fontWeight: typography.weight.semibold,
-                    }]}>
-                      {config.bitDepth === '8-bit' ? '8-bit (NES)' : '16-bit (SNES)'}
-                    </Text>
-                  </View>
-                )}
-                
-                {config.gameStyle && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                      <Ionicons name="game-controller-outline" size={16} color={colors.textSecondary} />
-                      <Text style={[{
-                        color: colors.textSecondary,
-                        fontSize: typography.scaled.sm,
-                        marginLeft: spacing.xs,
-                      }]}>
-                        Game Style
-                      </Text>
-                    </View>
-                    <Text style={[{
-                      color: colors.text,
-                      fontSize: typography.scaled.sm,
-                      fontWeight: typography.weight.semibold,
-                    }]}>
-                      {formatLabel(config.gameStyle)}
-                    </Text>
-                  </View>
-                )}
-                
-                {config.backgroundStyle && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                      <Ionicons name="image-outline" size={16} color={colors.textSecondary} />
-                      <Text style={[{
-                        color: colors.textSecondary,
-                        fontSize: typography.scaled.sm,
-                        marginLeft: spacing.xs,
-                      }]}>
-                        Background
-                      </Text>
-                    </View>
-                    <Text style={[{
-                      color: colors.text,
-                      fontSize: typography.scaled.sm,
-                      fontWeight: typography.weight.semibold,
-                    }]}>
-                      {formatLabel(config.backgroundStyle)}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </Card>
-          </View>
-        )}
+        {isPixelArtGamerMode && config && (() => {
+          const schema = getOptionsSchema(editMode);
+          return schema ? (
+            <View style={{ marginHorizontal: spacing.base, marginBottom: spacing.sm }}>
+              <OptionsUsed
+                config={config}
+                schema={schema}
+                defaultExpanded={false}
+              />
+            </View>
+          ) : null;
+        })()}
 
-        {/* Style Transfer Options Card */}
-        {isStyleTransferMode && config && (
-          <View style={{ marginHorizontal: spacing.base, marginBottom: spacing.base }}>
-            <Card style={[{
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
-              borderWidth: 1,
-              borderRadius: 12,
-              padding: spacing.base,
-            }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
-                <Ionicons name="settings-outline" size={20} color={colors.primary} />
-                <Text style={[{
-                  color: colors.text,
-                  fontSize: typography.scaled.base,
-                  fontWeight: typography.weight.semibold,
-                  marginLeft: spacing.sm,
-                }]}>
-                  Options Used
-                </Text>
-              </View>
-              
-              <View style={{ gap: spacing.sm }}>
-                {config.stylePreset && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                      <Ionicons name="brush-outline" size={16} color={colors.textSecondary} />
-                      <Text style={[{
-                        color: colors.textSecondary,
-                        fontSize: typography.scaled.sm,
-                        marginLeft: spacing.xs,
-                      }]}>
-                        Style Preset
-                      </Text>
-                    </View>
-                    <Text style={[{
-                      color: colors.text,
-                      fontSize: typography.scaled.sm,
-                      fontWeight: typography.weight.semibold,
-                    }]}>
-                      {formatStylePreset(config.stylePreset)}
-                    </Text>
-                  </View>
-                )}
-                
-                {config.styleImageUri && !config.stylePreset && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                      <Ionicons name="image-outline" size={16} color={colors.textSecondary} />
-                      <Text style={[{
-                        color: colors.textSecondary,
-                        fontSize: typography.scaled.sm,
-                        marginLeft: spacing.xs,
-                      }]}>
-                        Style Source
-                      </Text>
-                    </View>
-                    <Text style={[{
-                      color: colors.text,
-                      fontSize: typography.scaled.sm,
-                      fontWeight: typography.weight.semibold,
-                    }]}>
-                      Custom Image
-                    </Text>
-                  </View>
-                )}
-                
-                {config.styleStrength !== undefined && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                      <Ionicons name="pulse-outline" size={16} color={colors.textSecondary} />
-                      <Text style={[{
-                        color: colors.textSecondary,
-                        fontSize: typography.scaled.sm,
-                        marginLeft: spacing.xs,
-                      }]}>
-                        Style Strength
-                      </Text>
-                    </View>
-                    <Text style={[{
-                      color: colors.text,
-                      fontSize: typography.scaled.sm,
-                      fontWeight: typography.weight.semibold,
-                    }]}>
-                      {config.styleStrength > 0.75 
-                        ? 'Strong' 
-                        : config.styleStrength > 0.5 
-                        ? 'Moderate' 
-                        : config.styleStrength > 0.25
-                        ? 'Subtle'
-                        : 'Light'} ({Math.round(config.styleStrength * 100)}%)
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </Card>
-          </View>
-        )}
-
-        {/* Pop Figure Options Card */}
-        {isPopFigureMode && config && (
-          <View style={{ marginHorizontal: spacing.base, marginBottom: spacing.base }}>
-            <Card style={[{
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
-              borderWidth: 1,
-              borderRadius: 12,
-              padding: spacing.base,
-            }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
-                <Ionicons name="settings-outline" size={20} color={colors.primary} />
-                <Text style={[{
-                  color: colors.text,
-                  fontSize: typography.scaled.base,
-                  fontWeight: typography.weight.semibold,
-                  marginLeft: spacing.sm,
-                }]}>
-                  Options Used
-                </Text>
-              </View>
-              
-              <View style={{ gap: spacing.sm }}>
-                {config.includeBox !== undefined && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                      <Ionicons name={config.includeBox ? "cube" : "cube-outline"} size={16} color={colors.textSecondary} />
-                      <Text style={[{
-                        color: colors.textSecondary,
-                        fontSize: typography.scaled.sm,
-                        marginLeft: spacing.xs,
-                      }]}>
-                        Box Included
-                      </Text>
-                    </View>
-                    <Text style={[{
-                      color: colors.text,
-                      fontSize: typography.scaled.sm,
-                      fontWeight: typography.weight.semibold,
-                    }]}>
-                      {config.includeBox ? 'Yes' : 'No'}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </Card>
-          </View>
-        )}
+        {/* Options Used Card - Reusable Component (for other modes) */}
+        {config && !isPixelArtGamerMode && (() => {
+          const schema = getOptionsSchema(editMode);
+          return schema ? (
+            <View style={{ marginHorizontal: spacing.base, marginBottom: spacing.base }}>
+              <OptionsUsed
+                config={config}
+                schema={schema}
+                defaultExpanded={false}
+              />
+            </View>
+          ) : null;
+        })()}
 
         {/* Try Again Button for Virtual Try-On */}
         {isVirtualTryOn && !showOriginal && (
@@ -940,8 +839,13 @@ const ResultScreen = () => {
         {/* (Removed) separate blue Try Another Style button for Professional Headshots */}
 
         {/* Change Style Card - Transform Mode, Replace Background, and Remove Object */}
-        {showTryAnotherStyle && !showOriginal && (
-          <View style={{ marginHorizontal: spacing.base, marginTop: spacing.md, marginBottom: spacing.base }}>
+        {showTryAnotherStyle && (
+          <View style={{ 
+            marginHorizontal: spacing.base, 
+            // Directly follows Options Used card, which has marginBottom: spacing.base
+            marginTop: 0, 
+            marginBottom: spacing.base 
+          }}>
             <TouchableOpacity
               onPress={changeStyle}
               activeOpacity={0.8}
@@ -1141,10 +1045,8 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   heroImageWrapper: {
-    width: width - (baseSpacing.md * 2), // Use md spacing (12px) for slightly wider image
-    aspectRatio: 4 / 3, // Photo-friendly aspect ratio
-    maxHeight: Math.min(height * 0.6, 550), // 60% of screen height or 550px max
-    minHeight: 300, // Ensure minimum size for smaller devices
+    // Dynamic width and height calculated in getImageContainerStyle()
+    // Removed fixed aspectRatio to allow dynamic sizing
     borderRadius: 20, // More rounded for modern look
     borderWidth: 1,
     overflow: 'hidden',

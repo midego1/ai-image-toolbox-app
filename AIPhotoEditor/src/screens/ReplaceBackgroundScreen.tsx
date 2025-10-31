@@ -16,6 +16,7 @@ import { ToolStatsBar } from '../components/ToolStatsBar';
 import { TopTabSwitcher } from '../components/TopTabSwitcher';
 import { ToolGuideTab } from '../components/ToolGuideTab';
 import { ToolExamplesTab } from '../components/ToolExamplesTab';
+import { ToolHistoryTab } from '../components/ToolHistoryTab';
 import { TabView } from '../components/TabView';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
@@ -36,7 +37,7 @@ const ReplaceBackgroundScreen = () => {
   const [localImageUri, setLocalImageUri] = useState<string | undefined>(imageUri);
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [backgroundPrompt, setBackgroundPrompt] = useState('');
-  const [activeTopTab, setActiveTopTab] = useState<'tool' | 'guide'>('tool');
+  const [activeTopTab, setActiveTopTab] = useState<'tool' | 'guide' | 'history'>('tool');
   const cardScale = useRef(new Animated.Value(0.96)).current;
   const hintAnim = useRef(new Animated.Value(0)).current;
 
@@ -114,15 +115,16 @@ const ReplaceBackgroundScreen = () => {
         tabs={[
           { id: 'tool', label: 'Tool', icon: 'create-outline' },
           { id: 'guide', label: 'Guide', icon: 'book-outline' },
+          { id: 'history', label: 'History', icon: 'time-outline' },
         ]}
         activeTab={activeTopTab}
-        onTabChange={(tabId) => setActiveTopTab(tabId as 'tool' | 'guide')}
+        onTabChange={(tabId) => setActiveTopTab(tabId as 'tool' | 'guide' | 'history')}
       />
 
       {/* Add top padding to content to account for floating tab bar */}
       <View style={{ height: 12 + 48 + 12 }} />
 
-      {activeTopTab === 'tool' ? (
+      {activeTopTab === 'tool' && (
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -247,21 +249,10 @@ const ReplaceBackgroundScreen = () => {
             />
           </View>
         </View>
-
-        {/* Information Card */}
-        <AIToolInfoCard
-          icon="image-outline"
-          whatDescription="Swap scenes instantly: studios, offices, beaches, and more with realistic lighting and shadows."
-          howDescription="We use advanced AI to seamlessly blend your subject into new backgrounds while preserving natural lighting, shadows, and depth."
-          howItems={[
-            { text: 'Realistic lighting and shadows' },
-            { text: 'Natural blending with backgrounds' },
-            { text: 'Works with any scene description' },
-          ]}
-        />
       </ScrollView>
-      ) : (
-        /* Guide View */
+      )}
+
+      {activeTopTab === 'guide' && (
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={[
@@ -277,12 +268,13 @@ const ReplaceBackgroundScreen = () => {
               { id: 'examples', label: 'Examples', icon: 'images-outline' },
               { id: 'info', label: 'Info', icon: 'information-circle-outline' },
             ]}
+            defaultTab="guide"
             containerStyle={{ marginHorizontal: spacing.base, marginTop: spacing.lg }}
           >
             {/* Guide Tab */}
             <ToolGuideTab
               title="How to Replace Background"
-              content="Instantly swap backgrounds while keeping natural lighting and realistic shadows.\n\n📸 Step 1: Choose Your Photo\nSelect a photo from your library or take a new one. Photos with clear subject edges work best.\n\n✍️ Step 2: Describe Your New Background\nType what you want in the prompt field. Examples:\nmodern office with windows\nsunset beach scene\nprofessional studio background\ncozy coffee shop\n\n✨ Step 3: Generate\nTap Replace Background and wait 5-10 seconds for processing.\n\n🎨 Step 4: Realistic Result\nThe AI seamlessly blends your subject into the new scene with natural lighting and shadows.\n\n🎯 Pro Tips\nBe descriptive: 'sunset beach with palm trees' works better than just 'beach'.\nMention lighting: 'bright studio' or 'natural outdoor light'.\nWorks great for LinkedIn headshots and product photos.\nThe AI automatically matches lighting to your original photo.\nClear subject edges ensure the best blending results."
+              content={`Transform your photos by replacing the background with any scene you imagine.\n\n📸 Step 1: Select Your Photo\nChoose a photo from your library or take a new one. Photos with clear subjects work best.\n\n💭 Step 2: Describe the Background\nEnter a description of the background you want. For example:\n• "beach with sunset"\n• "modern office with white walls"\n• "professional studio with soft lighting"\n• "cozy coffee shop"\n\n✨ Step 3: Generate\nTap Replace Background and wait 4-8 seconds. Our AI will seamlessly blend your subject into the new background with realistic lighting and shadows.\n\n🎯 Pro Tips\n• Be specific in your description for better results\n• Studio backgrounds work great for professional headshots\n• Outdoor scenes like beaches or parks create natural looks\n• The AI automatically preserves realistic lighting and shadows\n• Subjects with clear edges blend more naturally`}
             />
 
             {/* Examples Tab */}
@@ -334,6 +326,10 @@ const ReplaceBackgroundScreen = () => {
           {/* Extra bottom padding */}
           <View style={{ height: spacing.xl }} />
         </ScrollView>
+      )}
+
+      {activeTopTab === 'history' && (
+        <ToolHistoryTab editMode={EditMode.REPLACE_BACKGROUND} />
       )}
 
       <ActionButtonBar

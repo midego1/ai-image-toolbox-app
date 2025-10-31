@@ -14,15 +14,17 @@ import { ProcessingHeader } from '../components/ProcessingHeader';
 import { AnimatedProgressBar } from '../components/AnimatedProgressBar';
 import { ProcessingStatusMessage } from '../components/ProcessingStatusMessage';
 import { SuccessAnimation } from '../components/SuccessAnimation';
+import { CompactStatsBar } from '../components/CompactStatsBar';
 import {
   getProcessingStages,
   getCurrentStage,
   getEstimatedRemainingTime,
+  getAverageProcessingTime,
 } from '../utils/processingStages';
 
 const ProcessingScreen = () => {
   const { theme } = useTheme();
-  const { colors, spacing } = theme;
+  const { colors, spacing, typography } = theme;
   const navigation = useNavigation<NavigationProp<'Result'>>();
   const route = useRoute<RouteProp<'Processing'>>();
   const { imageUri, editMode, config } = route.params;
@@ -380,10 +382,10 @@ const ProcessingScreen = () => {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Image source={{ uri: imageUri }} style={styles.backgroundImage} />
       <Animated.View style={[styles.blurOverlay, { opacity: backgroundBlurAnim }]}>
-        <BlurView intensity={45} style={StyleSheet.absoluteFill} />
+        <BlurView intensity={20} style={StyleSheet.absoluteFill} />
       </Animated.View>
       <LinearGradient
-        colors={['rgba(0, 0, 0, 0.92)', 'rgba(0, 0, 0, 0.85)', 'rgba(0, 0, 0, 0.92)']}
+        colors={[colors.overlayDark, 'transparent', colors.overlayDark]}
         style={styles.gradient}
       />
       <Animated.View
@@ -400,41 +402,61 @@ const ProcessingScreen = () => {
           <SuccessAnimation onComplete={handleSuccessComplete} />
         ) : (
           <View style={[styles.processingCard, {
-            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            backgroundColor: 'rgba(0, 0, 0, 0.4)',
             borderRadius: 16,
             padding: spacing.lg,
             width: '90%',
             maxWidth: 400,
           }]}>
-            <ProcessingHeader modeData={modeData} />
-            
-            <ProcessingStatusMessage
-              message={status}
-              estimatedTime={estimatedTime}
+            <ProcessingHeader 
+              modeData={modeData}
+              progress={progress}
             />
             
-            <View style={styles.progressWrapper}>
+            <View style={[styles.progressWrapper, { marginTop: spacing.sm }]}>
               <AnimatedProgressBar
                 progress={progress}
                 currentStage={currentStage?.index !== undefined ? currentStage.index + 1 : undefined}
                 totalStages={processingStages.length}
-                showStages={processingStages.length > 1}
+                showStages={false}
               />
             </View>
+            
+            <ProcessingStatusMessage
+              message={status}
+              estimatedTime={estimatedTime}
+              currentStage={currentStage ? {
+                index: currentStage.index,
+                total: processingStages.length,
+              } : undefined}
+              compact={true}
+            />
+            
+            <CompactStatsBar
+              time={`${getAverageProcessingTime(editMode)}s`}
+              credits={String(modeData?.creditCost ?? 1)}
+              rating="4.9"
+              usage="2.3k"
+            />
 
             {showCancel && isProcessing && (
               <TouchableOpacity
                 onPress={handleCancel}
-                style={[styles.cancelButton, { marginTop: spacing.xl }]}
+                style={[styles.cancelButton, {
+                  marginTop: spacing.md,
+                  backgroundColor: colors.surface + 'CC',
+                  borderColor: colors.border,
+                  borderWidth: 1,
+                }]}
+                activeOpacity={0.7}
               >
                 <Text
                   style={[
                     styles.cancelText,
                     { 
-                      color: colors.textSecondary,
-                      textShadowColor: 'rgba(0, 0, 0, 0.8)',
-                      textShadowOffset: { width: 0, height: 1 },
-                      textShadowRadius: 2,
+                      color: colors.text,
+                      fontSize: typography.size.base,
+                      fontWeight: typography.weight.medium,
                     },
                   ]}
                 >
@@ -457,7 +479,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     width: '100%',
     height: '100%',
-    opacity: 0.3,
+    opacity: 0.5,
   },
   blurOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -472,17 +494,19 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   progressWrapper: {
-    width: '85%',
-    marginTop: 16,
+    width: '100%',
+    // marginTop handled inline
   },
   cancelButton: {
     paddingVertical: 12,
     paddingHorizontal: 24,
-    borderRadius: 8,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
   },
   cancelText: {
-    fontSize: 16,
-    fontWeight: '500',
+    // Dynamic styling applied inline
   },
   processingCard: {
     shadowColor: '#000',

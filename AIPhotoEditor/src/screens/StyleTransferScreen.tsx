@@ -14,10 +14,12 @@ import { CaptureLibraryButtons } from '../components/CaptureLibraryButtons';
 import { ActionButtonBar } from '../components/ActionButtonBar';
 import { SectionHeader } from '../components/SectionHeader';
 import { CollapsibleSection } from '../components/CollapsibleSection';
+import { AdvancedOptionsSelector } from '../components/AdvancedOptionsSelector';
 import { ToolStatsBar } from '../components/ToolStatsBar';
 import { TopTabSwitcher } from '../components/TopTabSwitcher';
 import { ToolGuideTab } from '../components/ToolGuideTab';
 import { ToolExamplesTab } from '../components/ToolExamplesTab';
+import { ToolHistoryTab } from '../components/ToolHistoryTab';
 import { TabView } from '../components/TabView';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
@@ -41,7 +43,7 @@ const StyleTransferScreen = () => {
   const [selectedPreset, setSelectedPreset] = useState<string | null>(routeConfig?.stylePreset || null);
   const [styleStrength, setStyleStrength] = useState((routeConfig?.styleStrength as number) || 0.7);
   const [showStylePreview, setShowStylePreview] = useState(false);
-  const [activeTopTab, setActiveTopTab] = useState<'tool' | 'guide'>('tool');
+  const [activeTopTab, setActiveTopTab] = useState<'tool' | 'guide' | 'history'>('tool');
   const cardScale = useRef(new Animated.Value(0.96)).current;
   const hintAnim = useRef(new Animated.Value(0)).current;
 
@@ -206,15 +208,16 @@ const StyleTransferScreen = () => {
         tabs={[
           { id: 'tool', label: 'Tool', icon: 'create-outline' },
           { id: 'guide', label: 'Guide', icon: 'book-outline' },
+          { id: 'history', label: 'History', icon: 'time-outline' },
         ]}
         activeTab={activeTopTab}
-        onTabChange={(tabId) => setActiveTopTab(tabId as 'tool' | 'guide')}
+        onTabChange={(tabId) => setActiveTopTab(tabId as 'tool' | 'guide' | 'history')}
       />
 
       {/* Add top padding to content to account for floating tab bar */}
       <View style={{ height: 12 + 48 + 12 }} />
 
-      {activeTopTab === 'tool' ? (
+      {activeTopTab === 'tool' && (
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -312,6 +315,10 @@ const StyleTransferScreen = () => {
             title="Advanced Options"
             defaultExpanded={true}
             containerStyle={{ marginBottom: spacing.base }}
+            previewText={[
+              styleImageUri ? 'Custom Style' : (selectedPreset ? presetStyles.find(p => p.id === selectedPreset)?.name || '' : ''),
+              styleStrength === 0.3 ? 'Light' : styleStrength === 0.5 ? 'Moderate' : styleStrength === 0.7 ? 'Strong' : styleStrength === 0.9 ? 'Very Strong' : '',
+            ].filter(Boolean).join(' • ')}
           >
             {/* Style Image Option */}
             <View style={{ marginTop: spacing.sm }}>
@@ -373,105 +380,41 @@ const StyleTransferScreen = () => {
             </View>
 
             {/* Preset Styles */}
-            <View style={{ marginTop: spacing.sm }}>
-              <Text style={[styles.optionLabel, { color: colors.text, fontSize: typography.scaled.sm, fontWeight: typography.weight.semibold, marginBottom: spacing.sm }]}>
-                Choose Preset Style
-              </Text>
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.presetScroll}
-              >
-                {presetStyles.map((preset) => (
-                  <TouchableOpacity
-                    key={preset.id}
-                    style={[
-                      styles.presetCard,
-                      {
-                        backgroundColor: colors.surface,
-                        borderColor: selectedPreset === preset.id ? colors.primary : colors.border,
-                        borderWidth: selectedPreset === preset.id ? 2 : 1,
-                      }
-                    ]}
-                    onPress={() => handlePresetSelect(preset.id)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.presetIcon}>{preset.icon}</Text>
-                    <Text style={[styles.presetTitle, { color: colors.text, fontSize: typography.scaled.sm, fontWeight: typography.weight.semibold }]}>
-                      {preset.name}
-                    </Text>
-                    <Text style={[styles.presetDesc, { color: colors.textSecondary, fontSize: typography.scaled.xs }]}>
-                      {preset.desc}
-                    </Text>
-                    {selectedPreset === preset.id && (
-                      <View style={[styles.selectedIndicator, { backgroundColor: colors.primary }]}>
-                        <Ionicons name="checkmark" size={14} color="#FFFFFF" />
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
+            <AdvancedOptionsSelector
+              label="Choose Preset Style"
+              options={presetStyles.map(preset => ({
+                id: preset.id,
+                label: preset.name,
+                icon: preset.icon,
+              }))}
+              selectedId={selectedPreset || ''}
+              onSelect={(id) => handlePresetSelect(id)}
+              layout="horizontal"
+              showSeparator={true}
+            />
 
-            {/* Style Strength Selection */}
-            <View style={{ marginTop: spacing.md }}>
-              <Text style={[styles.optionLabel, { color: colors.text, fontSize: typography.scaled.sm, fontWeight: typography.weight.semibold, marginBottom: spacing.sm }]}>
-                Style Strength
-              </Text>
-              <View style={styles.strengthSelectorRow}>
-                {[
-                  { value: 0.3, label: 'Light' },
-                  { value: 0.5, label: 'Moderate' },
-                  { value: 0.7, label: 'Strong' },
-                  { value: 0.9, label: 'Very Strong' },
-                ].map((strength, index) => {
-                  const isSelected = Math.abs(styleStrength - strength.value) < 0.1;
-                  return (
-                    <TouchableOpacity
-                      key={strength.value}
-                      style={[
-                        styles.strengthButton,
-                        {
-                          backgroundColor: isSelected ? colors.primary : colors.background,
-                          borderColor: isSelected ? colors.primary : colors.border,
-                          marginLeft: index > 0 ? spacing.xs : 0,
-                        }
-                      ]}
-                      onPress={() => {
-                        haptic.light();
-                        setStyleStrength(strength.value);
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.strengthButtonLabel, {
-                        color: isSelected ? '#FFFFFF' : colors.text,
-                        fontSize: typography.scaled.xs,
-                        fontWeight: isSelected ? typography.weight.semibold : typography.weight.medium,
-                      }]}>
-                        {strength.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
+            {/* Style Strength */}
+            <AdvancedOptionsSelector
+              label="Style Strength"
+              options={[
+                { id: '0.3', label: 'Light' },
+                { id: '0.5', label: 'Moderate' },
+                { id: '0.7', label: 'Strong' },
+                { id: '0.9', label: 'Very Strong' },
+              ]}
+              selectedId={styleStrength.toString()}
+              onSelect={(id) => {
+                haptic.light();
+                setStyleStrength(parseFloat(id));
+              }}
+              layout="horizontal"
+            />
           </CollapsibleSection>
         </View>
-
-        {/* Information Card */}
-        <AIToolInfoCard
-          icon="brush-outline"
-          whatDescription="Apply artistic styles from famous paintings or any style image to your photos. Blend colors, brushstrokes, and textures while preserving your content's structure and composition."
-          howDescription="Our AI analyzes both your content image and style reference, then blends the artistic characteristics from the style onto your photo while maintaining recognizable content details."
-          howItems={[
-            { text: 'Preserves your photo\'s composition and subject' },
-            { text: 'Applies artistic style elements naturally' },
-            { text: 'Adjustable strength for subtle or bold effects' },
-          ]}
-        />
       </ScrollView>
-      ) : (
-        /* Guide View */
+      )}
+
+      {activeTopTab === 'guide' && (
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={[
@@ -487,12 +430,13 @@ const StyleTransferScreen = () => {
               { id: 'examples', label: 'Examples', icon: 'images-outline' },
               { id: 'info', label: 'Info', icon: 'information-circle-outline' },
             ]}
+            defaultTab="guide"
             containerStyle={{ marginHorizontal: spacing.base, marginTop: spacing.lg }}
           >
             {/* Guide Tab */}
             <ToolGuideTab
               title="How to Apply Style Transfer"
-              content="Transform your photos into artistic masterpieces using famous painting styles or your own custom images.\n\n📸 Step 1: Select Your Photo\nChoose a photo from your library or capture a new one. Portrait photos work beautifully with artistic styles.\n\n🎨 Step 2: Choose Your Style\nOption A - Preset Styles: Quick-select from Van Gogh, Picasso, Monet, Watercolor, Oil Painting, or Sketch.\n\nOption B - Custom Style: Upload your own style image for a unique artistic effect.\n\n⚖️ Step 3: Adjust Style Strength\nChoose how bold you want the effect:\nLight (0.3) - Subtle artistic touch\nModerate (0.5) - Balanced blend\nStrong (0.7) - Bold artistic effect\nVery Strong (0.9) - Maximum style impact\n\n✨ Step 4: Generate\nTap Apply Style Transfer and wait 10-20 seconds for processing.\n\n🎯 Pro Tips\nPreset styles are perfect for quick, consistent results.\nCustom style images let you create unique looks.\nStart with Moderate strength, then adjust to taste.\nThe AI preserves your photo's composition and subject.\nTry different styles on the same photo for varied artistic effects."
+              content={`Apply artistic styles from famous paintings or any style image to your photos.\n\n📸 Step 1: Select Your Photo\nChoose a photo from your library or take a new one. This is your content image that will receive the style.\n\n🎨 Step 2: Choose Style Source\nYou have two options:\n• Preset Styles - Choose from famous artistic styles like Van Gogh, Watercolor, Oil Painting\n• Custom Style Image - Upload your own style reference image\n\n⚙️ Step 3: Adjust Strength (Optional)\nControl how strong the style effect is applied:\n• Subtle - Preserves more of your original photo\n• Bold - More dramatic style transformation\n\n✨ Step 4: Generate\nTap Apply Style Transfer and wait 10-20 seconds. The AI will blend the artistic characteristics onto your photo while maintaining recognizable details.\n\n🎯 Pro Tips\n• Your photo's composition and subject are preserved\n• Preset styles provide consistent, tested results\n• Custom style images let you experiment with any look\n• Adjust strength to find your perfect balance\n• Works great for artistic profile pictures and creative projects`}
             />
 
             {/* Examples Tab */}
@@ -544,6 +488,10 @@ const StyleTransferScreen = () => {
           {/* Extra bottom padding */}
           <View style={{ height: spacing.xl }} />
         </ScrollView>
+      )}
+
+      {activeTopTab === 'history' && (
+        <ToolHistoryTab editMode={EditMode.STYLE_TRANSFER} />
       )}
 
       <ActionButtonBar
@@ -714,41 +662,6 @@ const styles = StyleSheet.create({
   timingText: {
     // Dynamic styles applied inline
   },
-  optionLabel: {
-    // Dynamic styles applied inline
-  },
-  optionGrid: {
-    flexDirection: 'row',
-    gap: baseSpacing.sm,
-    flexWrap: 'wrap',
-  },
-  strengthSelectorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  strengthButton: {
-    flex: 1,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: baseSpacing.xs,
-  },
-  strengthButtonLabel: {
-    // Dynamic styles applied inline
-    textAlign: 'center',
-  },
-  selectedIndicator: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   styleImageWrapper: {
     width: width - (baseSpacing.base * 2),
     maxWidth: 200,
@@ -783,43 +696,14 @@ const styles = StyleSheet.create({
   selectStyleText: {
     // Dynamic styles applied inline
   },
+  optionLabel: {
+    // Dynamic styles applied inline
+  },
   divider: {
     height: 1,
   },
   dividerText: {
     // Dynamic styles applied inline
-  },
-  presetScroll: {
-    paddingRight: baseSpacing.base,
-    gap: baseSpacing.sm,
-  },
-  presetCard: {
-    width: 85,
-    borderRadius: 12,
-    padding: baseSpacing.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: baseSpacing.sm,
-    position: 'relative',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    elevation: 2,
-    minHeight: 90,
-  },
-  presetIcon: {
-    fontSize: 22,
-    marginBottom: baseSpacing.xs / 2,
-  },
-  presetTitle: {
-    // Dynamic styles applied inline
-    marginBottom: baseSpacing.xs / 2,
-    textAlign: 'center',
-  },
-  presetDesc: {
-    // Dynamic styles applied inline
-    textAlign: 'center',
   },
 });
 

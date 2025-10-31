@@ -84,8 +84,8 @@ export const AnimatedProgressBar: React.FC<AnimatedProgressBarProps> = ({
           styles.progressContainer,
           {
             backgroundColor: colors.surface,
-            height: 6,
-            borderRadius: 3,
+            height: 8,
+            borderRadius: 4,
             overflow: 'hidden',
           },
         ]}

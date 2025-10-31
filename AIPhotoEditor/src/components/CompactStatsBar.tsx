@@ -53,8 +53,9 @@ export const CompactStatsBar: React.FC<CompactStatsBarProps> = ({
               color={colors.primary} 
             />
             <Text style={[styles.statLabel, {
-              color: colors.textSecondary,
+              color: colors.text,
               fontSize: typography.size.xs,
+              fontWeight: typography.weight.medium,
             }]}>
               {stat.label}
             </Text>
@@ -95,4 +96,5 @@ const styles = StyleSheet.create({
     opacity: 0.3,
   },
 });
+
 

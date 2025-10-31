@@ -173,7 +173,7 @@ The app uses Replicate API to access cutting-edge AI models for image and video 
 **Google Nano Banana** (Gemini 2.5 Flash)
 - **Model ID**: `google/nano-banana`
 - **Version**: `2c8a3b5b81554aa195bde461e2caa6afacd69a66c48a64fb0e650c9789f8b8a0`
-- **Provider**: Google (Gemini 2.5 Flash based)
+- **Provider**: Google (Gemini 2.5 Flash based) via Replicate
 - **Features**: Fast and precise AI image generation and editing, strong visual consistency, realistic physics simulation
 - **Used For**:
   - ✨ Transform (all 20+ artistic genres)
@@ -186,16 +186,18 @@ The app uses Replicate API to access cutting-edge AI models for image and video 
   - 🖌️ Style Transfer (when using style images)
 - **Strengths**: Fast processing, excellent identity preservation, reliable results
 - **Output**: High-quality images with photorealistic or artistic rendering
+- **Replicate Pricing**: ~$0.04-0.05 per prediction (varies by image size/complexity, typically 10-15 seconds of GPU time)
 
 **Rembg** (Background Removal)
 - **Model ID**: `cjwbw/rembg`
 - **Version**: Latest (fetched dynamically)
-- **Provider**: Community model
+- **Provider**: Community model via Replicate
 - **Features**: Edge-aware background removal with precision cutting
 - **Used For**:
   - 🎯 Remove Background
 - **Strengths**: Fast, accurate edge detection, supports transparent PNG export
 - **Output**: Clean subject cutouts with transparent backgrounds
+- **Replicate Pricing**: ~$0.004-0.006 per prediction (very cost-effective, typically 1-2 seconds of GPU time)
 
 ### Planned/Future Models
 
@@ -208,6 +210,8 @@ The app uses Replicate API to access cutting-edge AI models for image and video 
 - `yan-ops/face_swap`
 - **Use Case**: Face swapping between two photos
 - **Priority**: High - Viral potential feature
+- **Provider**: Replicate
+- **Replicate Pricing**: ~$0.03-0.06 per swap (varies by model, typically 5-10 seconds GPU time)
 
 #### Image Enhancement & Restoration
 
@@ -218,17 +222,28 @@ The app uses Replicate API to access cutting-edge AI models for image and video 
 - `fofr/real-esrgan` - Upscaling with denoising
 - **Use Case**: Restore old, damaged, or faded photos
 - **Features**: Scratch removal, color restoration, face enhancement, noise reduction, resolution upscaling
+- **Provider**: Replicate
+- **Replicate Pricing**: 
+  - GFPGAN: ~$0.01-0.02 per restoration (face-focused, 2-4 seconds GPU)
+  - Real-ESRGAN: ~$0.008-0.015 per upscale (general restoration, 1-3 seconds GPU)
 
 **Colorization Models** (Future Implementation)
 - `jantic/deoldify` - Best for realistic colorization
 - `fofr/colorize-images` - Alternative colorization
 - `nightmareai/deoldify` - Another option
 - **Use Case**: Convert black & white photos to color
+- **Provider**: Replicate
+- **Replicate Pricing**: ~$0.02-0.04 per colorization (varies by image complexity, typically 3-8 seconds GPU time)
 
 **Super Resolution Models** (Future Implementation)
 - Real-ESRGAN models - General upscaling
 - Face-aware upscaling variants
 - **Use Case**: Upscale low-resolution images (2x, 4x, 8x)
+- **Provider**: Replicate
+- **Replicate Pricing**: 
+  - 2x upscale: ~$0.005-0.01 per image (1-2 seconds GPU)
+  - 4x upscale: ~$0.01-0.02 per image (2-4 seconds GPU)
+  - 8x upscale: ~$0.02-0.04 per image (4-8 seconds GPU)
 
 #### Professional Photography
 
@@ -236,6 +251,8 @@ The app uses Replicate API to access cutting-edge AI models for image and video 
 - `fofr/portrait-photo` - Professional headshot generation
 - `lucataco/realistic-vision-v5-img2img` - Enhance existing photos
 - **Use Case**: Professional portrait enhancement
+- **Provider**: Replicate
+- **Replicate Pricing**: ~$0.03-0.06 per enhancement (varies by model and complexity, typically 5-12 seconds GPU time)
 
 #### Video Generation Models (Future Implementation)
 
@@ -245,17 +262,26 @@ The app uses Replicate API to access cutting-edge AI models for image and video 
   - Synchronized audio
   - Native 1080p resolution
   - Use case: Professional video generation
+  - **Provider**: Kie.ai (primary) / Replicate (alternative)
+  - **Kie.ai Pricing**: [To be configured - check Kie.ai marketplace]
+  - **Replicate Pricing**: ~$0.10-0.15 per second of video (varies by duration and resolution)
   
 - **Veo 3.1 Fast** (Google DeepMind)
   - Faster variant of Veo 3.1
   - Quicker rendering, lower cost
   - Use case: Time-sensitive projects, rapid prototyping
+  - **Provider**: Kie.ai (primary) / Replicate (alternative)
+  - **Kie.ai Pricing**: [To be configured - check Kie.ai marketplace]
+  - **Replicate Pricing**: ~$0.08-0.12 per second of video (lower cost variant)
   
 - **Kling 2.1** (Kling AI)
   - Hyper-realistic motion
   - Advanced physics simulation
   - Up to 1080p resolution
   - Use case: Dynamic video creation
+  - **Provider**: Kie.ai (primary) / Replicate (alternative)
+  - **Kie.ai Pricing**: [To be configured - check Kie.ai marketplace]
+  - **Replicate Pricing**: ~$0.12-0.18 per second of video (premium quality)
 
 **Video Editing**
 - **Runway Aleph** (Runway)
@@ -263,6 +289,9 @@ The app uses Replicate API to access cutting-edge AI models for image and video 
   - Precise camera control
   - Multi-task editing (add/remove objects, relighting, angle/style changes)
   - Use case: Advanced video editing
+  - **Provider**: Kie.ai (primary) / Replicate (alternative)
+  - **Kie.ai Pricing**: [To be configured - check Kie.ai marketplace]
+  - **Replicate Pricing**: ~$0.15-0.25 per second of edited video (complex editing operations)
 
 ### Model Selection Strategy
 
@@ -291,12 +320,61 @@ All models are accessed through:
 - **Response Format**: Asynchronous prediction polling
 - **Error Handling**: Comprehensive retry logic and timeout management
 
-### Cost Considerations
+### Pricing Overview
 
-- **Nano Banana**: ~$0.04 per prediction (varies by image size/complexity)
-- **Rembg**: ~$0.0046 per prediction (very cost-effective)
-- **Future Models**: Pricing varies by model and complexity
-- **Optimization**: Credit system balances feature access with API costs
+#### Replicate Pricing Model
+Replicate charges based on **GPU compute time** (per second of usage). Pricing varies by:
+- Model complexity and GPU requirements
+- Image/video resolution and size
+- Processing duration
+- Current Replicate pricing tiers
+
+**Typical Replicate Costs:**
+- Image processing: $0.002-0.006 per second of GPU time
+- Video generation: $0.01-0.025 per second of GPU time
+- High-end models: Premium pricing for advanced capabilities
+
+#### Kie.ai Pricing Model
+Kie.ai offers a unified credit-based system for accessing multiple AI models through a single API. Pricing is managed through their marketplace system.
+
+**Kie.ai Advantages:**
+- Unified API for multiple models
+- Credit-based pricing model
+- Potentially better rates for bulk usage
+- Single integration point for video models
+
+**Note**: Kie.ai pricing details should be checked on their marketplace for current rates as they may offer competitive pricing compared to direct model access.
+
+#### Cost Optimization Strategy
+
+1. **Credit-Based Billing**: App uses credit system to abstract API costs from users
+2. **Model Selection**: Prioritize cost-effective models (e.g., Rembg for background removal)
+3. **Caching**: Implement result caching where possible to reduce duplicate API calls
+4. **User Limits**: Subscription tiers balance user value with API costs
+5. **Provider Flexibility**: Support both Replicate and Kie.ai for best pricing options
+
+#### Cost Breakdown by Feature
+
+| Feature | Model | Replicate Cost | Kie.ai Cost | Credits Charged |
+|---------|-------|---------------|-------------|-----------------|
+| Transform | nano-banana | ~$0.04-0.05 | N/A | 1 credit |
+| Remove Background | rembg | ~$0.004-0.006 | N/A | 0.1 credits |
+| Remove Object | nano-banana | ~$0.04-0.05 | N/A | 1 credit |
+| Replace Background | nano-banana | ~$0.04-0.05 | N/A | 1 credit |
+| Virtual Try-On | nano-banana | ~$0.04-0.05 | N/A | 1 credit |
+| Professional Headshots | nano-banana | ~$0.04-0.05 | N/A | 1 credit |
+| Pop Figure | nano-banana | ~$0.04-0.05 | N/A | 1 credit |
+| Pixel Art Gamer | nano-banana | ~$0.04-0.05 | N/A | 1 credit |
+| Text to Video (Veo) | Veo 3.1 | ~$0.10-0.15/sec | [Check marketplace] | 2 credits |
+| Text to Video (Fast) | Veo 3.1 Fast | ~$0.08-0.12/sec | [Check marketplace] | 1.5 credits |
+| Text to Video (Kling) | Kling 2.1 | ~$0.12-0.18/sec | [Check marketplace] | 2 credits |
+| Edit Video (Runway) | Runway Aleph | ~$0.15-0.25/sec | [Check marketplace] | 2 credits |
+
+**Note**: All pricing is approximate and subject to change. Actual costs may vary based on:
+- Image/video resolution and complexity
+- Processing time required
+- Current provider pricing updates
+- Regional pricing differences
 
 ## 🛠️ Tech Stack
 
