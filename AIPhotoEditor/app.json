@@ -4,14 +4,16 @@
     "slug": "aiphotoeditor",
     "version": "0.1.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.midego.aiphotoeditor",
-      "buildNumber": "5"
+      "buildNumber": "7",
+      "copyright": "© 2025 Midego"
     },
     "web": {
       "favicon": "./assets/images/icon.png",
