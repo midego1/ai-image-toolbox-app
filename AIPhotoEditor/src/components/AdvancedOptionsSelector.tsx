@@ -59,7 +59,6 @@ export const AdvancedOptionsSelector: React.FC<AdvancedOptionsSelectorProps> = (
 
     return (
       <TouchableOpacity
-        key={option.id}
         onPress={() => handleSelect(option.id)}
         style={[styles.bitDepthButton, {
           backgroundColor: isSelected ? colors.primary : colors.background,
@@ -146,7 +145,11 @@ export const AdvancedOptionsSelector: React.FC<AdvancedOptionsSelectorProps> = (
           style={styles.bitDepthScrollView}
           contentContainerStyle={styles.bitDepthOptions}
         >
-          {options.map((option) => renderOption(option))}
+          {options.map((option) => (
+            <React.Fragment key={option.id}>
+              {renderOption(option)}
+            </React.Fragment>
+          ))}
         </ScrollView>
       </View>
       {showSeparator && (

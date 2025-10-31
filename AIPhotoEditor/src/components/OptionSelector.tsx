@@ -60,7 +60,6 @@ export const OptionSelector: React.FC<OptionSelectorProps> = ({
 
     return (
       <TouchableOpacity
-        key={option.id}
         onPress={() => handleSelect(option.id)}
         style={buttonStyle}
       >

@@ -2,15 +2,7 @@ import axios from 'axios';
 import * as FileSystem from 'expo-file-system/legacy';
 import { getKieAIApiKey } from '../config/apiKeys';
 import { VideoTransformResponse } from '../types/video';
-
-/**
- * TransformResponse interface for image operations
- */
-export interface TransformResponse {
-  success: boolean;
-  imageUri?: string;
-  error?: string;
-}
+import { TransformResponse } from './aiService';
 
 /**
  * Kie.ai API Service
