@@ -102,7 +102,11 @@ export const OptionSelector: React.FC<OptionSelectorProps> = ({
           contentContainerStyle={styles.horizontalScrollContent}
           style={styles.horizontalScrollView}
         >
-          {options.map((option) => renderOption(option, true))}
+          {options.map((option) => (
+            <React.Fragment key={option.id}>
+              {renderOption(option, true)}
+            </React.Fragment>
+          ))}
         </ScrollView>
       </View>
     );
@@ -120,7 +124,11 @@ export const OptionSelector: React.FC<OptionSelectorProps> = ({
         {label}
       </Text>
       <View style={styles.gridContainer}>
-        {options.map((option) => renderOption(option, false))}
+        {options.map((option) => (
+          <React.Fragment key={option.id}>
+            {renderOption(option, false)}
+          </React.Fragment>
+        ))}
       </View>
     </View>
   );

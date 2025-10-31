@@ -370,12 +370,8 @@ const GenreSelectionScreen = () => {
                     style={[styles.ctaCard, { backgroundColor: colors.primary + '14', borderColor: colors.primary + '26' }]}
                     onPress={() => {
                       haptic.medium();
-                      const parentNav = navigation.getParent();
-                      if (parentNav) {
-                        (parentNav as any).navigate('QuickCameraLocal', { editMode: EditMode.TRANSFORM });
-                      } else {
-                        (navigation as any).navigate('QuickCameraLocal', { editMode: EditMode.TRANSFORM });
-                      }
+                      // Navigate to QuickCameraLocal in the same Features stack
+                      (navigation as any).navigate('QuickCameraLocal', { editMode: EditMode.TRANSFORM });
                     }}
                   >
                     <View style={[styles.ctaIconCircle, { backgroundColor: colors.primary + '22' }]}> 

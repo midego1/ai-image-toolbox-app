@@ -1,6 +1,7 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import * as FileSystem from 'expo-file-system/legacy';
+import { KieAIService } from './kieAIService';
 
 // Store API keys securely - DO NOT commit real keys to git
 const REPLICATE_API_KEY_STORAGE = 'replicate_api_key';
@@ -57,7 +58,8 @@ export class AIService {
   }
 
   /**
-   * Transform image using Replicate API
+   * Transform image using Kie.ai Nano Banana Edit API
+   * Now uses Kie.ai instead of Replicate for Nano Banana operations
    */
   static async transformImage(
     imageUri: string,
@@ -65,52 +67,16 @@ export class AIService {
     model: string = 'google/nano-banana'
   ): Promise<TransformResponse> {
     try {
-      const apiKey = await getReplicateApiKey();
-
-      if (apiKey === REPLICATE_API_KEY_FALLBACK || !apiKey || apiKey.length === 0) {
-        return {
-          success: false,
-          error: 'Replicate API key not configured. Please set it in app settings (Settings → Developer → Replicate API Key), or configure it via EAS Secrets before building.',
-        };
-      }
-
-      // Read image file and convert to base64
-      const base64 = await FileSystem.readAsStringAsync(imageUri, {
-        encoding: 'base64',
-      });
-
-      // Call Replicate API using google/nano-banana model (Gemini 2.5 Flash)
-      const response = await axios.post(
-        'https://api.replicate.com/v1/predictions',
+      console.log('[AIService] Using Kie.ai Nano Banana Edit for image transformation');
+      // Use Kie.ai Nano Banana Edit for image editing/transformation
+      return await KieAIService.transformImageWithNanoBanana(
+        imageUri,
+        prompt,
         {
-          version: '2c8a3b5b81554aa195bde461e2caa6afacd69a66c48a64fb0e650c9789f8b8a0', // google/nano-banana
-          input: {
-            prompt: prompt,
-            image_input: [`data:image/jpeg;base64,${base64}`],
-            aspect_ratio: 'match_input_image',
-            output_format: 'jpg',
-          },
-        },
-        {
-          headers: {
-            Authorization: `Token ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
+          outputFormat: 'jpeg',
+          imageSize: 'auto',
         }
       );
-
-      // Poll for result
-      const predictionId = response.data.id;
-      let result = await this.pollPrediction(predictionId, apiKey);
-
-      if (result.success && result.imageUri) {
-        return result;
-      }
-
-      return {
-        success: false,
-        error: result.error || 'Failed to transform image',
-      };
     } catch (error: any) {
       console.error('AIService transformImage error:', error);
       return {
@@ -122,20 +88,13 @@ export class AIService {
 
   /**
    * Transform images using multiple images (for virtual try-on, multi-image composition)
+   * Now uses Kie.ai Nano Banana Edit instead of Replicate
    */
   static async transformImages(
     params: MultiImageTransformParams
   ): Promise<TransformResponse> {
     try {
-      const apiKey = await getReplicateApiKey();
       const { imageUris, prompt, model = 'google/nano-banana' } = params;
-
-      if (apiKey === REPLICATE_API_KEY_FALLBACK || !apiKey || apiKey.length === 0) {
-        return {
-          success: false,
-          error: 'Replicate API key not configured. Please set it in app settings (Settings → Developer → Replicate API Key), or configure it via EAS Secrets before building.',
-        };
-      }
 
       if (!imageUris || imageUris.length === 0) {
         return {
@@ -144,135 +103,24 @@ export class AIService {
         };
       }
 
-      // Convert all images to base64
-      console.log(`[AIService] Converting ${imageUris.length} images to base64...`);
-      const base64Images = await Promise.all(
-        imageUris.map(async (uri, index) => {
-          try {
-            const base64 = await FileSystem.readAsStringAsync(uri, {
-              encoding: 'base64',
-            });
-            console.log(`[AIService] Image ${index + 1} converted, length: ${base64.length}`);
-            return `data:image/jpeg;base64,${base64}`;
-          } catch (error) {
-            console.error(`[AIService] Failed to convert image ${index + 1}:`, error);
-            throw error;
-          }
-        })
-      );
-
-      console.log(`[AIService] Sending ${base64Images.length} images to Replicate API...`);
+      console.log(`[AIService] Using Kie.ai Nano Banana Edit for ${imageUris.length} images`);
       console.log(`[AIService] Prompt length: ${prompt.length} characters`);
 
-      // Call Replicate API with multiple images
-      const requestPayload = {
-        version: '2c8a3b5b81554aa195bde461e2caa6afacd69a66c48a64fb0e650c9789f8b8a0', // google/nano-banana
-        input: {
-          prompt: prompt,
-          image_input: base64Images, // Array of base64 images
-          aspect_ratio: 'match_input_image',
-          output_format: 'jpg',
-        },
-      };
-
-      console.log(`[AIService] Request payload prepared, image_input array length: ${requestPayload.input.image_input.length}`);
-
-      const response = await axios.post(
-        'https://api.replicate.com/v1/predictions',
-        requestPayload,
+      // Use Kie.ai Nano Banana Edit for multiple image editing/transformation
+      return await KieAIService.transformImagesWithNanoBanana(
+        imageUris,
+        prompt,
         {
-          headers: {
-            Authorization: `Token ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          timeout: 30000, // 30 second timeout for initial request
+          outputFormat: 'jpeg',
+          imageSize: 'auto',
         }
       );
-
-      console.log('[AIService] API request successful, response status:', response.status);
-      console.log('[AIService] Prediction ID:', response.data?.id);
-      console.log('[AIService] Prediction status:', response.data?.status);
-      console.log('[AIService] Has output in initial response:', !!response.data?.output);
-
-      // Validate response
-      if (!response.data || !response.data.id) {
-        console.error('[AIService] Invalid API response:', response.data);
-        return {
-          success: false,
-          error: 'Invalid response from API: missing prediction ID',
-        };
-      }
-
-      // Check if already completed in initial response (sometimes happens)
-      const initialStatus = response.data.status;
-      if ((initialStatus === 'succeeded' || initialStatus === 'completed') && response.data.output) {
-        console.log('[AIService] Prediction already completed in initial response!');
-        let outputUrl: string | undefined;
-        
-        if (typeof response.data.output === 'string') {
-          outputUrl = response.data.output;
-        } else if (Array.isArray(response.data.output)) {
-          outputUrl = response.data.output[0];
-        } else if (response.data.output && typeof response.data.output === 'object') {
-          outputUrl = (response.data.output as any).url || (response.data.output as any)[0];
-        }
-
-        if (outputUrl && typeof outputUrl === 'string' && (outputUrl.startsWith('http://') || outputUrl.startsWith('https://'))) {
-          console.log('[AIService] Downloading from initial response output:', outputUrl);
-          try {
-            const localUri = await this.downloadImage(outputUrl);
-            console.log('[AIService] Download successful from initial response:', localUri);
-            return {
-              success: true,
-              imageUri: localUri,
-            };
-          } catch (downloadError: any) {
-            console.error('[AIService] Download failed from initial response:', downloadError);
-            // Fall through to polling as backup
-          }
-        }
-      }
-
-      // Poll for result
-      const predictionId = response.data.id;
-      console.log('[AIService] Starting to poll prediction:', predictionId);
-      let result = await this.pollPrediction(predictionId, apiKey);
-
-      console.log('[AIService] pollPrediction returned:', {
-        success: result.success,
-        hasImageUri: !!result.imageUri,
-        error: result.error
-      });
-
-      if (result.success && result.imageUri) {
-        console.log('[AIService] transformImages returning success with imageUri:', result.imageUri);
-        return result;
-      }
-
-      console.error('[AIService] transformImages returning error:', result.error);
-      return {
-        success: false,
-        error: result.error || 'Failed to transform images',
-      };
     } catch (error: any) {
       console.error('[AIService] transformImages error:', error);
       
-      // Extract more detailed error information
       let errorMessage = 'Failed to transform images';
-      
-      if (error.response) {
-        // API responded with error status
-        console.error('[AIService] API Error Response:', error.response.status);
-        console.error('[AIService] API Error Data:', error.response.data);
-        errorMessage = error.response.data?.detail || error.response.data?.error || `API Error: ${error.response.status}`;
-      } else if (error.request) {
-        // Request was made but no response received
-        console.error('[AIService] No response received from API');
-        errorMessage = 'No response from API. Please check your internet connection.';
-      } else {
-        // Error in setting up request
-        console.error('[AIService] Request setup error:', error.message);
-        errorMessage = error.message || 'Failed to setup API request';
+      if (error.message) {
+        errorMessage = error.message;
       }
       
       return {

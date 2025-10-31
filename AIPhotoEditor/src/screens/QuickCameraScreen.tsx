@@ -536,7 +536,8 @@ const QuickCameraScreen = () => {
           {/* Focus indicator removed (no visual feedback) */}
 
           {/* Bottom Bar */}
-          <View style={[styles.bottomSection, { paddingBottom: Math.max(insets.bottom + 8, 24) }]}>
+          {/* Account for floating tab bar: bottom offset (20) + height (52) + margin (16) = 88px */}
+          <View style={[styles.bottomSection, { paddingBottom: Math.max(insets.bottom + 8, 24) + 88 }]}>
             {/* Zoom Buttons Above Shutter */}
             {availableLenses.length >= 1 && (
               <View style={styles.zoomContainerWrapper}>
