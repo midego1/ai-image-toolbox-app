@@ -11,6 +11,8 @@ import { EditModeConfig } from '../../types/editModes';
 export class TransformProcessor extends BaseProcessor {
   /**
    * Process image transformation with genre/style prompt
+   * Config options:
+   * - prompt: Genre/style prompt (required)
    */
   async process(imageUri: string, config?: EditModeConfig): Promise<TransformResponse> {
     if (!this.validateImageUri(imageUri)) {

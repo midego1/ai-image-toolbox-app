@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, StyleSheet, ScrollView, Image, Dimensions, Text, TouchableOpacity, Modal, Pressable, Animated } from 'react-native';
+import { View, StyleSheet, ScrollView, Image, Dimensions, Text, TouchableOpacity, Modal, Pressable, Animated, FlatList, PanResponder } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,17 +13,59 @@ import { AIToolInfoCard } from '../components/AIToolInfoCard';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { ActionButtonBar } from '../components/ActionButtonBar';
+import { ZoomableImage } from '../components/ZoomableImage';
+import { ToolStatsBar } from '../components/ToolStatsBar';
+import { TopTabSwitcher } from '../components/TopTabSwitcher';
+import { ToolGuideTab } from '../components/ToolGuideTab';
+import { ToolExamplesTab } from '../components/ToolExamplesTab';
+import { TabView } from '../components/TabView';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
 import { spacing as baseSpacing } from '../theme/spacing';
+import { useScrollBottomPadding, useScrollBottomPaddingWithActionButton } from '../utils/scrollPadding';
 
 const { width, height } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) / 2; // 2 columns with 16px padding
+const FILTER_CARD_WIDTH = 120;
+const FILTER_CARD_SPACING = baseSpacing.sm; // 8px
+const FILTER_CARD_TOTAL = FILTER_CARD_WIDTH + FILTER_CARD_SPACING; // 128px
+
+// Mockup preview styles for each genre - color overlays and gradients
+const getGenrePreviewStyle = (genreId: string) => {
+  const styles: Record<string, { gradientColors: string[], overlayOpacity: number, blendMode?: any }> = {
+    art_deco: { gradientColors: ['rgba(255, 215, 0, 0.4)', 'rgba(0, 0, 0, 0.3)'], overlayOpacity: 0.5 },
+    cyberpunk: { gradientColors: ['rgba(138, 43, 226, 0.5)', 'rgba(0, 255, 255, 0.4)'], overlayOpacity: 0.6 },
+    wild_west: { gradientColors: ['rgba(139, 69, 19, 0.3)', 'rgba(255, 140, 0, 0.3)'], overlayOpacity: 0.4 },
+    vintage: { gradientColors: ['rgba(184, 134, 11, 0.4)', 'rgba(205, 133, 63, 0.3)'], overlayOpacity: 0.5 },
+    underwater: { gradientColors: ['rgba(0, 191, 255, 0.4)', 'rgba(32, 178, 170, 0.4)'], overlayOpacity: 0.5 },
+    medieval: { gradientColors: ['rgba(139, 69, 19, 0.4)', 'rgba(101, 67, 33, 0.4)'], overlayOpacity: 0.5 },
+    neon_tokyo: { gradientColors: ['rgba(255, 20, 147, 0.5)', 'rgba(0, 191, 255, 0.5)'], overlayOpacity: 0.6 },
+    steampunk: { gradientColors: ['rgba(184, 115, 51, 0.4)', 'rgba(139, 69, 19, 0.4)'], overlayOpacity: 0.5 },
+    spy: { gradientColors: ['rgba(0, 0, 0, 0.5)', 'rgba(25, 25, 112, 0.4)'], overlayOpacity: 0.6 },
+    gothic: { gradientColors: ['rgba(75, 0, 130, 0.5)', 'rgba(25, 25, 112, 0.5)'], overlayOpacity: 0.6 },
+    '90s': { gradientColors: ['rgba(255, 20, 147, 0.4)', 'rgba(0, 255, 127, 0.4)'], overlayOpacity: 0.5 },
+    disco: { gradientColors: ['rgba(255, 0, 255, 0.5)', 'rgba(255, 20, 147, 0.5)', 'rgba(0, 191, 255, 0.5)'], overlayOpacity: 0.6 },
+    trump: { gradientColors: ['rgba(255, 215, 0, 0.4)', 'rgba(220, 20, 60, 0.3)'], overlayOpacity: 0.5 },
+    anime: { gradientColors: ['rgba(255, 182, 193, 0.4)', 'rgba(135, 206, 250, 0.4)'], overlayOpacity: 0.5 },
+    oil_painting: { gradientColors: ['rgba(139, 69, 19, 0.3)', 'rgba(101, 67, 33, 0.3)'], overlayOpacity: 0.4 },
+    pixar: { gradientColors: ['rgba(255, 182, 193, 0.3)', 'rgba(135, 206, 250, 0.3)'], overlayOpacity: 0.4 },
+    matrix: { gradientColors: ['rgba(0, 255, 0, 0.5)', 'rgba(0, 0, 0, 0.6)'], overlayOpacity: 0.7 },
+    zombie: { gradientColors: ['rgba(128, 128, 128, 0.5)', 'rgba(34, 139, 34, 0.4)'], overlayOpacity: 0.6 },
+    comic_book: { gradientColors: ['rgba(255, 0, 0, 0.4)', 'rgba(0, 0, 255, 0.4)', 'rgba(255, 255, 0, 0.3)'], overlayOpacity: 0.5 },
+    watercolor: { gradientColors: ['rgba(255, 182, 193, 0.3)', 'rgba(221, 160, 221, 0.3)', 'rgba(176, 224, 230, 0.3)'], overlayOpacity: 0.4 },
+    renaissance: { gradientColors: ['rgba(184, 134, 11, 0.4)', 'rgba(139, 69, 19, 0.4)'], overlayOpacity: 0.5 },
+    vaporwave: { gradientColors: ['rgba(255, 20, 147, 0.5)', 'rgba(0, 191, 255, 0.5)'], overlayOpacity: 0.6 },
+    sketch: { gradientColors: ['rgba(128, 128, 128, 0.3)', 'rgba(192, 192, 192, 0.2)'], overlayOpacity: 0.3 },
+  };
+  return styles[genreId] || { gradientColors: ['rgba(0, 0, 0, 0.2)', 'rgba(0, 0, 0, 0.2)'], overlayOpacity: 0.3 };
+};
 
 const GenreSelectionScreen = () => {
   const { theme } = useTheme();
   const { colors, typography, spacing } = theme;
   const insets = useSafeAreaInsets();
+  const scrollBottomPadding = useScrollBottomPadding();
+  const scrollBottomPaddingWithButton = useScrollBottomPaddingWithActionButton();
   const navigation = useNavigation<NavigationProp<'Processing'>>();
   const route = useRoute<RouteProp<'GenreSelection'>>();
   const { imageUri, editMode, preselectedGenreId } = (route.params as any) || {};
@@ -56,11 +98,28 @@ const GenreSelectionScreen = () => {
   const [selectedGenreId, setSelectedGenreId] = useState<string | null>(null);
   const selectedGenre = useMemo(() => GENRES.find(g => g.id === selectedGenreId) || null, [selectedGenreId]);
   const [expandedGenreId, setExpandedGenreId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'carousel' | 'grid'>('carousel');
+  const [carouselIndex, setCarouselIndex] = useState(0);
+  const [activeTopTab, setActiveTopTab] = useState<'tool' | 'guide'>('tool');
+  const carouselRef = useRef<FlatList>(null);
+  const thumbnailsScrollRef = useRef<ScrollView>(null);
+  const scrollX = useRef(new Animated.Value(0)).current;
+  const previewSwipeStartX = useRef(0);
+  const isPreviewSwiping = useRef(false);
 
   // When navigating back here after capturing/selecting an image, preserve the originally tapped style
   useEffect(() => {
     if (preselectedGenreId && preselectedGenreId !== selectedGenreId) {
       setSelectedGenreId(preselectedGenreId);
+      // Scroll to the selected genre in carousel
+      if (viewMode === 'carousel') {
+        const index = GENRES.findIndex(g => g.id === preselectedGenreId);
+        if (index >= 0 && carouselRef.current) {
+          setTimeout(() => {
+            carouselRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
+          }, 100);
+        }
+      }
     }
   }, [preselectedGenreId]);
 
@@ -82,6 +141,101 @@ const GenreSelectionScreen = () => {
   }, [imageUri]);
 
   // removed recents
+
+  // PanResponder for swipe gesture on preview image
+  // Only responds to clear horizontal swipes, not vertical scrolling or carousel scrolling
+  const previewPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false, // Don't capture on start - let ScrollView handle vertical scrolling
+      onStartShouldSetPanResponderCapture: () => false, // Don't capture during capture phase
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Only respond to very clear horizontal swipes (not vertical scrolling or carousel scrolling)
+        // Require horizontal movement to be at least 3x the vertical movement
+        const isHorizontal = Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 3;
+        const hasSignificantMovement = Math.abs(gestureState.dx) > 30; // Higher threshold
+        // Only activate if we're clearly swiping horizontally on the preview image
+        return isHorizontal && hasSignificantMovement;
+      },
+      onMoveShouldSetPanResponderCapture: () => false, // Don't capture during capture phase
+      onPanResponderGrant: () => {
+        previewSwipeStartX.current = carouselIndex;
+        isPreviewSwiping.current = true;
+      },
+      onPanResponderMove: () => {
+        // No visual translation - just let the release handle the change
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        isPreviewSwiping.current = false;
+        
+        const swipeThreshold = 80; // Higher threshold for more intentional swipes
+        let newIndex = carouselIndex;
+        
+        // Only process if it was very clearly a horizontal swipe
+        // Require horizontal to be at least 2x vertical movement
+        const isHorizontal = Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 2;
+        
+        if (isHorizontal && Math.abs(gestureState.dx) > swipeThreshold) {
+          if (gestureState.dx < -swipeThreshold && carouselIndex < GENRES.length - 1) {
+            // Swipe left - next genre
+            newIndex = carouselIndex + 1;
+          } else if (gestureState.dx > swipeThreshold && carouselIndex > 0) {
+            // Swipe right - previous genre
+            newIndex = carouselIndex - 1;
+          }
+          
+          // Update selection if changed
+          if (newIndex !== carouselIndex && GENRES[newIndex]) {
+            haptic.medium();
+            setSelectedGenreId(GENRES[newIndex].id);
+            setCarouselIndex(newIndex);
+            // Scroll carousel to match
+            setTimeout(() => {
+              if (carouselRef.current) {
+                carouselRef.current.scrollToIndex({ 
+                  index: newIndex, 
+                  animated: true,
+                  viewPosition: 0.5,
+                });
+              }
+            }, 50);
+          }
+        }
+      },
+      onPanResponderTerminate: () => {
+        // If gesture is cancelled, just reset
+        isPreviewSwiping.current = false;
+      },
+      onPanResponderTerminationRequest: () => true, // Allow cancellation
+    })
+  ).current;
+
+  // Update preview position when genre changes via carousel
+  useEffect(() => {
+    if (!isPreviewSwiping.current && selectedGenreId) {
+      const index = GENRES.findIndex(g => g.id === selectedGenreId);
+      if (index >= 0 && index !== carouselIndex) {
+        setCarouselIndex(index);
+      }
+    }
+  }, [selectedGenreId]);
+
+  // Auto-scroll thumbnails to selected genre
+  useEffect(() => {
+    if (selectedGenreId && thumbnailsScrollRef.current && viewMode === 'carousel') {
+      const index = GENRES.findIndex(g => g.id === selectedGenreId);
+      if (index >= 0) {
+        // Calculate approximate position (thumbnail width + margin)
+        const thumbnailWidth = 90; // Approximate width including margins
+        const scrollPosition = Math.max(0, (index * thumbnailWidth) - (width / 2) + (thumbnailWidth / 2));
+        setTimeout(() => {
+          thumbnailsScrollRef.current?.scrollTo({
+            x: scrollPosition,
+            animated: true,
+          });
+        }, 100);
+      }
+    }
+  }, [selectedGenreId, viewMode]);
 
   const handleGenreSelect = (genreId: string) => {
     const genre = GENRES.find(g => g.id === genreId);
@@ -128,12 +282,31 @@ const GenreSelectionScreen = () => {
         backgroundColor={colors.backgroundSecondary}
       />
 
+      {/* Floating Top Tab Switcher */}
+      <TopTabSwitcher
+        tabs={[
+          { id: 'tool', label: 'Tool', icon: 'create-outline' },
+          { id: 'guide', label: 'Guide', icon: 'book-outline' },
+        ]}
+        activeTab={activeTopTab}
+        onTabChange={(tabId) => setActiveTopTab(tabId as 'tool' | 'guide')}
+      />
+
+      {/* Add top padding to content to account for floating tab bar */}
+      <View style={{ height: 12 + 48 + 12 }} />
+
+      {activeTopTab === 'tool' ? (
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
           // Add padding when button is visible to prevent content from being hidden
-          imageUri && selectedGenreId ? { paddingBottom: 120 } : { paddingBottom: insets.bottom + spacing.base },
+          // ActionButtonBar is ~100px (button 56px + padding + timing info) + safe area
+          imageUri && selectedGenreId 
+            // Use proper padding that accounts for floating tab bar
+            // When button is visible, account for ActionButtonBar height
+            ? { paddingBottom: scrollBottomPaddingWithButton } 
+            : { paddingBottom: scrollBottomPadding },
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -246,35 +419,14 @@ const GenreSelectionScreen = () => {
             </View>
           )}
 
-          {/* Quick Info Badges */}
-          <View style={[styles.badgesContainer, { marginTop: spacing.xs }]}>
-            <View style={[styles.badge, { 
-              backgroundColor: colors.primary + '15',
-              borderColor: colors.primary + '30',
-            }]}>
-              <Ionicons name="sparkles-outline" size={14} color={colors.primary} />
-              <Text style={[styles.badgeText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}>
-                AI-powered
-              </Text>
-            </View>
-            <View style={[styles.badge, { 
-              backgroundColor: colors.primary + '15',
-              borderColor: colors.primary + '30',
-            }]}>
-              <Ionicons name="apps-outline" size={14} color={colors.primary} />
-              <Text style={[styles.badgeText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}>
-                {GENRES.length} Styles
-              </Text>
-            </View>
-            <View style={[styles.badge, { 
-              backgroundColor: colors.primary + '15',
-              borderColor: colors.primary + '30',
-            }]}>
-              <Ionicons name="brush-outline" size={14} color={colors.primary} />
-              <Text style={[styles.badgeText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}>
-                Professional
-              </Text>
-            </View>
+          {/* Tool Stats Bar */}
+          <View style={{ paddingHorizontal: spacing.base, marginTop: spacing.sm }}>
+            <ToolStatsBar
+              time="5-10 sec"
+              credits="0.5 credit"
+              rating="4.8/5"
+              usage="1.2k today"
+            />
           </View>
         </View>
 
@@ -294,109 +446,377 @@ const GenreSelectionScreen = () => {
 
         {/* Style Selection Section */}
         <View style={{ marginHorizontal: spacing.base, marginTop: spacing.lg }}>
-          <Text style={[styles.sectionTitle, {
-            color: colors.text,
-            fontSize: typography.scaled.lg,
-            fontWeight: typography.weight.bold,
-            marginBottom: spacing.base,
-          }]}>
-            Choose a Style
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.base }}>
+            <Text style={[styles.sectionTitle, {
+              color: colors.text,
+              fontSize: typography.scaled.lg,
+              fontWeight: typography.weight.bold,
+            }]}>
+              Choose a Style
+            </Text>
+            {/* View Toggle */}
+            <TouchableOpacity
+              onPress={() => {
+                haptic.light();
+                setViewMode(viewMode === 'carousel' ? 'grid' : 'carousel');
+              }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: spacing.sm,
+                paddingVertical: spacing.xs,
+                borderRadius: 20,
+                backgroundColor: colors.surface,
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
+            >
+              <Ionicons 
+                name={viewMode === 'carousel' ? 'grid' : 'list'} 
+                size={18} 
+                color={colors.text} 
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Accordion list of styles */}
-        <View style={{ paddingHorizontal: spacing.base }}>
-          {GENRES.map((genre, index, array) => {
-            const isExpanded = expandedGenreId === genre.id;
-            const isSelected = selectedGenreId === genre.id;
-            const isLast = index === array.length - 1;
-            return (
-              <View key={genre.id}>
-                <Card
-                  icon={genre.icon}
-                  title={genre.name}
-                  subtitle={genre.description}
-                  rightIcon={isExpanded ? 'chevron-up' : 'chevron'}
-                  onPress={() => {
-                    haptic.light();
-                    setExpandedGenreId(isExpanded ? null : genre.id);
-                    setSelectedGenreId(genre.id);
-                  }}
-                  isFirstInGroup={index === 0}
-                  isLastInGroup={isLast && !isExpanded}
-                  showSeparator={!isExpanded && index < array.length - 1}
-                  iconColor={colors.primary}
-                  style={[
-                    isSelected && {
-                      borderWidth: 1,
-                      borderColor: colors.primary,
-                      backgroundColor: colors.primary + '0F',
-                    }
-                  ]}
-                />
-
-                {isExpanded && (
-                  <View style={{
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
-                    borderWidth: 1,
-                    borderTopWidth: 0,
-                    borderBottomLeftRadius: isLast ? 12 : 0,
-                    borderBottomRightRadius: isLast ? 12 : 0,
-                    padding: spacing.base,
-                  }}>
-                    {/* Thumbnails grid */}
-                    <View style={{ flexDirection: 'row', flexWrap: 'nowrap', justifyContent: 'space-between' }}>
-                      {[0,1,2].map((i) => (
-                        <TouchableOpacity
-                          key={i}
-                          activeOpacity={0.85}
-                          onPress={() => {
-                            haptic.light();
-                            setSelectedGenreId(genre.id);
-                          }}
-                          style={{
-                            width: Math.floor((width - (spacing.base * 2) - 24) / 3) - 6,
-                            aspectRatio: 1,
-                            borderRadius: 8,
-                            marginBottom: 8,
-                            overflow: 'hidden',
-                            borderWidth: isSelected ? 2 : 1,
-                            borderColor: isSelected ? colors.primary : colors.border,
-                            backgroundColor: colors.surfaceElevated,
-                          }}
+        {/* Polaroid Style View */}
+        {viewMode === 'carousel' && (
+          <View style={{ marginTop: spacing.md, paddingHorizontal: spacing.base }}>
+            {/* Polaroid Frame */}
+            <View style={[styles.polaroidContainer, {
+              backgroundColor: colors.surface,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.15,
+              shadowRadius: 12,
+              elevation: 8,
+            }]}>
+              {/* Main Image Area */}
+              <View style={styles.polaroidImageContainer}>
+                {imageUri ? (
+                  <View style={styles.polaroidImageWrapper}>
+                    <Image 
+                      source={{ uri: imageUri }} 
+                      style={styles.polaroidImage}
+                      resizeMode="cover"
+                    />
+                    {/* Info Overlay - Inside the image */}
+                    {selectedGenreId && selectedGenre && (
+                      <View style={styles.polaroidOverlay}>
+                        <LinearGradient
+                          colors={['transparent', 'rgba(0, 0, 0, 0.85)', 'rgba(0, 0, 0, 0.95)']}
+                          style={styles.polaroidOverlayGradient}
                         >
-                          {imageUri ? (
-                            <Image source={{ uri: imageUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                          ) : (
-                            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                              <Ionicons name="image-outline" size={20} color={colors.textSecondary} />
-                              <Text style={{ marginTop: 4, color: colors.textSecondary, fontSize: typography.scaled.xs }}>Preview</Text>
-                            </View>
-                          )}
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                    {/* Brief style description */}
-                    <Text
-                      style={{
-                        marginTop: spacing.sm,
-                        color: colors.textSecondary,
-                        fontSize: typography.scaled.sm,
-                      }}
-                    >
-                      {genre.description}
+                          {/* Additional backdrop for extra readability */}
+                          <View style={styles.polaroidOverlayBackdrop} />
+                          <View style={styles.polaroidOverlayContent}>
+                            {/* Style Name */}
+                            <Text style={[styles.polaroidStyleName, styles.polaroidTextShadow, {
+                              color: '#FFFFFF',
+                              fontSize: typography.scaled.lg,
+                              fontWeight: typography.weight.bold,
+                            }]}>
+                              {selectedGenre.icon} {selectedGenre.name}
+                            </Text>
+                            
+                            {/* Description */}
+                            <Text style={[styles.polaroidDescription, styles.polaroidTextShadow, {
+                              color: '#FFFFFF',
+                              fontSize: typography.scaled.sm,
+                              marginTop: spacing.xs,
+                            }]} numberOfLines={2}>
+                              {selectedGenre.description}
+                            </Text>
+                          </View>
+                        </LinearGradient>
+                      </View>
+                    )}
+                    {/* Swipeable area */}
+                    <View 
+                      style={StyleSheet.absoluteFill}
+                      {...previewPanResponder.panHandlers}
+                      pointerEvents="box-only"
+                    />
+                  </View>
+                ) : (
+                  <View style={[styles.polaroidImage, { 
+                    backgroundColor: colors.backgroundSecondary,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    position: 'relative',
+                  }]}>
+                    <Ionicons name="image-outline" size={48} color={colors.textSecondary} />
+                    <Text style={{ marginTop: spacing.sm, color: colors.textSecondary, fontSize: typography.scaled.sm }}>
+                      Select a photo to preview styles
                     </Text>
+                    {/* Info Overlay - Show title and description even without image */}
+                    {selectedGenreId && selectedGenre && (
+                      <View style={[styles.polaroidOverlay, {
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                      }]}>
+                        <LinearGradient
+                          colors={['transparent', colors.surface + 'CC', colors.surface + 'E6']}
+                          style={styles.polaroidOverlayGradient}
+                        >
+                          <View style={styles.polaroidOverlayContent}>
+                            {/* Style Name */}
+                            <Text style={[styles.polaroidStyleName, {
+                              color: colors.text,
+                              fontSize: typography.scaled.lg,
+                              fontWeight: typography.weight.bold,
+                            }]}>
+                              {selectedGenre.icon} {selectedGenre.name}
+                            </Text>
+                            
+                            {/* Description */}
+                            <Text style={[styles.polaroidDescription, {
+                              color: colors.textSecondary,
+                              fontSize: typography.scaled.sm,
+                              marginTop: spacing.xs,
+                            }]} numberOfLines={2}>
+                              {selectedGenre.description}
+                            </Text>
+                          </View>
+                        </LinearGradient>
+                      </View>
+                    )}
                   </View>
                 )}
               </View>
-            );
-          })}
-        </View>
+
+              {/* Swipe Hint - Outside the image */}
+              {imageUri && (
+                <View style={[styles.polaroidSwipeHint, { marginTop: spacing.sm }]}>
+                  <Ionicons name="swap-horizontal" size={16} color={colors.textSecondary} />
+                  <Text style={{
+                    color: colors.textSecondary,
+                    fontSize: typography.scaled.xs,
+                    marginLeft: spacing.xs,
+                  }}>
+                    Swipe horizontally to preview styles
+                  </Text>
+                </View>
+              )}
+
+              {/* Bottom Thumbnails - Scrollable All Styles */}
+              <View style={{ marginTop: spacing.base }}>
+                <Text style={[styles.polaroidThumbnailsTitle, {
+                  color: colors.text,
+                  fontSize: typography.scaled.sm,
+                  fontWeight: typography.weight.semibold,
+                  marginBottom: spacing.sm,
+                  paddingHorizontal: spacing.xs,
+                }]}>
+                  All Styles ({GENRES.length})
+                </Text>
+                <ScrollView
+                  ref={thumbnailsScrollRef}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.polaroidThumbnailsScrollContent}
+                  style={styles.polaroidThumbnailsScrollView}
+                >
+                  {GENRES.map((genre, index) => {
+                    const isSelected = selectedGenreId === genre.id;
+                    return (
+                      <TouchableOpacity
+                        key={genre.id}
+                        activeOpacity={0.85}
+                        onPress={() => {
+                          haptic.medium();
+                          setSelectedGenreId(genre.id);
+                          const genreIndex = GENRES.findIndex(g => g.id === genre.id);
+                          if (genreIndex >= 0) {
+                            setCarouselIndex(genreIndex);
+                          }
+                        }}
+                        style={[styles.polaroidThumbnail, {
+                          borderWidth: isSelected ? 3 : 2,
+                          borderColor: isSelected ? colors.primary : colors.border,
+                          backgroundColor: isSelected ? colors.primary + '10' : colors.surface,
+                          marginRight: spacing.sm,
+                        }]}
+                      >
+                        {imageUri ? (
+                          <Image 
+                            source={{ uri: imageUri }} 
+                            style={styles.polaroidThumbnailImage}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <View style={[styles.polaroidThumbnailImage, {
+                            backgroundColor: colors.backgroundSecondary,
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                          }]}>
+                            <Text style={{ fontSize: 24 }}>{genre.icon}</Text>
+                          </View>
+                        )}
+                        <Text style={[styles.polaroidThumbnailLabel, {
+                          color: isSelected ? colors.primary : colors.text,
+                          fontSize: typography.scaled.xs,
+                          fontWeight: isSelected ? typography.weight.bold : typography.weight.medium,
+                        }]} numberOfLines={1}>
+                          {genre.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Grid View */}
+        {viewMode === 'grid' && (
+          <View style={{ paddingHorizontal: spacing.base, marginTop: spacing.md }}>
+            <View style={styles.gridContainer}>
+              {GENRES.map((genre, index) => {
+                const isSelected = selectedGenreId === genre.id;
+                const isLeftColumn = index % 2 === 0;
+                return (
+                  <TouchableOpacity
+                    key={genre.id}
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      haptic.medium();
+                      setSelectedGenreId(genre.id);
+                    }}
+                    style={[styles.gridCard, {
+                      borderWidth: isSelected ? 2.5 : 1,
+                      borderColor: isSelected ? colors.primary : colors.border,
+                      backgroundColor: isSelected ? colors.primary + '15' : colors.surface,
+                      marginRight: isLeftColumn ? baseSpacing.sm : 0,
+                      marginBottom: baseSpacing.sm,
+                    }]}
+                  >
+                    {imageUri ? (
+                      <View style={styles.gridThumbnail}>
+                        <Image 
+                          source={{ uri: imageUri }} 
+                          style={StyleSheet.absoluteFill}
+                          resizeMode="cover"
+                        />
+                      </View>
+                    ) : (
+                      <View style={[styles.gridThumbnail, { 
+                        backgroundColor: colors.backgroundSecondary,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                      }]}>
+                        <Text style={{ fontSize: 28 }}>{genre.icon}</Text>
+                      </View>
+                    )}
+                    <View style={styles.gridLabelContainer}>
+                      <Text style={[styles.gridLabel, { 
+                        color: isSelected ? colors.primary : colors.text,
+                        fontSize: typography.scaled.xs,
+                        fontWeight: isSelected ? typography.weight.bold : typography.weight.medium,
+                      }]}>
+                        {genre.icon} {genre.name}
+                      </Text>
+                      {isSelected && (
+                        <Text style={[styles.gridDescription, {
+                          color: colors.textSecondary,
+                          fontSize: typography.scaled.xs * 0.85,
+                          marginTop: spacing.xs / 2,
+                        }]} numberOfLines={2}>
+                          {genre.description}
+                        </Text>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
+
       </ScrollView>
+      ) : (
+        /* Guide View */
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: scrollBottomPadding },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Guide Tab Content with sub-tabs */}
+          <TabView
+            tabs={[
+              { id: 'guide', label: 'Guide', icon: 'book-outline' },
+              { id: 'examples', label: 'Examples', icon: 'images-outline' },
+              { id: 'info', label: 'Info', icon: 'information-circle-outline' },
+            ]}
+            containerStyle={{ marginHorizontal: spacing.base, marginTop: spacing.lg }}
+          >
+            {/* Guide Tab */}
+            <ToolGuideTab
+              title="How to Transform Your Photo"
+              content="Transform your photos into stunning artistic styles with 20+ unique transformations, from classic art to futuristic themes.\n\n📸 Step 1: Select Your Photo\nChoose a photo from your library or take a new one. Portrait photos work beautifully with most artistic styles.\n\n🎨 Step 2: Browse Styles\nExplore our collection of artistic transformations:\nClassic Art: Oil Painting, Watercolor, Renaissance\nFuturistic: Cyberpunk, Neon Tokyo, Matrix\nRetro: Vintage, 90s, Disco\nFantasy: Medieval, Gothic, Anime\nAnd many more\n\n👀 Step 3: Preview Styles\nUse the carousel view to see how each style previews on your photo. Swipe through to find your favorite.\n\n✨ Step 4: Generate\nTap Generate with your chosen style name and wait 5-10 seconds for your transformed photo.\n\n🎯 Pro Tips\nPortrait photos produce the most impressive results.\nYour face and identity are always preserved.\nTry the carousel view to preview styles before choosing.\nEach style has unique characteristics. Experiment to find favorites.\nPerfect for creating artistic profile photos or social media content."
+            />
+
+            {/* Examples Tab */}
+            <ToolExamplesTab
+              title="Transform Examples"
+              examples={[
+                {
+                  id: '1',
+                  title: 'Cyberpunk Style',
+                  description: 'Futuristic cyberpunk transformation with neon colors',
+                  tags: ['Cyberpunk', 'Futuristic'],
+                },
+                {
+                  id: '2',
+                  title: 'Oil Painting',
+                  description: 'Classic oil painting style with rich textures',
+                  tags: ['Oil Painting', 'Classic'],
+                },
+                {
+                  id: '3',
+                  title: 'Anime Style',
+                  description: 'Anime art style transformation',
+                  tags: ['Anime', 'Cartoon'],
+                },
+              ]}
+              onExamplePress={(example) => {
+                haptic.light();
+                console.log('Example pressed:', example.title);
+              }}
+            />
+
+            {/* Info Tab */}
+            <View style={{ paddingHorizontal: spacing.base, paddingTop: spacing.base, paddingBottom: spacing.base }}>
+              <AIToolInfoCard
+                icon="color-palette-outline"
+                whatDescription={`Transform your photo into stunning artistic styles while preserving your identity. Choose from ${GENRES.length} unique transformations ranging from classic art styles to futuristic themes.`}
+                howDescription="The system analyzes your photo's content and structure, then applies learned style patterns to blend artistic elements while preserving important details like facial features and composition."
+                howItems={[
+                  { text: 'Face recognition preserved' },
+                  { text: `${GENRES.length} unique art styles` },
+                  { text: 'High-quality AI rendering' },
+                ]}
+                expandableWhat={false}
+                expandableHow={false}
+              />
+            </View>
+          </TabView>
+          
+          {/* Extra bottom padding */}
+          <View style={{ height: spacing.xl }} />
+        </ScrollView>
+      )}
 
       <ActionButtonBar
-        visible={!!(imageUri && selectedGenreId)}
+        visible={activeTopTab === 'tool' && !!(imageUri && selectedGenreId)}
         bottomContent={
           <View style={[styles.timingInfo, {
             backgroundColor: colors.surface,
@@ -423,48 +843,21 @@ const GenreSelectionScreen = () => {
         />
       </ActionButtonBar>
 
-      {/* Image Preview Modal */}
+      {/* Image Preview Modal with Zoom */}
       <Modal
         visible={!!imageUri && showImagePreview}
         transparent={true}
         animationType="fade"
         onRequestClose={() => setShowImagePreview(false)}
+        statusBarTranslucent
       >
-        <Pressable
-          style={[styles.previewModal, { backgroundColor: 'rgba(0, 0, 0, 0.96)' }]}
-          onPress={() => {
+        <ZoomableImage
+          uri={imageUri || ''}
+          onClose={() => {
             haptic.light();
             setShowImagePreview(false);
           }}
-        >
-          <SafeAreaView style={styles.previewModalSafeArea} edges={['top', 'bottom']}>
-            {/* Image - center of screen with elegant styling */}
-            <View style={styles.imageContainer}>
-              <View style={[styles.imageWrapper, { backgroundColor: colors.surface + '10' }]}>
-                <Image
-                  source={{ uri: imageUri }}
-                  style={styles.previewModalImage}
-                  resizeMode="contain"
-                />
-              </View>
-            </View>
-
-            {/* Elegant hint with gradient backdrop */}
-            <View style={styles.hintContainer}>
-              <LinearGradient
-                colors={['transparent', 'rgba(0, 0, 0, 0.4)']}
-                style={styles.hintGradient}
-              >
-                <View style={[styles.hintBubble, { backgroundColor: 'rgba(255, 255, 255, 0.12)' }]}>
-                  <Ionicons name="hand-left-outline" size={18} color="rgba(255, 255, 255, 0.9)" />
-                  <Text style={[styles.previewModalHint, { color: 'rgba(255, 255, 255, 0.9)', fontSize: typography.scaled.base, fontWeight: typography.weight.medium }]}>
-                    Tap anywhere to close
-                  </Text>
-                </View>
-              </LinearGradient>
-            </View>
-          </SafeAreaView>
-        </Pressable>
+        />
       </Modal>
     </SafeAreaView>
   );
@@ -704,6 +1097,171 @@ const styles = StyleSheet.create({
   },
   timingText: {
     // Dynamic styles applied inline
+  },
+  // Polaroid styles
+  polaroidContainer: {
+    width: '100%',
+    borderRadius: 8,
+    padding: baseSpacing.base,
+    paddingTop: baseSpacing.base,
+    paddingBottom: baseSpacing.lg,
+  },
+  polaroidImageContainer: {
+    width: '100%',
+    aspectRatio: 1,
+    marginBottom: baseSpacing.sm,
+  },
+  polaroidImageWrapper: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  polaroidImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 4,
+  },
+  polaroidOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '45%',
+    justifyContent: 'flex-end',
+  },
+  polaroidOverlayGradient: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    paddingBottom: baseSpacing.base,
+    paddingHorizontal: baseSpacing.base,
+  },
+  polaroidOverlayBackdrop: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '60%',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  polaroidOverlayContent: {
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  polaroidTextShadow: {
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+    elevation: 2,
+  },
+  polaroidDivider: {
+    height: 1,
+    width: '100%',
+    marginVertical: baseSpacing.base,
+  },
+  polaroidInfoSection: {
+    paddingHorizontal: baseSpacing.xs,
+  },
+  polaroidStyleName: {
+    textAlign: 'center',
+  },
+  polaroidDescription: {
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  polaroidSwipeHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: baseSpacing.xs,
+  },
+  polaroidThumbnailsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: baseSpacing.base,
+    paddingHorizontal: baseSpacing.xs,
+  },
+  polaroidThumbnailsScrollView: {
+    marginHorizontal: -baseSpacing.xs,
+  },
+  polaroidThumbnailsScrollContent: {
+    paddingHorizontal: baseSpacing.xs,
+    paddingRight: baseSpacing.base,
+  },
+  polaroidThumbnailsTitle: {
+    // Dynamic styles applied inline
+  },
+  polaroidThumbnail: {
+    width: 90,
+    borderRadius: 8,
+    overflow: 'hidden',
+    alignItems: 'center',
+    paddingBottom: baseSpacing.xs,
+  },
+  polaroidThumbnailImage: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: 6,
+    marginBottom: baseSpacing.xs,
+  },
+  polaroidThumbnailLabel: {
+    textAlign: 'center',
+    paddingHorizontal: baseSpacing.xs,
+  },
+  // Grid styles
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  gridCard: {
+    width: (width - (baseSpacing.base * 2) - baseSpacing.sm) / 2,
+    aspectRatio: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  gridThumbnail: {
+    width: '100%',
+    height: '75%',
+  },
+  gridLabelContainer: {
+    flex: 1,
+    paddingHorizontal: baseSpacing.xs,
+    paddingVertical: baseSpacing.xs,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gridLabel: {
+    textAlign: 'center',
+  },
+  gridDescription: {
+    textAlign: 'center',
+    lineHeight: 14,
+  },
+  // Quick Select styles
+  quickSelectContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  quickSelectCard: {
+    flex: 1,
+    aspectRatio: 0.8,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  quickSelectThumbnail: {
+    width: '100%',
+    height: '75%',
+  },
+  quickSelectLabelContainer: {
+    flex: 1,
+    paddingHorizontal: baseSpacing.xs,
+    paddingVertical: baseSpacing.xs,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quickSelectLabel: {
+    textAlign: 'center',
   },
 });
 
