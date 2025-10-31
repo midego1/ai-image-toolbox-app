@@ -11,17 +11,6 @@ yarn-error.log*
 .expo/
 .expo-shared/
 
-# Native folders (for Prebuild/CNG workflow)
-# Note: We commit Podfile because EAS Build looks for it before prebuild runs
-# This is a workaround for subdirectory project structure issues
-AIPhotoEditor/ios/
-AIPhotoEditor/android/
-
-# Exception: Keep Podfile for EAS Build (workaround for subdirectory projects)
-!AIPhotoEditor/ios/Podfile
-!AIPhotoEditor/ios/Podfile.lock
-!AIPhotoEditor/ios/Podfile.properties.json
-
 # Xcode
 build/
 *.pbxuser
