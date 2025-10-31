@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.midego.aiphotoeditor",
-      "buildNumber": "2"
+      "buildNumber": "3"
     },
     "web": {
       "favicon": "./assets/images/icon.png",

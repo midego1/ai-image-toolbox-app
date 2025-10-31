@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Image, Modal, Pressable, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Image, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -328,7 +328,14 @@ const ToolMockupScreen = () => {
                   shadowRadius: 4,
                   elevation: 2,
                 }]}
-                onPress={() => haptic.light()}
+                onPress={() => {
+                  if (item.label === 'Remove BG') {
+                    const tool = mockTools.find(t => t.name === 'Remove BG');
+                    if (tool) handleToolCardPress(tool);
+                  } else {
+                    haptic.light();
+                  }
+                }}
               >
                 <View style={[styles.trendingPreview, { backgroundColor: colors.primary + '20' }]}>
                   <View style={styles.trendingBeforeAfter}>
@@ -465,6 +472,150 @@ const ToolMockupScreen = () => {
             ← Drag to compare →
           </Text>
         )}
+      </View>
+
+      {/* Stats Bar */}
+      <View style={[styles.statsBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <View style={styles.statItem}>
+          <Ionicons name="flash" size={16} color={colors.primary} />
+          <Text style={[styles.statLabel, { color: colors.textSecondary, fontSize: typography.scaled.xs }]}>
+            2.5 sec
+          </Text>
+        </View>
+        <View style={styles.statItem}>
+          <Ionicons name="diamond" size={16} color={colors.primary} />
+          <Text style={[styles.statLabel, { color: colors.textSecondary, fontSize: typography.scaled.xs }]}>
+            0.1 credit
+          </Text>
+        </View>
+        <View style={styles.statItem}>
+          <Ionicons name="star" size={16} color={colors.primary} />
+          <Text style={[styles.statLabel, { color: colors.textSecondary, fontSize: typography.scaled.xs }]}>
+            4.9/5
+          </Text>
+        </View>
+        <View style={styles.statItem}>
+          <Ionicons name="flame" size={16} color={colors.primary} />
+          <Text style={[styles.statLabel, { color: colors.textSecondary, fontSize: typography.scaled.xs }]}>
+            2.3k today
+          </Text>
+        </View>
+      </View>
+
+      {/* Action Buttons */}
+      <View style={{ padding: spacing.base }}>
+        {selectedImageUri ? (
+          <TouchableOpacity
+            style={[styles.primaryButton, { backgroundColor: colors.primary, marginBottom: spacing.sm }]}
+            onPress={handleProcessRemoveBG}
+          >
+            <Ionicons name="cut" size={20} color="#FFFFFF" />
+            <Text style={{ color: '#FFFFFF', fontSize: typography.scaled.base, fontWeight: typography.weight.bold, marginLeft: spacing.sm }}>
+              Remove Background
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+        <TouchableOpacity
+          style={[selectedImageUri ? styles.secondaryButton : styles.primaryButton, { backgroundColor: selectedImageUri ? colors.backgroundSecondary : colors.primary, borderColor: selectedImageUri ? colors.border : undefined }]}
+          onPress={handleTakePhoto}
+        >
+          <Ionicons name="camera" size={20} color={selectedImageUri ? colors.text : "#FFFFFF"} />
+          <Text style={{ color: selectedImageUri ? colors.text : '#FFFFFF', fontSize: typography.scaled.base, fontWeight: typography.weight.bold, marginLeft: spacing.sm }}>
+            Take Photo Now
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.secondaryButton, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, marginTop: spacing.sm }]}
+          onPress={handleChooseFromLibrary}
+        >
+          <Ionicons name="images" size={20} color={colors.text} />
+          <Text style={{ color: colors.text, fontSize: typography.scaled.base, fontWeight: typography.weight.semibold, marginLeft: spacing.sm }}>
+            Choose from Library
+          </Text>
+        </TouchableOpacity>
+        {selectedImageUri && (
+          <TouchableOpacity
+            style={[styles.secondaryButton, { backgroundColor: colors.surface + '80', borderColor: colors.border, marginTop: spacing.sm }]}
+            onPress={() => {
+              setSelectedImageUri(null);
+              haptic.light();
+            }}
+          >
+            <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+            <Text style={{ color: colors.textSecondary, fontSize: typography.scaled.sm, fontWeight: typography.weight.medium, marginLeft: spacing.sm }}>
+              Clear Selection
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Collapsible Sections */}
+      <View style={{ padding: spacing.base }}>
+        <View style={[styles.infoSection, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
+            <Ionicons name="cut-outline" size={20} color={colors.primary} />
+            <Text style={[styles.infoTitle, { color: colors.text, fontSize: typography.scaled.sm, fontWeight: typography.weight.bold, marginLeft: spacing.xs }]}>
+              ✓ What You Get
+            </Text>
+          </View>
+          {['Transparent PNG export', 'Perfect edge detection', 'Works with any subject', 'Instant results (2-5 seconds)'].map((item, index) => (
+            <View key={index} style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.xs }}>
+              <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
+              <Text style={{ color: colors.textSecondary, fontSize: typography.scaled.sm, marginLeft: spacing.xs }}>
+                {item}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={[styles.infoSection, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, marginTop: spacing.sm }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
+            <Ionicons name="bulb-outline" size={20} color={colors.primary} />
+            <Text style={[styles.infoTitle, { color: colors.text, fontSize: typography.scaled.sm, fontWeight: typography.weight.bold, marginLeft: spacing.xs }]}>
+              💡 Best For
+            </Text>
+          </View>
+          {['Product photography', 'Social media profiles', 'Creating graphics', 'E-commerce listings'].map((item, index) => (
+            <Text key={index} style={{ color: colors.textSecondary, fontSize: typography.scaled.sm, marginTop: spacing.xs }}>
+              • {item}
+            </Text>
+          ))}
+        </View>
+
+        <View style={[styles.infoSection, { backgroundColor: colors.primary + '10', borderColor: colors.primary + '30', marginTop: spacing.sm }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs }}>
+            <Ionicons name="information-circle" size={20} color={colors.primary} />
+            <Text style={[styles.infoTitle, { color: colors.text, fontSize: typography.scaled.sm, fontWeight: typography.weight.bold, marginLeft: spacing.xs }]}>
+              How It Works
+            </Text>
+          </View>
+          <Text style={{ color: colors.textSecondary, fontSize: typography.scaled.sm, lineHeight: 20 }}>
+            Our AI detects the subject and separates it from the background using edge-aware segmentation, preserving fine details like hair and transparent objects.
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  const renderDetailView = () => (
+    <View style={[styles.detailContainer, { backgroundColor: colors.surface }]}>
+      {/* Hero Section */}
+      <View style={[styles.detailHero, { backgroundColor: colors.backgroundSecondary }]}>
+        <View style={styles.beforeAfterLarge}>
+          <View style={[styles.beforeLarge, { backgroundColor: colors.primary + '20' }]}>
+            <Text style={{ color: colors.textSecondary }}>Before</Text>
+          </View>
+          <View style={styles.sliderLine}>
+            <Ionicons name="swap-horizontal" size={24} color={colors.primary} />
+          </View>
+          <View style={[styles.afterLarge, { backgroundColor: colors.primary + '40' }]}>
+            <Text style={{ color: colors.text }}>After</Text>
+          </View>
+        </View>
+        <Text style={[styles.sliderHint, { color: colors.textSecondary, fontSize: typography.scaled.xs, marginTop: spacing.sm }]}>
+          ← Drag to compare →
+        </Text>
       </View>
 
       {/* Stats Bar */}
@@ -730,11 +881,32 @@ const ToolMockupScreen = () => {
         {/* Detail View */}
         {selectedTab === 'detail' && (
           <View>
-            {renderMockupHeader(
-              'Tool Detail View',
-              'Comprehensive information with interactive before/after, stats, and progressive disclosure'
-            )}
-            {renderDetailView()}
+            <View style={{ marginBottom: spacing.lg, paddingHorizontal: spacing.base, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flex: 1 }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setSelectedTab('hub');
+                    setSelectedToolDetail(null);
+                    haptic.light();
+                  }}
+                  style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs }}
+                >
+                  <Ionicons name="arrow-back" size={20} color={colors.text} />
+                  <Text style={{ color: colors.text, fontSize: typography.scaled.sm, fontWeight: typography.weight.medium, marginLeft: spacing.xs }}>
+                    Back to Hub
+                  </Text>
+                </TouchableOpacity>
+                <Text style={[styles.mockupTitle, { color: colors.text, fontSize: typography.scaled.xl, fontWeight: typography.weight.bold }]}>
+                  {selectedToolDetail === 'remove-bg' ? 'Remove Background' : 'Tool Detail View'}
+                </Text>
+                <Text style={[styles.mockupSubtitle, { color: colors.textSecondary, fontSize: typography.scaled.sm, marginTop: spacing.xs }]}>
+                  {selectedToolDetail === 'remove-bg' 
+                    ? 'Remove backgrounds with AI-powered precision. Perfect for product photos and portraits.'
+                    : 'Comprehensive information with interactive before/after, stats, and progressive disclosure'}
+                </Text>
+              </View>
+            </View>
+            {selectedToolDetail === 'remove-bg' ? renderRemoveBGDetailView() : renderDetailView()}
           </View>
         )}
 
@@ -864,6 +1036,12 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1.5,
     marginRight: 8,
+  },
+  filterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
   },
   recommendedCard: {
     flexDirection: 'row',
