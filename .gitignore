@@ -11,6 +11,14 @@ yarn-error.log*
 .expo/
 .expo-shared/
 
+# Native folders (for Prebuild/CNG workflow)
+AIPhotoEditor/ios/
+AIPhotoEditor/android/
+
+# But keep Podfile for EAS Build
+!AIPhotoEditor/ios/Podfile
+!AIPhotoEditor/ios/Podfile.lock
+
 # Xcode
 build/
 *.pbxuser
