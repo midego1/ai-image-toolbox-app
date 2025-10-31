@@ -1,33 +1,302 @@
 # AI Photo Editor
 
-A powerful, AI-driven photo editing application built with React Native and Expo. Transform your photos with advanced AI models, remove backgrounds, apply creative styles, and enhance images with professional-grade tools.
+A powerful, AI-driven photo editing application built with React Native and Expo. Transform your photos with advanced AI models, remove backgrounds, apply creative styles, and enhance images with professional-grade tools—all from your mobile device.
 
 ![AI Photo Editor](AIPhotoEditor/assets/images/featured/200x_after.jpg)
 
-## 📱 Features
+## 📱 What This App Does
 
-### Core Editing Modes
+AI Photo Editor empowers users to create stunning, professional-quality images using cutting-edge AI technology. Whether you're looking to transform photos with artistic styles, remove unwanted backgrounds, enhance image quality, or create unique visual effects, this app provides an intuitive interface backed by powerful AI models.
 
-- **🎨 Transform** - Transform photos with AI-powered style transfers using various genres (Art Deco, Cyberpunk, Wild West, Vintage, Medieval, and more)
-- **✂️ Remove Background** - AI-powered background removal for clean, professional results
-- **✨ Enhance** - Upscale and improve image quality using AI
-- **🌈 Filters** - Apply creative color grading and visual effects
-- **🗑️ Remove Object** - Remove unwanted objects from photos (Premium)
-- **🖼️ Replace Background** - Change backgrounds with AI-generated scenes (Premium)
-- **👤 Face Enhance** - Improve facial quality and details (Premium)
-- **🖌️ Style Transfer** - Apply artistic styles to your photos (Premium)
-- **📝 Text Overlay** - Add customizable text to images (Premium)
-- **📐 Crop & Rotate** - Basic editing tools for composition
+**Key Capabilities:**
+- **AI-Powered Transformations** - Transform photos into artistic styles while preserving identity
+- **Background Removal** - Remove backgrounds with precision AI cutting
+- **Image Enhancement** - Upscale and improve photo quality
+- **Creative Filters** - Apply cinematic color grades and effects
+- **Object Removal** - Remove distractions and unwanted objects seamlessly
+- **Background Replacement** - Swap backgrounds with AI-generated scenes
+- **Face Enhancement** - Improve facial details and quality
+- **Style Transfer** - Apply famous art styles to your photos
+- **Virtual Try-On** - Preview outfits on your photos
+- **Professional Headshots** - Generate studio-quality portraits
+- **Creative Transformations** - Turn photos into pop figures, pixel art, and more
 
-### Additional Features
+## ✨ Features
 
-- **📸 Built-in Camera** - Capture photos directly within the app with professional controls
-- **🎯 Quick Camera Mode** - Fast access to camera for quick captures
-- **🖼️ Image Selection** - Choose from your photo library or take new photos
+### 🎨 Core Editing Modes
+
+#### Transform
+Apply curated AI art styles while preserving identity and composition. Choose from **20+ artistic genres** including:
+- ✨ Art Deco - Luxurious 1920s glamour with geometric patterns
+- 🌆 Cyberpunk - Neon-drenched future with chrome and holograms
+- 🤠 Wild West - Dusty frontier vibes with warm sunset tones
+- 📷 Vintage - 1950s retro charm with classic diners
+- 🌊 Underwater - Coral reefs with caustic light rays
+- 🏰 Medieval - Armor, banners, and torchlit halls
+- 🗼 Neon Tokyo - Electric Tokyo streets with vibrant signage
+- ⚙️ Steampunk - Victorian fashion fused with brass and gears
+- 🕵️ Spy - Sleek spy aesthetic with noir lighting
+- 🦇 Gothic - Moody cathedrals with rich purples and blues
+- 📼 90s - Arcades, VHS, and neon malls
+- 🕺 Disco - Mirror balls, sequins, and multicolor lighting
+- 🏛️ Trump - Executive office energy
+- 🎌 Anime - Cel-shaded anime look with big expressive eyes
+- 🖼️ Oil Painting - Museum-grade oil paint textures
+- 🎬 Pixar - Soft 3D look with friendly proportions
+- 💚 Matrix - Green code rain with cyber-noir atmosphere
+- 🧟 Zombie - Post-apocalyptic grit (spooky but not graphic)
+- 💥 Comic Book - Bold outlines with halftone dots
+- 🎨 Watercolor - Soft washes with paper texture
+- 🎭 Renaissance - Old-Master elegance
+- 🌴 Vaporwave - Pastel grids and neon dreamscapes
+- ✏️ Pencil Sketch - Graphite lines with cross-hatching
+
+#### Remove Background 🎯
+Precisely cut out subjects with edge-aware AI. Export transparent PNGs or replace backgrounds later in one tap.
+
+#### Enhance ✨
+Upscale, sharpen, and reduce noise while keeping skin tones natural. Ideal for low-light and old photos.
+
+#### Filters 🌈
+One-tap cinematic color grades and effects with adjustable intensity. Non-destructive previews included.
+
+#### Remove Object 🗑️ (Premium)
+Brush away distractions and people with content-aware fill. Seamlessly recreates the background.
+
+#### Replace Background 🖼️ (Premium)
+Swap scenes instantly: studios, offices, beaches, and more with realistic lighting and shadows.
+
+#### Face Enhance 👤 (Premium)
+Restore facial details, remove compression, and smooth artifacts while keeping identity intact.
+
+#### Style Transfer 🖌️ (Premium)
+Blend your photo with famous art styles and textures. Fine-tune strength for subtle or bold looks.
+
+#### Text Overlay 📝 (Premium)
+Add titles, captions, and watermarks with professional typography presets and alignment guides.
+
+#### Crop & Rotate 📐
+Straighten horizons, crop to social sizes, and fix perspective with live guides and snapping.
+
+#### Virtual Try-On 👗 (Premium)
+Preview outfits on your photo with realistic fabric drape and lighting. Works with tops and dresses.
+
+#### Professional Headshots 💼 (Premium)
+Generate polished, studio-quality portraits with corporate backdrops, flattering lighting, and retouching.
+
+#### Pop Figure 🧸 (Premium)
+Transform your photo into a detailed 3D render of a chibi pop figure with collectible box options.
+
+#### Pixel Art Gamer 🎮 (Premium)
+Transform your photo into a retro 8-bit or 16-bit video game sprite. Perfect for RPG characters and arcade aesthetics.
+
+### 🎬 Video Features (Premium)
+
+- **Text to Video (Veo)** - Create high-fidelity, cinematic videos from text prompts
+- **Text to Video (Fast)** - Generate videos quickly with faster rendering
+- **Text to Video (Kling)** - Hyper-realistic videos with advanced physics simulation
+- **Edit Video (Runway)** - Advanced video editing: add/remove objects, relighting, angle changes
+
+### 📸 Camera Features
+
+- **Built-in Camera** - Capture photos directly within the app with professional controls
+- **Quick Camera Mode** - Fast access to camera for quick captures
+- **Image Selection** - Choose from your photo library or take new photos
+- **Flash Control** - Front and back camera flash support
+- **Camera Controls** - Full camera interface with focus, exposure, and zoom controls
+
+### 🎨 User Experience Features
+
 - **🌓 Dark Mode Support** - Beautiful light and dark themes with automatic system detection
-- **🌍 Multi-language Support** - Localized interface (extensible)
-- **💎 Premium Subscription** - Unlock advanced features with subscription management
+- **🌍 Multi-language Support** - Localized interface (extensible architecture)
+- **📱 Native iOS Design** - Follows iOS design guidelines with native components
 - **⚡ Real-time Processing** - Live preview and progress tracking for AI operations
+- **📊 Processing Stages** - Clear progress indicators during AI operations
+- **🎯 Haptic Feedback** - Tactile feedback for better user experience
+- **💾 History Management** - Save and revisit your edited photos
+- **📈 Statistics** - Track your editing activity and usage
+
+### 💎 Subscription Tiers
+
+#### Basic ⭐ - $4.99/month
+- 10 credits/month
+- All features unlocked
+- Standard quality export
+- Community support
+
+#### Pro 💎 - $9.99/month
+- 50 credits/month
+- All features unlocked
+- High-quality export
+- Priority support
+
+#### Premium 👑 - $14.99/month
+- 150 credits/month
+- All features unlocked
+- Highest quality export (4K)
+- Priority support
+- Early access to new features
+
+**Subscription Benefits:**
+- Monthly, 3-month, 6-month, and annual plans available
+- Discounts for longer commitments (up to 33% savings)
+- Access to premium AI features
+- Higher credit limits for heavy usage
+
+### 💰 Credit System
+
+Credits are used for AI-powered features:
+- **Transform**: 1 credit
+- **Remove Background**: 0.1 credits (10x cheaper to encourage usage)
+- **Enhance**: 1 credit
+- **Filters**: 1 credit
+- **Remove Object**: 1 credit (Premium)
+- **Replace Background**: 1 credit (Premium)
+- **Face Enhance**: 1 credit (Premium)
+- **Style Transfer**: 1 credit (Premium)
+- **Text Overlay**: 0 credits (Free for subscribers)
+- **Crop & Rotate**: 0 credits (Always free)
+- **Virtual Try-On**: 1 credit (Premium)
+- **Professional Headshots**: 1 credit (Premium)
+- **Pop Figure**: 1 credit (Premium)
+- **Pixel Art Gamer**: 1 credit (Premium)
+- **Text to Video**: 1.5-2 credits (Premium)
+
+## 🤖 AI Models
+
+The app uses Replicate API to access cutting-edge AI models for image and video processing. All models are accessed through Replicate's infrastructure.
+
+### Currently Implemented Models
+
+#### Image Generation & Transformation
+
+**Google Nano Banana** (Gemini 2.5 Flash)
+- **Model ID**: `google/nano-banana`
+- **Version**: `2c8a3b5b81554aa195bde461e2caa6afacd69a66c48a64fb0e650c9789f8b8a0`
+- **Provider**: Google (Gemini 2.5 Flash based)
+- **Features**: Fast and precise AI image generation and editing, strong visual consistency, realistic physics simulation
+- **Used For**:
+  - ✨ Transform (all 20+ artistic genres)
+  - 🗑️ Remove Object
+  - 🖼️ Replace Background
+  - 👗 Virtual Try-On
+  - 💼 Professional Headshots
+  - 🧸 Pop Figure
+  - 🎮 Pixel Art Gamer
+  - 🖌️ Style Transfer (when using style images)
+- **Strengths**: Fast processing, excellent identity preservation, reliable results
+- **Output**: High-quality images with photorealistic or artistic rendering
+
+**Rembg** (Background Removal)
+- **Model ID**: `cjwbw/rembg`
+- **Version**: Latest (fetched dynamically)
+- **Provider**: Community model
+- **Features**: Edge-aware background removal with precision cutting
+- **Used For**:
+  - 🎯 Remove Background
+- **Strengths**: Fast, accurate edge detection, supports transparent PNG export
+- **Output**: Clean subject cutouts with transparent backgrounds
+
+### Planned/Future Models
+
+#### Face Manipulation
+
+**Face Swap Models** (Future Implementation)
+- `fofr/face-swap` (recommended)
+- `lucataco/faceswap`
+- `logerzhu/face-swap`
+- `yan-ops/face_swap`
+- **Use Case**: Face swapping between two photos
+- **Priority**: High - Viral potential feature
+
+#### Image Enhancement & Restoration
+
+**Photo Restoration Models** (Future Implementation)
+- `tencentarc/gfpgan` - Face restoration with best quality
+- `logerzhu/face-restoration` - Alternative face restoration
+- `nightmareai/real-esrgan` - General image upscaling/restoration
+- `fofr/real-esrgan` - Upscaling with denoising
+- **Use Case**: Restore old, damaged, or faded photos
+- **Features**: Scratch removal, color restoration, face enhancement, noise reduction, resolution upscaling
+
+**Colorization Models** (Future Implementation)
+- `jantic/deoldify` - Best for realistic colorization
+- `fofr/colorize-images` - Alternative colorization
+- `nightmareai/deoldify` - Another option
+- **Use Case**: Convert black & white photos to color
+
+**Super Resolution Models** (Future Implementation)
+- Real-ESRGAN models - General upscaling
+- Face-aware upscaling variants
+- **Use Case**: Upscale low-resolution images (2x, 4x, 8x)
+
+#### Professional Photography
+
+**Portrait Enhancement Models** (Future Implementation)
+- `fofr/portrait-photo` - Professional headshot generation
+- `lucataco/realistic-vision-v5-img2img` - Enhance existing photos
+- **Use Case**: Professional portrait enhancement
+
+#### Video Generation Models (Future Implementation)
+
+**Text to Video**
+- **Veo 3.1** (Google DeepMind)
+  - High-fidelity, cinematic videos
+  - Synchronized audio
+  - Native 1080p resolution
+  - Use case: Professional video generation
+  
+- **Veo 3.1 Fast** (Google DeepMind)
+  - Faster variant of Veo 3.1
+  - Quicker rendering, lower cost
+  - Use case: Time-sensitive projects, rapid prototyping
+  
+- **Kling 2.1** (Kling AI)
+  - Hyper-realistic motion
+  - Advanced physics simulation
+  - Up to 1080p resolution
+  - Use case: Dynamic video creation
+
+**Video Editing**
+- **Runway Aleph** (Runway)
+  - Advanced scene reasoning
+  - Precise camera control
+  - Multi-task editing (add/remove objects, relighting, angle/style changes)
+  - Use case: Advanced video editing
+
+### Model Selection Strategy
+
+The app uses a **primary model approach** with model-specific processors:
+
+1. **Nano Banana** - Primary workhorse for most transformations
+   - Single unified model for multiple features
+   - Consistent API interface
+   - Reliable and fast
+
+2. **Specialized Models** - Used when specific capabilities are needed
+   - Rembg for precise background removal
+   - Future models for specific tasks (face swap, restoration, etc.)
+
+3. **Version Management**
+   - Nano Banana uses a fixed version for consistency
+   - Rembg uses latest version for improved accuracy
+   - All models accessed via Replicate API versioning system
+
+### API Integration
+
+All models are accessed through:
+- **Platform**: Replicate API (`api.replicate.com`)
+- **Authentication**: Secure API key storage (Expo Secure Store)
+- **Request Format**: REST API with JSON payloads
+- **Response Format**: Asynchronous prediction polling
+- **Error Handling**: Comprehensive retry logic and timeout management
+
+### Cost Considerations
+
+- **Nano Banana**: ~$0.04 per prediction (varies by image size/complexity)
+- **Rembg**: ~$0.0046 per prediction (very cost-effective)
+- **Future Models**: Pricing varies by model and complexity
+- **Optimization**: Credit system balances feature access with API costs
 
 ## 🛠️ Tech Stack
 
@@ -49,13 +318,15 @@ A powerful, AI-driven photo editing application built with React Native and Expo
 - **Expo Image Manipulator** (14.0.7) - Image processing
 
 ### AI & Backend
-- **Replicate API** - AI model integration (Gemini 2.5 Flash via nano-banana)
+- **Replicate API** - AI model hosting and inference
+  - Gemini 2.5 Flash via nano-banana for transformations
+  - Various AI models for different editing modes
 - **Axios** (1.13.1) - HTTP client for API requests
 
 ### Storage & Security
 - **Expo Secure Store** (15.0.7) - Secure key-value storage for API keys
-- **AsyncStorage** (1.24.0) - Async key-value storage
-- **Expo SQLite** (16.0.8) - Local database
+- **AsyncStorage** (2.2.0) - Async key-value storage
+- **Expo SQLite** (16.0.8) - Local database for history and stats
 
 ### UI Components & Theming
 - **Expo Linear Gradient** - Gradient backgrounds
@@ -67,6 +338,7 @@ A powerful, AI-driven photo editing application built with React Native and Expo
 ### Development Tools
 - **TypeScript** - Static type checking
 - **React Native Dotenv** - Environment variable management
+- **EAS Build** - Cloud-based builds
 
 ## 📁 Project Structure
 
@@ -77,31 +349,47 @@ AIPhotoEditor/
 │   │   ├── Button.tsx
 │   │   ├── Card.tsx
 │   │   ├── Header.tsx
-│   │   └── ...
+│   │   └── [40 component files]
 │   ├── screens/             # Screen components
 │   │   ├── HomeScreen.tsx
 │   │   ├── CameraScreen.tsx
 │   │   ├── ProcessingScreen.tsx
-│   │   └── ...
+│   │   ├── ResultScreen.tsx
+│   │   └── [29 screen files]
 │   ├── services/            # Business logic & API services
 │   │   ├── aiService.ts      # Replicate API integration
 │   │   ├── imageProcessingService.ts
 │   │   ├── subscriptionService.ts
+│   │   ├── historyService.ts
+│   │   ├── analyticsService.ts
+│   │   ├── themeService.ts
 │   │   └── processors/       # Image processing processors
+│   │       ├── transformProcessor.ts
+│   │       ├── backgroundRemovalProcessor.ts
+│   │       ├── enhanceProcessor.ts
+│   │       └── [10 processor files]
 │   ├── navigation/          # Navigation configuration
-│   │   └── BottomTabNavigator.tsx
+│   │   ├── BottomTabNavigator.tsx
+│   │   ├── FeaturesStackNavigator.tsx
+│   │   ├── HistoryStackNavigator.tsx
+│   │   └── SettingsStackNavigator.tsx
 │   ├── theme/               # Theming system
 │   │   ├── ThemeProvider.tsx
 │   │   ├── colors.ts
-│   │   └── typography.ts
+│   │   ├── typography.ts
+│   │   └── spacing.ts
 │   ├── constants/           # App constants
 │   │   ├── editModes.ts      # Edit mode definitions
-│   │   └── Genres.ts         # Style genres
+│   │   ├── Genres.ts         # Style genres
+│   │   └── clothingTypes.ts
 │   ├── types/               # TypeScript type definitions
+│   │   ├── camera.ts
+│   │   ├── editModes.ts
+│   │   └── navigation.ts
 │   └── utils/               # Utility functions
 │       ├── haptics.ts
-│       └── flashMode.ts
-├── android/                 # Android native code
+│       ├── flashMode.ts
+│       └── processingStages.ts
 ├── ios/                     # iOS native code
 ├── assets/                  # Images and media
 ├── App.tsx                  # Root component
@@ -117,13 +405,15 @@ AIPhotoEditor/
 - npm or yarn
 - Expo CLI (`npm install -g expo-cli`)
 - iOS Simulator (for iOS development) or Android Studio (for Android development)
+- Xcode (for iOS builds)
+- Replicate API key (for AI features)
 
 ### Installation
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/midego1/ai-image-toolbox-app.git
-   cd ai-image-toolbox-app/AIPhotoEditor
+   git clone https://github.com/yourusername/vision-camera.git
+   cd vision-camera/AIPhotoEditor
    ```
 
 2. **Install dependencies**
@@ -167,6 +457,18 @@ AIPhotoEditor/
    - **Android**: Press `a` in the terminal or `npm run android`
    - **Web**: Press `w` in the terminal or `npm run web`
 
+### Building for Production
+
+#### iOS
+```bash
+eas build --platform ios --profile production-ios
+```
+
+#### Android
+```bash
+eas build --platform android --profile production-android
+```
+
 ## ⚙️ Configuration
 
 ### API Keys
@@ -185,6 +487,7 @@ Edit modes are defined in `src/constants/editModes.ts`. You can:
 - Add new edit modes
 - Configure premium features
 - Customize categories
+- Set credit costs
 
 ### Genres/Styles
 
@@ -211,6 +514,7 @@ The app follows a service-oriented architecture:
   - Image transformation
   - Prediction polling
   - Error handling
+  - API key management
 
 - **ImageProcessingService** - Manages local image operations
   - Image manipulation
@@ -220,21 +524,32 @@ The app follows a service-oriented architecture:
 - **SubscriptionService** - Manages subscription state
   - Premium status checking
   - Subscription validation
+  - Credit tracking
+
+- **HistoryService** - Manages editing history
+  - Save edited photos
+  - Retrieve history
+  - Delete entries
+
+- **AnalyticsService** - Tracks app usage
+  - App opens
+  - Feature usage
+  - Session tracking
 
 ### Navigation Flow
 
 ```
 MainTabs (Bottom Navigator)
-├── Home → EditModeSelection → [Camera/ImageSelection] → GenreSelection → Processing → Result
-├── Features (Browse all edit modes)
-├── Inbox
-└── Settings → AppearanceSettings / LanguageSelection / Subscription
+├── Tools → EditModeSelection → [Camera/ImageSelection] → 
+│   GenreSelection → Processing → Result
+├── History → View saved edits → Re-edit
+└── Settings → Appearance / Language / Subscription / Developer
 ```
 
 ## 📱 Platform Support
 
-- **iOS**: iOS 13.0+
-- **Android**: Android 6.0+ (API level 23+)
+- **iOS**: iOS 13.0+ (iPhone only, iPad not supported)
+- **Android**: Android 6.0+ (API level 23+) - *Coming soon*
 - **Web**: Experimental support via Expo Web
 
 ## 🔒 Security
@@ -243,6 +558,7 @@ MainTabs (Bottom Navigator)
 - No sensitive data in version control
 - Environment variables excluded via `.gitignore`
 - Secure HTTPS connections for all API calls
+- Privacy-compliant data handling
 
 ## 🧪 Development
 
@@ -276,11 +592,43 @@ npm run web
    - Add to `src/constants/editModes.ts`
    - Create processor in `src/services/processors/`
    - Add UI in `EditModeSelectionScreen`
+   - Configure credit costs
 
 2. **New Style Genre**:
    - Add to `src/constants/Genres.ts`
    - Configure prompt template
    - Add icon representation
+
+3. **New Screen**:
+   - Create screen component in `src/screens/`
+   - Add to appropriate navigator in `src/navigation/`
+   - Update navigation types
+
+## 📦 App Store Information
+
+### App Name
+AI Photo Editor
+
+### Subtitle (iOS)
+Transform photos with AI-powered tools
+
+### Keywords
+AI, photo editor, image editing, background removal, art filter, style transfer, photo enhancement, image transform, remove background, artistic photos, AI camera, photo effects
+
+### Description Summary
+AI Photo Editor empowers you to create stunning, professional-quality images using cutting-edge AI technology. Transform your photos with artistic styles, remove backgrounds, enhance quality, and apply creative effects—all with an intuitive, mobile-first interface.
+
+### Feature Highlights for App Store
+1. **20+ Artistic Styles** - Transform photos into Art Deco, Cyberpunk, Anime, and more while preserving identity
+2. **AI Background Removal** - Precise subject cutting with edge-aware AI technology
+3. **Professional Enhancement** - Upscale and improve photo quality with AI-powered restoration
+4. **Creative Filters** - Apply cinematic color grades and visual effects
+5. **Object Removal** - Seamlessly remove unwanted objects with content-aware fill
+6. **Virtual Try-On** - Preview outfits on your photos with realistic results
+7. **Professional Headshots** - Generate studio-quality portraits automatically
+8. **Built-in Camera** - Capture and edit photos all in one app
+9. **Dark Mode** - Beautiful themes that adapt to your system settings
+10. **History Management** - Save and revisit your favorite edits
 
 ## 📄 License
 
@@ -299,9 +647,8 @@ For issues, questions, or feature requests, please open an issue on GitHub.
 - **Replicate** - AI model hosting and inference
 - **Expo** - Development platform and tooling
 - **React Native Community** - Excellent libraries and tools
+- **nano-banana** - Gemini 2.5 Flash integration
 
 ---
 
 **Built with ❤️ using React Native and Expo**
-
-
