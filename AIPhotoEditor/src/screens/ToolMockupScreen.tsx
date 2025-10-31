@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Image, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -15,9 +15,20 @@ const ToolMockupScreen = () => {
   const { theme } = useTheme();
   const { colors, typography, spacing } = theme;
   const navigation = useNavigation();
+  const scrollViewRef = useRef<ScrollView>(null);
   const [selectedTab, setSelectedTab] = useState<'hub' | 'detail' | 'search'>('hub');
   const [selectedToolDetail, setSelectedToolDetail] = useState<string | null>(null); // Track which tool detail to show
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null); // Track selected image for mockup
+
+  // Scroll to top when detail view is opened
+  useEffect(() => {
+    if (selectedTab === 'detail' && selectedToolDetail === 'remove-bg') {
+      // Small delay to ensure the view has rendered
+      setTimeout(() => {
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      }, 100);
+    }
+  }, [selectedTab, selectedToolDetail]);
 
   // Mock data for demonstrations
   const mockTools = [
@@ -808,6 +819,7 @@ const ToolMockupScreen = () => {
       </View>
 
       <ScrollView
+        ref={scrollViewRef}
         style={styles.scrollView}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: spacing['3xl'] }]}
         showsVerticalScrollIndicator={false}

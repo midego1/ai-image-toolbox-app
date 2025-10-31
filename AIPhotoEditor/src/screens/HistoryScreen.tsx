@@ -116,6 +116,14 @@ const HistoryScreen = () => {
   // Get unique edit modes for filter buttons
   const uniqueModes = Array.from(new Set(historyEntries.map(e => e.editMode)));
 
+  // Calculate counts for each filter
+  const getModeCount = (mode: EditMode | 'all') => {
+    if (mode === 'all') {
+      return historyEntries.length;
+    }
+    return historyEntries.filter(entry => entry.editMode === mode).length;
+  };
+
   const renderEntry = (entry: HistoryEntry, index: number) => {
     const isFirstInRow = index % 2 === 0;
     const isLastInRow = index % 2 === 1;
@@ -219,7 +227,7 @@ const HistoryScreen = () => {
                 }
               ]}
             >
-              All
+              All ({getModeCount('all')})
             </Text>
           </TouchableOpacity>
 
@@ -227,6 +235,7 @@ const HistoryScreen = () => {
           {uniqueModes.map(mode => {
             const modeData = getEditMode(mode);
             const isSelected = selectedFilter === mode;
+            const count = getModeCount(mode);
             
             return (
               <TouchableOpacity
@@ -254,7 +263,7 @@ const HistoryScreen = () => {
                     }
                   ]}
                 >
-                  {modeData?.name || mode}
+                  {modeData?.name || mode} ({count})
                 </Text>
               </TouchableOpacity>
             );
@@ -380,6 +389,7 @@ const createStyles = (theme: Theme) =>
       right: 8,
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'center',
       paddingHorizontal: 8,
       paddingVertical: 4,
       borderRadius: 8,
@@ -389,7 +399,6 @@ const createStyles = (theme: Theme) =>
       marginRight: 2,
     },
     badgeText: {
-      flex: 1,
       fontWeight: theme.typography.weight.medium,
     },
     deleteButton: {
