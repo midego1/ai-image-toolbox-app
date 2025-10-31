@@ -24,6 +24,9 @@
       "extends": "production",
       "ios": {
         "buildConfiguration": "Release"
+      },
+      "env": {
+        "EAS_BUILD_IOS_BUILD_NUMBER": "3"
       }
     },
     "production-web": {
