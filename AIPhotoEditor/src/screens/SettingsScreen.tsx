@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, Linking, Share, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, ScrollView, Alert, Linking, Share, Platform, LayoutAnimation } from 'react-native';
+import * as FileSystem from 'expo-file-system/legacy';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NavigationProp, SettingsNavigationProp } from '../types/navigation';
@@ -13,12 +14,15 @@ import { SubscriptionService } from '../services/subscriptionService';
 import { SettingsService } from '../services/settingsService';
 import { haptic } from '../utils/haptics';
 import { AnalyticsService } from '../services/analyticsService';
+import { ThemeMode } from '../services/themeService';
+import { LanguageService, Language, LANGUAGES } from '../services/languageService';
 
 const SettingsScreen = () => {
-  const { theme } = useTheme();
+  const { theme, themeMode, setThemeMode } = useTheme();
   const settingsNavigation = useNavigation<SettingsNavigationProp<any>>();
   const rootNavigation = useNavigation<NavigationProp<'Subscription'>>();
-  const styles = createStyles(theme);
+  const insets = useSafeAreaInsets();
+  const styles = createStyles(theme, insets);
   
   // Subscription state
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -27,10 +31,15 @@ const SettingsScreen = () => {
   // Auto-save originals state
   const [autoSaveOriginals, setAutoSaveOriginals] = useState(false);
   const [analyticsConsent, setAnalyticsConsent] = useState(false);
+  
+  // Appearance and language state
+  const [currentLanguage, setCurrentLanguage] = useState<Language>('automatic');
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
 
   useEffect(() => {
     loadAutoSaveSetting();
     loadAnalyticsConsent();
+    loadLanguage();
   }, []);
 
   // Reload subscription data whenever the screen comes into focus
@@ -38,8 +47,14 @@ const SettingsScreen = () => {
   useFocusEffect(
     React.useCallback(() => {
       loadSubscriptionData();
+      loadLanguage();
     }, [])
   );
+
+  const loadLanguage = async () => {
+    const language = await LanguageService.getLanguage();
+    setCurrentLanguage(language);
+  };
 
   const loadAutoSaveSetting = async () => {
     const enabled = await SettingsService.getAutoSaveOriginals();
@@ -133,9 +148,24 @@ const SettingsScreen = () => {
         { 
           text: 'Clear', 
           style: 'destructive',
-          onPress: () => {
-            // Implement cache clearing
-            Alert.alert('Cache Cleared', 'Temporary files have been removed.');
+          onPress: async () => {
+            try {
+              const cacheDir = FileSystem.cacheDirectory ?? '';
+              if (cacheDir) {
+                try {
+                  await FileSystem.deleteAsync(cacheDir, { idempotent: true });
+                } catch {}
+                // Re-create cache directory by touching it with a no-op
+                try {
+                  await FileSystem.makeDirectoryAsync(cacheDir, { intermediates: true });
+                } catch {}
+              }
+              haptic.success();
+              Alert.alert('Cache Cleared', 'Temporary files have been removed.');
+            } catch (e) {
+              haptic.error();
+              Alert.alert('Error', 'Failed to clear cache.');
+            }
           }
         }
       ]
@@ -151,13 +181,9 @@ const SettingsScreen = () => {
     try {
       haptic.light();
       
-      // App store URLs - Update these with your actual App Store and Google Play Store URLs
-      // You can get these URLs after publishing your app to the stores
-      const appStoreUrl = Platform.select({
-        ios: 'https://apps.apple.com/app/your-app-id', // Replace with your iOS App Store URL
-        android: 'https://play.google.com/store/apps/details?id=com.aiphotoeditor.app', // Replace with your Android Play Store URL
-        default: 'https://apps.apple.com/app/your-app-id', // Fallback to iOS URL
-      });
+      // App store URL - Update this with your actual App Store URL
+      // You can get this URL after publishing your app to the App Store
+      const appStoreUrl = 'https://apps.apple.com/app/your-app-id'; // Replace with your iOS App Store URL
       
       const shareMessage = `Check out AI Photo Editor! Transform your photos with AI-powered editing tools.\n\nDownload it here: ${appStoreUrl}`;
       
@@ -180,9 +206,95 @@ const SettingsScreen = () => {
     }
   };
 
-  const handleAppearance = () => {
-    settingsNavigation.navigate('AppearanceSettings');
+  // Cycle through theme modes: system -> light -> dark -> system
+  const handleThemeToggle = async () => {
+    haptic.medium();
+    let nextMode: ThemeMode;
+    
+    if (themeMode === 'system') {
+      nextMode = 'light';
+    } else if (themeMode === 'light') {
+      nextMode = 'dark';
+    } else {
+      nextMode = 'system';
+    }
+    
+    await setThemeMode(nextMode);
+    
+    // Reload to get updated language if needed
+    const updatedLanguage = await LanguageService.getLanguage();
+    setCurrentLanguage(updatedLanguage);
   };
+
+  const handleLanguagePress = () => {
+    haptic.light();
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setShowLanguageDropdown(!showLanguageDropdown);
+  };
+
+  const handleLanguageSelect = async (language: Language) => {
+    haptic.medium();
+    setCurrentLanguage(language);
+    await LanguageService.setLanguage(language);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setShowLanguageDropdown(false);
+  };
+
+  const getThemeLabel = (mode: ThemeMode): string => {
+    switch (mode) {
+      case 'light':
+        return 'Light';
+      case 'dark':
+        return 'Dark';
+      case 'system':
+      default:
+        return 'System';
+    }
+  };
+
+  // Theme icon component - changes based on theme mode
+  const ThemeIcon = () => {
+    if (themeMode === 'light') {
+      return (
+        <View style={styles.themeIconWrapper}>
+          <Ionicons 
+            name="sunny" 
+            size={24} 
+            color={theme.colors.primary} 
+          />
+        </View>
+      );
+    } else if (themeMode === 'dark') {
+      return (
+        <View style={styles.themeIconWrapper}>
+          <Ionicons 
+            name="moon" 
+            size={24} 
+            color={theme.colors.primary} 
+          />
+        </View>
+      );
+    } else {
+      // System mode - uses device settings
+      return (
+        <View style={styles.themeIconWrapper}>
+          <Ionicons
+            name="phone-portrait-outline"
+            size={24}
+            color={theme.colors.primary}
+          />
+        </View>
+      );
+    }
+  };
+
+  // Language icon component - A with 文 character
+  const LanguageIcon = () => (
+    <View style={styles.languageIconContainer}>
+      <Text style={[styles.languageIconText, { color: theme.colors.primary }]}>A</Text>
+      <Text style={[styles.languageIconCharacter, { color: theme.colors.primary }]}>文</Text>
+    </View>
+  );
 
   const handleStatistics = () => {
     settingsNavigation.navigate('Statistics');
@@ -228,39 +340,77 @@ const SettingsScreen = () => {
         <SectionHeader title="ACCOUNT" />
         <View style={styles.sectionContainer}>
           <View style={styles.categoryContainer}>
-            {[
-              {
-                iconName: getSubscriptionIcon() as keyof typeof Ionicons.glyphMap,
-                title: 'Subscription Status',
-                subtitle: getSubscriptionText(),
-                onPress: handleSubscriptionPress,
-                iconColor: isSubscribed ? theme.colors.success : theme.colors.warning,
-                showChevron: true,
-                value: isSubscribed ? 'Premium' : 'Upgrade',
-              },
-              {
-                iconName: 'color-palette-outline' as const,
-                title: 'Appearance',
-                subtitle: 'Theme and language',
-                onPress: handleAppearance,
-                iconColor: theme.colors.primary,
-                showChevron: true,
-              },
-            ].map((item, index, array) => (
-              <Card
-                key={item.title}
-                iconName={item.iconName}
-                title={item.title}
-                subtitle={item.subtitle}
-                onPress={item.onPress}
-                iconColor={item.iconColor}
-                showChevron={item.showChevron}
-                value={item.value}
-                isFirstInGroup={index === 0}
-                isLastInGroup={index === array.length - 1}
-                showSeparator={index < array.length - 1}
-              />
-            ))}
+            <Card
+              iconName={getSubscriptionIcon() as keyof typeof Ionicons.glyphMap}
+              title="Subscription Status"
+              subtitle={getSubscriptionText()}
+              onPress={handleSubscriptionPress}
+              iconColor={isSubscribed ? theme.colors.success : theme.colors.warning}
+              showChevron={true}
+              value={isSubscribed ? 'Premium' : 'Upgrade'}
+              isFirstInGroup={true}
+              isLastInGroup={false}
+              showSeparator={true}
+            />
+            <Card
+              icon={<ThemeIcon />}
+              title="Appearance"
+              subtitle="Match system settings"
+              value={getThemeLabel(themeMode)}
+              onPress={handleThemeToggle}
+              showChevron={false}
+              iconColor={theme.colors.primary}
+              isFirstInGroup={false}
+              isLastInGroup={false}
+              showSeparator={true}
+            />
+            <Card
+              icon={<LanguageIcon />}
+              title="Current Language"
+              value={LanguageService.getLanguageDisplayText(currentLanguage)}
+              onPress={handleLanguagePress}
+              showChevron={false}
+              iconColor={theme.colors.primary}
+              isFirstInGroup={false}
+              isLastInGroup={!showLanguageDropdown}
+              showSeparator={false}
+              rightIcon={
+                <Ionicons
+                  name={showLanguageDropdown ? 'chevron-up' : 'chevron-down'}
+                  size={20}
+                  color={theme.colors.textTertiary}
+                />
+              }
+            />
+            {showLanguageDropdown && (
+              <>
+                {LANGUAGES.map((languageOption, index, array) => {
+                  const isSelected = currentLanguage === languageOption.code;
+                  return (
+                    <Card
+                      key={languageOption.code}
+                      title={languageOption.nativeLabel}
+                      subtitle={languageOption.label}
+                      onPress={() => handleLanguageSelect(languageOption.code)}
+                      isFirstInGroup={false}
+                      isLastInGroup={index === array.length - 1}
+                      showSeparator={index < array.length - 1}
+                      showChevron={false}
+                      rightIcon={
+                        isSelected ? (
+                          <Ionicons name="checkmark-circle" size={24} color={theme.colors.primary} />
+                        ) : undefined
+                      }
+                      style={
+                        isSelected
+                          ? { backgroundColor: theme.colors.surfaceElevated, borderColor: theme.colors.primary, borderWidth: 2 }
+                          : {}
+                      }
+                    />
+                  );
+                })}
+              </>
+            )}
           </View>
         </View>
 
@@ -278,7 +428,7 @@ const SettingsScreen = () => {
                   Alert.alert('Quality Settings', 'Export quality options coming soon!');
                 },
                 iconColor: theme.colors.primary,
-                showChevron: true,
+                showChevron: false,
               },
               {
                 iconName: 'save-outline' as const,
@@ -287,7 +437,7 @@ const SettingsScreen = () => {
                 value: autoSaveOriginals ? 'On' : 'Off',
                 onPress: handleAutoSaveToggle,
                 iconColor: theme.colors.primary,
-                showChevron: true,
+                showChevron: false,
               },
               {
                 iconName: 'cloud-upload-outline' as const,
@@ -298,7 +448,7 @@ const SettingsScreen = () => {
                   Alert.alert('Cloud Sync', 'iCloud backup features coming soon!');
                 },
                 iconColor: theme.colors.primary,
-                showChevron: true,
+                showChevron: false,
               },
             ].map((item, index, array) => (
               <Card
@@ -426,12 +576,33 @@ const SettingsScreen = () => {
             ))}
           </View>
         </View>
+
+        {/* DEVELOPER Section */}
+        <SectionHeader title="DEVELOPER" />
+        <View style={styles.sectionContainer}>
+          <View style={styles.categoryContainer}>
+            <Card
+              iconName="brush-outline"
+              title="Tool Mockups"
+              subtitle="View redesigned AI Tools UI"
+              onPress={() => {
+                haptic.medium();
+                settingsNavigation.navigate('ToolMockup');
+              }}
+              iconColor={theme.colors.primary}
+              showChevron={true}
+              isFirstInGroup={true}
+              isLastInGroup={true}
+              showSeparator={false}
+            />
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, insets: { bottom: number }) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -442,6 +613,8 @@ const createStyles = (theme: Theme) =>
     },
     scrollContent: {
       paddingTop: theme.spacing.xl,
+      // Add bottom padding to account for tab bar (49px) + safe area + spacing
+      paddingBottom: 49 + insets.bottom + theme.spacing.lg,
     },
     asciiCard: {
       borderRadius: theme.spacing.md,
@@ -464,6 +637,50 @@ const createStyles = (theme: Theme) =>
     },
     categoryContainer: {
       paddingHorizontal: theme.spacing.base, // Match Features page categoryContainer exactly
+    },
+    themeIconWrapper: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    themeIconContainer: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      overflow: 'hidden',
+      flexDirection: 'row',
+    },
+    themeIconHalf: {
+      flex: 1,
+    },
+    themeIconRight: {
+      borderLeftWidth: 1,
+      borderLeftColor: theme.colors.border,
+    },
+    languageIconContainer: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: theme.colors.surfaceElevated,
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+    },
+    languageIconText: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      position: 'absolute',
+      left: 8,
+      top: 6,
+    },
+    languageIconCharacter: {
+      fontSize: 16,
+      fontWeight: 'bold',
+      position: 'absolute',
+      right: 6,
+      bottom: 6,
     },
   });
 

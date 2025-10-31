@@ -24,3 +24,4 @@ afterImage={require('../../assets/images/featured/after.jpg')}
 - The component will automatically resize and crop images to fit
 - Keep file sizes reasonable for app bundle size (under 500KB each recommended)
 
+

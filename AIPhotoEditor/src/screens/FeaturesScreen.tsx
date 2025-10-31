@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,8 +17,9 @@ import { haptic } from '../utils/haptics';
 
 const FeaturesScreen = () => {
   const { theme } = useTheme();
-  const navigation = useNavigation<NavigationProp<'Camera'>>();
-  const styles = createStyles(theme);
+  const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
+  const styles = createStyles(theme, insets);
   const [isPremium, setIsPremium] = useState(false);
 
   const loadSubscriptionStatus = async () => {
@@ -49,13 +50,38 @@ const FeaturesScreen = () => {
       return;
     }
 
-    // Default: go to Camera with pre-selected edit mode
-    const parentNav = navigation.getParent();
-    if (parentNav) {
-      parentNav.navigate('Camera', { editMode });
-    } else {
-      navigation.navigate('Camera', { editMode });
+    // Remove Background should first show pre-capture selection (Library or Camera) in a dedicated screen
+    if (editMode === EditMode.REMOVE_BACKGROUND) {
+      (navigation as any).navigate('RemoveBackground');
+      return;
     }
+
+    // Replace Background should first show pre-capture selection (Library or Camera) in a dedicated screen
+    if (editMode === EditMode.REPLACE_BACKGROUND) {
+      (navigation as any).navigate('ReplaceBackground');
+      return;
+    }
+
+    // Remove Object should first show pre-capture selection (Library or Camera) in a dedicated screen
+    if (editMode === EditMode.REMOVE_OBJECT) {
+      (navigation as any).navigate('RemoveObject');
+      return;
+    }
+
+    // Professional Headshots should first show pre-capture selection (Library or Camera) in a dedicated screen
+    if (editMode === EditMode.PROFESSIONAL_HEADSHOTS) {
+      (navigation as any).navigate('ProfessionalHeadshots');
+      return;
+    }
+
+    // Virtual Try-On should go to VirtualTryOnSelection
+    if (editMode === EditMode.VIRTUAL_TRY_ON) {
+      (navigation as any).navigate('VirtualTryOnSelection', { editMode });
+      return;
+    }
+
+    // Default: go to ImageSelection for other modes (legacy behavior)
+    (navigation as any).navigate('ImageSelection', { editMode });
   };
 
   const handleUpgradePress = () => {
@@ -91,7 +117,8 @@ const FeaturesScreen = () => {
                 title={mode.name}
                 subtitle={mode.description}
                 showPremiumBadge={mode.isPremium}
-                rightIcon={isLocked ? 'lock' : 'chevron'}
+                rightIcon={isLocked ? 'lock' : undefined}
+                showChevron={false}
                 disabled={isDisabled}
                 onPress={() => handleFeaturePress(mode.id, mode.isPremium)}
                 iconColor={theme.colors.primary}
@@ -149,11 +176,6 @@ const FeaturesScreen = () => {
                       </Text>
                     </View>
                   </View>
-                  <View style={[styles.arrowContainer, { backgroundColor: theme.colors.primary + '25' }]}>
-                    <Text style={[styles.chevron, { color: theme.colors.primary }]}>
-                      {'>'}
-                    </Text>
-                  </View>
                 </View>
               </LinearGradient>
             </TouchableOpacity>
@@ -176,7 +198,7 @@ const FeaturesScreen = () => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, insets: { bottom: number }) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -187,6 +209,8 @@ const createStyles = (theme: Theme) =>
     },
     scrollContent: {
       paddingTop: theme.spacing.base,
+      // Add bottom padding to account for tab bar (49px) + safe area + spacing
+      paddingBottom: 49 + insets.bottom + theme.spacing.lg,
     },
     bannerContainer: {
       paddingHorizontal: theme.spacing.base,
@@ -238,17 +262,6 @@ const createStyles = (theme: Theme) =>
     },
     bannerSubtitle: {
       fontSize: theme.typography.scaled.sm,
-      fontWeight: theme.typography.weight.medium,
-    },
-    arrowContainer: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    chevron: {
-      fontSize: theme.typography.scaled.base,
       fontWeight: theme.typography.weight.medium,
     },
     categorySection: {

@@ -5,14 +5,6 @@ import { StatusBar } from 'expo-status-bar';
 
 import { ThemeProvider, useTheme } from './src/theme/ThemeProvider';
 import { BottomTabNavigator } from './src/navigation/BottomTabNavigator';
-import CameraScreen from './src/screens/CameraScreen';
-import ImageSelectionScreen from './src/screens/ImageSelectionScreen';
-import ImagePreviewScreen from './src/screens/ImagePreviewScreen';
-import GenreSelectionScreen from './src/screens/GenreSelectionScreen';
-import VirtualTryOnSelectionScreen from './src/screens/VirtualTryOnSelectionScreen';
-import ProcessingScreen from './src/screens/ProcessingScreen';
-import ResultScreen from './src/screens/ResultScreen';
-import PostCaptureFeatureSelectionScreen from './src/screens/PostCaptureFeatureSelectionScreen';
 import LanguageSelectionScreen from './src/screens/LanguageSelectionScreen';
 import SubscriptionScreen from './src/screens/SubscriptionScreen';
 import { SubscriptionService } from './src/services/subscriptionService';
@@ -84,88 +76,6 @@ const AppContent = () => {
           options={{ 
             headerShown: false,
             gestureEnabled: false, // Disable swipe on root tab screen
-          }}
-        />
-        {/* Settings screens */}
-        <Stack.Screen 
-          name="LanguageSelection" 
-          component={LanguageSelectionScreen}
-          options={{ 
-            headerShown: false,
-            gestureEnabled: true,
-          }}
-        />
-        <Stack.Screen 
-          name="Subscription" 
-          component={SubscriptionScreen}
-          options={{ 
-            headerShown: false,
-            gestureEnabled: true,
-          }}
-        />
-        {/* Editing flow screens - these can be swiped back */}
-        <Stack.Screen 
-          name="Camera" 
-          component={CameraScreen}
-          options={{ 
-            headerShown: false,
-            gestureEnabled: true,
-          }}
-        />
-        <Stack.Screen 
-          name="ImageSelection" 
-          component={ImageSelectionScreen}
-          options={{ 
-            headerShown: false,
-            gestureEnabled: true,
-          }}
-        />
-        <Stack.Screen 
-          name="ImagePreview" 
-          component={ImagePreviewScreen}
-          options={{ 
-            headerShown: false,
-            gestureEnabled: true,
-          }}
-        />
-        <Stack.Screen 
-          name="PostCaptureFeatureSelection" 
-          component={PostCaptureFeatureSelectionScreen}
-          options={{ 
-            headerShown: false,
-            gestureEnabled: true,
-          }}
-        />
-        <Stack.Screen 
-          name="GenreSelection" 
-          component={GenreSelectionScreen}
-          options={{ 
-            headerShown: false,
-            gestureEnabled: true,
-          }}
-        />
-        <Stack.Screen 
-          name="VirtualTryOnSelection" 
-          component={VirtualTryOnSelectionScreen}
-          options={{ 
-            headerShown: false,
-            gestureEnabled: true,
-          }}
-        />
-        <Stack.Screen 
-          name="Processing" 
-          component={ProcessingScreen}
-          options={{ 
-            headerShown: false,
-            gestureEnabled: false, // Don't allow swipe back during processing
-          }}
-        />
-        <Stack.Screen 
-          name="Result" 
-          component={ResultScreen}
-          options={{ 
-            headerShown: false,
-            gestureEnabled: true,
           }}
         />
       </Stack.Navigator>

@@ -60,11 +60,7 @@ const ImagePreviewScreen = () => {
             : {}))
     };
 
-    if (parentNav) {
-      parentNav.navigate('Processing', navParams);
-    } else {
-      navigation.navigate('Processing', navParams);
-    }
+    navigation.navigate('Processing', navParams);
   };
 
   return (

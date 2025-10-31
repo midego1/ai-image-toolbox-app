@@ -12,7 +12,7 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
   [EditMode.TRANSFORM]: {
     id: EditMode.TRANSFORM,
     name: 'Transform',
-    description: 'Transform photos with AI styles',
+    description: 'Apply curated AI art styles while preserving identity and composition. Great for portraits and social posts.',
     icon: '🎨',
     category: EditModeCategory.TRANSFORM,
     requiresConfig: true,
@@ -22,7 +22,7 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
   [EditMode.REMOVE_BACKGROUND]: {
     id: EditMode.REMOVE_BACKGROUND,
     name: 'Remove Background',
-    description: 'AI-powered background removal with modern UI',
+    description: 'Precisely cut out subjects with edge-aware AI. Export transparent PNGs or replace later in one tap.',
     icon: '🎯',
     category: EditModeCategory.EDIT,
     requiresSubscription: false, // Free but credit-limited
@@ -31,7 +31,7 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
   [EditMode.ENHANCE]: {
     id: EditMode.ENHANCE,
     name: 'Enhance',
-    description: 'Upscale and improve quality',
+    description: 'Upscale, sharpen, and reduce noise while keeping skin tones natural. Ideal for low‑light and old photos.',
     icon: '✨',
     category: EditModeCategory.ENHANCE,
     requiresConfig: true,
@@ -41,7 +41,7 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
   [EditMode.FILTERS]: {
     id: EditMode.FILTERS,
     name: 'Filters',
-    description: 'Color grading and effects',
+    description: 'One‑tap cinematic color grades and effects with adjustable intensity. Non‑destructive previews included.',
     icon: '🌈',
     category: EditModeCategory.STYLIZE,
     requiresConfig: true,
@@ -51,7 +51,7 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
   [EditMode.REMOVE_OBJECT]: {
     id: EditMode.REMOVE_OBJECT,
     name: 'Remove Object',
-    description: 'Remove unwanted objects',
+    description: 'Brush away distractions and people with content‑aware fill. Seamlessly recreates the background.',
     icon: '🗑️',
     category: EditModeCategory.EDIT,
     isPremium: true,
@@ -61,7 +61,7 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
   [EditMode.REPLACE_BACKGROUND]: {
     id: EditMode.REPLACE_BACKGROUND,
     name: 'Replace Background',
-    description: 'Change background with AI',
+    description: 'Swap scenes instantly: studios, offices, beaches, and more with realistic lighting and shadows.',
     icon: '🖼️',
     category: EditModeCategory.EDIT,
     isPremium: true,
@@ -72,7 +72,7 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
   [EditMode.FACE_ENHANCE]: {
     id: EditMode.FACE_ENHANCE,
     name: 'Face Enhance',
-    description: 'Improve face quality',
+    description: 'Restore facial details, remove compression, and smooth artifacts while keeping identity intact.',
     icon: '👤',
     category: EditModeCategory.ENHANCE,
     isPremium: true,
@@ -82,7 +82,7 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
   [EditMode.STYLE_TRANSFER]: {
     id: EditMode.STYLE_TRANSFER,
     name: 'Style Transfer',
-    description: 'Apply artistic styles',
+    description: 'Blend your photo with famous art styles and textures. Fine‑tune strength for subtle or bold looks.',
     icon: '🖌️',
     category: EditModeCategory.STYLIZE,
     isPremium: true,
@@ -93,7 +93,7 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
   [EditMode.TEXT_OVERLAY]: {
     id: EditMode.TEXT_OVERLAY,
     name: 'Text Overlay',
-    description: 'Add text to images',
+    description: 'Add titles, captions, and watermarks with professional typography presets and alignment guides.',
     icon: '📝',
     category: EditModeCategory.EDIT,
     requiresConfig: true,
@@ -103,7 +103,7 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
   [EditMode.CROP_ROTATE]: {
     id: EditMode.CROP_ROTATE,
     name: 'Crop & Rotate',
-    description: 'Basic editing tools',
+    description: 'Straighten horizons, crop to social sizes, and fix perspective with live guides and snapping.',
     icon: '📐',
     category: EditModeCategory.EDIT,
     requiresSubscription: false, // Always free
@@ -112,7 +112,7 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
   [EditMode.VIRTUAL_TRY_ON]: {
     id: EditMode.VIRTUAL_TRY_ON,
     name: 'Virtual Try-On',
-    description: 'Try on clothes before you buy',
+    description: 'Preview outfits on your photo with realistic fabric drape and lighting. Works with tops and dresses.',
     icon: '👗',
     category: EditModeCategory.EDIT,
     isPremium: true,
@@ -123,7 +123,7 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
   [EditMode.PROFESSIONAL_HEADSHOTS]: {
     id: EditMode.PROFESSIONAL_HEADSHOTS,
     name: 'Professional Headshots',
-    description: 'Create LinkedIn-quality professional portraits',
+    description: 'Generate polished, studio‑quality portraits with corporate backdrops, flattering lighting, and retouching.',
     icon: '💼',
     category: EditModeCategory.ENHANCE,
     isPremium: true,

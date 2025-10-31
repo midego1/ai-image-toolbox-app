@@ -13,6 +13,8 @@ interface ButtonProps {
   style?: ViewStyle;
   textStyle?: TextStyle;
   fullWidth?: boolean;
+  leftAdornment?: React.ReactNode;
+  rightAdornment?: React.ReactNode;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -25,6 +27,8 @@ export const Button: React.FC<ButtonProps> = ({
   style,
   textStyle,
   fullWidth = false,
+  leftAdornment,
+  rightAdornment,
 }) => {
   const { theme } = useTheme();
   const { colors, typography, spacing } = theme;
@@ -82,7 +86,16 @@ export const Button: React.FC<ButtonProps> = ({
       {loading ? (
         <ActivityIndicator size="small" color={variant === 'primary' ? colors.text : colors.primary} />
       ) : (
-        <Text style={textStyles}>{title}</Text>
+        <>
+          {leftAdornment}
+          {leftAdornment ? (
+            <Text style={[textStyles, { marginLeft: spacing.xs }]}>{title}</Text>
+          ) : (
+            <Text style={textStyles}>{title}</Text>
+          )}
+          {rightAdornment && <Text style={{ marginLeft: spacing.sm }} />}
+          {rightAdornment}
+        </>
       )}
     </TouchableOpacity>
   );

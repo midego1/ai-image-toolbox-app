@@ -494,3 +494,4 @@ export class [FeatureName]Processor extends BaseProcessor {
 
 **Priority Order**: Face Swap → Photo Restoration → Professional Headshots → Colorization → Super Resolution
 
+

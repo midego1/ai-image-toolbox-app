@@ -148,3 +148,4 @@ Consider Option 5 if:
 - Show icons in the feature list below to add visual interest
 - Best of both worlds: clarity where it matters, personality in the details
 
+

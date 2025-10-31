@@ -2,7 +2,7 @@
   "expo": {
     "name": "AI Photo Editor",
     "slug": "aiphotoeditor",
-    "version": "1.0.0",
+    "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "assetBundlePatterns": [
@@ -10,18 +10,25 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.aiphotoeditor.app"
+      "bundleIdentifier": "com.midego.aiphotoeditor",
+      "buildNumber": "2"
     },
-    "android": {
-      "package": "com.aiphotoeditor.app"
+    "web": {
+      "favicon": "./assets/images/icon.png",
+      "bundler": "metro",
+      "output": "single"
     },
     "plugins": [
       "expo-camera",
       "expo-image-picker",
-      "expo-media-library"
+      "expo-media-library",
+      "expo-font"
     ],
     "extra": {
-      "replicateApiKey": ""
+      "replicateApiKey": "",
+      "eas": {
+        "projectId": "9a839619-d86d-41cd-b86b-2eeb6a7f0edb"
+      }
     }
   }
 }

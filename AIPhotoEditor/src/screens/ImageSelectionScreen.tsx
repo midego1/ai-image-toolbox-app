@@ -14,7 +14,7 @@ const ImageSelectionScreen = () => {
   const { theme } = useTheme();
   const colors = theme?.colors || {} as any;
   const spacing = fallbackSpacing;
-  const navigation = useNavigation<NavigationProp<'GenreSelection' | 'Processing' | 'Camera' | 'ImagePreview' | 'VirtualTryOnSelection'>>();
+  const navigation = useNavigation<NavigationProp<'GenreSelection' | 'Processing' | 'ImagePreview' | 'VirtualTryOnSelection'>>();
   const route = useRoute();
   const { editMode, preselectedGenreId } = (route.params as any) || {};
   const modeData = editMode ? getEditMode(editMode) : null;
@@ -68,9 +68,9 @@ const ImageSelectionScreen = () => {
     // Navigate to camera with the edit mode, then return here with the image
     const parentNav = navigation.getParent();
     if (parentNav) {
-      parentNav.navigate('Camera', { editMode });
+      parentNav.navigate('QuickCameraLocal', { editMode });
     } else {
-      navigation.navigate('Camera', { editMode });
+      navigation.navigate('QuickCameraLocal', { editMode });
     }
   };
 
@@ -96,6 +96,20 @@ const ImageSelectionScreen = () => {
         (parentNav as any).navigate('GenreSelection', { imageUri, editMode, preselectedGenreId } as any);
       } else {
         (navigation as any).navigate('GenreSelection', { imageUri, editMode, preselectedGenreId } as any);
+      }
+    } else if (editMode === EditMode.REMOVE_OBJECT) {
+      // Remove Object goes to RemoveObjectScreen
+      if (parentNav) {
+        (parentNav as any).navigate('RemoveObject', { imageUri } as any);
+      } else {
+        (navigation as any).navigate('RemoveObject', { imageUri } as any);
+      }
+    } else if (editMode === EditMode.PROFESSIONAL_HEADSHOTS) {
+      // Professional Headshots goes to ProfessionalHeadshotsScreen
+      if (parentNav) {
+        (parentNav as any).navigate('ProfessionalHeadshots', { imageUri } as any);
+      } else {
+        (navigation as any).navigate('ProfessionalHeadshots', { imageUri } as any);
       }
     } else {
       // Other AI tools go to ImagePreview screen

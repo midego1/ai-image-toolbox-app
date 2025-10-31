@@ -221,3 +221,4 @@ if (loadingPrices) {
 
 **Note**: The prices shown in your UI ($9.99, $7.49, $59.95) are for UI/UX purposes only. Actual prices should come from your store product configurations and be fetched at runtime.
 
+

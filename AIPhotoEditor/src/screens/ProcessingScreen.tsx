@@ -46,7 +46,10 @@ const ProcessingScreen = () => {
   const checkAndProcess = async () => {
     try {
       // local analytics: edit started
-      try { await AnalyticsService.increment('edit_started'); } catch {}
+      try { 
+        await AnalyticsService.increment('edit_started'); 
+        await AnalyticsService.incrementByMode(String(editMode), 'edit_started');
+      } catch {}
       editStartTsRef.current = Date.now();
       // Get edit mode data to check subscription and credit requirements
       const requiresSubscription = modeData?.requiresSubscription ?? false;
@@ -124,6 +127,7 @@ const ProcessingScreen = () => {
         // local analytics: edit completed + duration
         try {
           await AnalyticsService.increment('edit_completed');
+          await AnalyticsService.incrementByMode(String(editMode), 'edit_completed');
           if (editStartTsRef.current) {
             await AnalyticsService.addDurationMs(Date.now() - editStartTsRef.current);
           }
@@ -157,6 +161,7 @@ const ProcessingScreen = () => {
               transformedImage: transformedUri,
               editMode,
               config: config, // Pass config to Result screen for virtual try-on clothing items
+              createdAt: Date.now(),
             });
             console.log('[ProcessingScreen] Navigation to Result screen completed');
           } catch (navError: any) {

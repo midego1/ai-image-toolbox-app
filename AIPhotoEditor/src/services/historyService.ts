@@ -44,7 +44,8 @@ export class HistoryService {
     editMode: EditMode,
     editModeName: string,
     editModeIcon: string,
-    config?: EditModeConfig
+    config?: EditModeConfig,
+    timestampOverride?: number
   ): Promise<void> {
     try {
       const entries = await this.getHistoryEntries();
@@ -57,7 +58,7 @@ export class HistoryService {
         editModeName,
         editModeIcon,
         config,
-        timestamp: Date.now(),
+        timestamp: timestampOverride ?? Date.now(),
       };
 
       // Add to beginning of array

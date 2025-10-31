@@ -1,24 +1,31 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Image, Text, TouchableOpacity, Alert, ScrollView, Modal } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, StyleSheet, Image, Text, TouchableOpacity, Alert, ScrollView, Modal, Dimensions, Animated } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
-import { NavigationProp } from '../types/navigation';
+import { NavigationProp, RouteProp } from '../types/navigation';
 import { EditMode } from '../constants/editModes';
-import { Header } from '../components/Header';
+import { AIToolHeader } from '../components/AIToolHeader';
+import { AIToolInfoCard } from '../components/AIToolInfoCard';
+import { CaptureLibraryButtons } from '../components/CaptureLibraryButtons';
 import { Button } from '../components/Button';
 import { IconButton } from '../components/IconButton';
-import { useTheme, spacing as fallbackSpacing } from '../theme';
+import { ActionButtonBar } from '../components/ActionButtonBar';
+import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
+import { spacing as baseSpacing } from '../theme/spacing';
 import { ClothingType, ClothingTypeData, CLOTHING_TYPES, getAllClothingTypes } from '../constants/clothingTypes';
 import { ClothingItem } from '../services/processors/virtualTryOnProcessor';
 
+const { width } = Dimensions.get('window');
+
 const VirtualTryOnSelectionScreen = () => {
   const { theme } = useTheme();
-  const colors = theme?.colors || {} as any;
-  const spacing = fallbackSpacing;
+  const { colors, typography, spacing } = theme;
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp<'Processing'>>();
   const route = useRoute();
   const { editMode, personImageUri: initialPersonImageUri } = (route.params as any) || {};
@@ -27,7 +34,26 @@ const VirtualTryOnSelectionScreen = () => {
   const [clothingItems, setClothingItems] = useState<ClothingItem[]>([]);
   const [showTypePicker, setShowTypePicker] = useState(false);
   const [pendingClothingUri, setPendingClothingUri] = useState<string | null>(null);
-  const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null); // Track which item is being edited
+  const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+  const [showImagePreview, setShowImagePreview] = useState(false);
+  const cardScale = useRef(new Animated.Value(0.96)).current;
+  const hintAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!personImageUri) {
+      Animated.sequence([
+        Animated.timing(cardScale, { toValue: 1, duration: 220, useNativeDriver: true }),
+        Animated.delay(120),
+      ]).start();
+
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(hintAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
+          Animated.timing(hintAnim, { toValue: 0, duration: 900, useNativeDriver: true }),
+        ]),
+      ).start();
+    }
+  }, [personImageUri]);
 
   const copyImageToFileSystem = async (uri: string): Promise<string> => {
     if (uri.startsWith('file://')) {
@@ -74,12 +100,12 @@ const VirtualTryOnSelectionScreen = () => {
 
   const takePersonPhoto = () => {
     haptic.medium();
-    const parentNav = navigation.getParent();
-    if (parentNav) {
-      parentNav.navigate('Camera', { editMode });
-    } else {
-      navigation.navigate('Camera', { editMode });
-    }
+    (navigation as any).navigate('QuickCameraLocal', {
+      editMode: editMode || EditMode.VIRTUAL_TRY_ON,
+      onPhoto: (uri: string) => {
+        copyImageToFileSystem(uri).then(setPersonImageUri);
+      }
+    });
   };
 
   const selectClothingImage = async () => {
@@ -113,9 +139,9 @@ const VirtualTryOnSelectionScreen = () => {
     // For now, navigate to camera and handle on return
     const parentNav = navigation.getParent();
     if (parentNav) {
-      parentNav.navigate('Camera', { editMode });
+      parentNav.navigate('QuickCameraLocal', { editMode });
     } else {
-      navigation.navigate('Camera', { editMode });
+      navigation.navigate('QuickCameraLocal', { editMode });
     }
   };
 
@@ -160,7 +186,6 @@ const VirtualTryOnSelectionScreen = () => {
     }
 
     haptic.medium();
-    const parentNav = navigation.getParent();
     const navParams = {
       imageUri: personImageUri,
       editMode: editMode || EditMode.VIRTUAL_TRY_ON,
@@ -170,95 +195,9 @@ const VirtualTryOnSelectionScreen = () => {
         preserveBackground: true,
       }
     };
-
-    if (parentNav) {
-      parentNav.navigate('Processing', navParams);
-    } else {
-      navigation.navigate('Processing', navParams);
-    }
+    navigation.navigate('Processing', navParams);
   };
 
-  const renderPersonSelector = () => {
-    const hasImage = !!personImageUri;
-
-    return (
-      <View style={[styles.sectionContainer, { 
-        backgroundColor: colors.surface,
-        borderColor: colors.border,
-        padding: spacing.base,
-        marginBottom: spacing.md,
-      }]}>
-        <Text style={[styles.sectionTitle, { 
-          color: colors.text,
-          fontSize: 16,
-          fontWeight: '600',
-          marginBottom: spacing.xs,
-        }]}>
-          👤 Person Photo
-        </Text>
-        <Text style={[styles.sectionDescription, { 
-          color: colors.textSecondary,
-          fontSize: 14,
-          marginBottom: spacing.md,
-        }]}>
-          Select a clear, front-facing photo of the person
-        </Text>
-
-        {hasImage ? (
-          <View style={styles.imagePreviewContainer}>
-            <Image
-              source={{ uri: personImageUri }}
-              style={[styles.imagePreview, { borderColor: colors.border }]}
-              resizeMode="cover"
-            />
-            <TouchableOpacity
-              style={[styles.changeButton, { backgroundColor: colors.primary }]}
-              onPress={selectPersonImage}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.changeButtonText}>Change</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={styles.selectorButtons}>
-            <TouchableOpacity
-              style={[styles.selectorButton, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
-              onPress={selectPersonImage}
-              activeOpacity={0.7}
-            >
-              <IconButton
-                name="images"
-                onPress={() => {}}
-                size={24}
-                color={colors.primary}
-                backgroundColor="transparent"
-              />
-              <Text style={[styles.selectorButtonText, { color: colors.text }]}>
-                Choose from Library
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.selectorButton, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
-              onPress={takePersonPhoto}
-              activeOpacity={0.7}
-            >
-              <IconButton
-                name="camera"
-                onPress={() => {}}
-                size={24}
-                color={colors.primary}
-                backgroundColor="transparent"
-              />
-              <Text style={[styles.selectorButtonText, { color: colors.text }]}>
-                Take Photo
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-    );
-  };
 
   const renderClothingItem = (item: ClothingItem, index: number) => {
     const typeData = CLOTHING_TYPES[item.type];
@@ -388,37 +327,138 @@ const VirtualTryOnSelectionScreen = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
-      <Header
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundSecondary }]} edges={[]}>
+      <AIToolHeader
         title="Virtual Try-On"
-        leftAction={{
-          icon: 'home-outline',
-          onPress: () => {
-            haptic.light();
-            const parentNav = navigation.getParent();
-            if (parentNav) {
-              parentNav.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
-            } else {
-              navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
-            }
-          },
-        }}
+        backgroundColor={colors.backgroundSecondary}
       />
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={[styles.content, { padding: spacing.base }]}>
-          <Text style={[styles.introText, { 
-            color: colors.textSecondary,
-            fontSize: 14,
-            marginBottom: spacing.lg,
-            lineHeight: 20,
-            textAlign: 'center',
-          }]}>
-            Select a photo of the person and add clothing items to create a realistic virtual try-on.
-          </Text>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.scrollContent,
+          // Add padding when button is visible to prevent content from being hidden
+          personImageUri && clothingItems.length > 0 ? { paddingBottom: 120 } : { paddingBottom: insets.bottom + spacing.base },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Hero Section */}
+        <View style={{ paddingHorizontal: spacing.base, paddingTop: spacing.md, alignItems: 'center' }}>
+          {personImageUri ? (
+            <TouchableOpacity
+              onPress={() => {
+                haptic.light();
+                setShowImagePreview(true);
+              }}
+              activeOpacity={0.9}
+              style={{ alignSelf: 'center' }}
+            >
+              <View style={[styles.heroImageWrapper, {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.1,
+                shadowRadius: 12,
+                elevation: 4,
+              }]}>
+                <Image
+                  source={{ uri: personImageUri }}
+                  style={styles.heroImage}
+                  resizeMode="cover"
+                />
+                <View style={[styles.expandOverlay, { backgroundColor: 'transparent' }]}>
+                  <View style={[styles.expandButton, { backgroundColor: colors.primary }]}>
+                    <Ionicons name="expand" size={18} color="#FFFFFF" />
+                    <Text style={{ color: '#FFFFFF', fontSize: typography.scaled.sm, fontWeight: typography.weight.medium }}>
+                      Tap to view full size
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <View style={{ alignSelf: 'center', width: '100%' }}>
+              <LinearGradient
+                colors={[colors.primary + '12', colors.surface]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.heroImageWrapper, {
+                  borderColor: colors.border,
+                  borderStyle: 'dashed',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingHorizontal: spacing.base,
+                  height: 220,
+                }]}
+              >
+                <CaptureLibraryButtons
+                  onCapture={takePersonPhoto}
+                  onLibrary={selectPersonImage}
+                  cardScale={cardScale}
+                />
 
-          {renderPersonSelector()}
+                <Animated.Text
+                  style={{
+                    marginTop: spacing.lg,
+                    color: colors.textSecondary,
+                    fontSize: typography.scaled.sm,
+                    opacity: hintAnim.interpolate({ inputRange: [0, 1], outputRange: [0.55, 1] }),
+                    transform: [{ translateY: hintAnim.interpolate({ inputRange: [0, 1], outputRange: [2, -1] }) }],
+                  }}
+                >
+                  Choose one to get started
+                </Animated.Text>
+              </LinearGradient>
+            </View>
+          )}
 
+          {/* Quick Info Badges - ALWAYS VISIBLE */}
+          <View style={[styles.badgesContainer, { marginTop: spacing.sm }]}>
+            <View style={[styles.badge, { 
+              backgroundColor: colors.primary + '15',
+              borderColor: colors.primary + '30',
+            }]}>
+              <Ionicons name="sparkles-outline" size={14} color={colors.primary} />
+              <Text style={{ color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium, marginLeft: baseSpacing.xs }}>
+                AI-powered
+              </Text>
+            </View>
+            <View style={[styles.badge, { 
+              backgroundColor: colors.primary + '15',
+              borderColor: colors.primary + '30',
+            }]}>
+              <Ionicons name="shirt-outline" size={14} color={colors.primary} />
+              <Text style={{ color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium, marginLeft: baseSpacing.xs }}>
+                Multiple Items
+              </Text>
+            </View>
+            <View style={[styles.badge, { 
+              backgroundColor: colors.primary + '15',
+              borderColor: colors.primary + '30',
+            }]}>
+              <Ionicons name="trophy-outline" size={14} color={colors.primary} />
+              <Text style={{ color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium, marginLeft: baseSpacing.xs }}>
+                Professional
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Information Card */}
+        <AIToolInfoCard
+          icon="shirt-outline"
+          whatDescription="Try on clothing items virtually with realistic fit and appearance. Upload a person photo and one or more clothing items to see how they look together."
+          howDescription="Our AI analyzes the person's pose and body structure, then accurately places clothing items with realistic fit, shadows, and lighting to create a natural try-on effect."
+          howItems={[
+            { text: 'Realistic fit and appearance' },
+            { text: 'Multiple clothing items supported' },
+            { text: 'Natural lighting and shadows' },
+          ]}
+        />
+
+        {/* Clothing Selection Section */}
+        <View style={{ marginHorizontal: spacing.base, marginTop: spacing.lg }}>
           <View style={[styles.sectionContainer, {
             backgroundColor: colors.surface,
             borderColor: colors.border,
@@ -463,44 +503,68 @@ const VirtualTryOnSelectionScreen = () => {
               </Text>
             </TouchableOpacity>
           </View>
-
-          {personImageUri && clothingItems.length > 0 && (
-            <View style={[styles.infoBox, { 
-              backgroundColor: colors.primary + '15',
-              borderColor: colors.primary + '30',
-              padding: spacing.md,
-              marginTop: spacing.md,
-              borderRadius: 12,
-              borderWidth: 1,
-            }]}>
-              <Text style={[styles.infoText, { 
-                color: colors.text,
-                fontSize: 13,
-                lineHeight: 18,
-              }]}>
-                💡 Tip: For best results, use clear photos with good lighting. 
-                {clothingItems.length > 1 && ' Multiple items will be combined into a complete outfit.'}
-              </Text>
-            </View>
-          )}
         </View>
       </ScrollView>
 
-      {renderTypePicker()}
-
-      <View style={[styles.buttonContainer, { 
-        padding: spacing.base,
-        backgroundColor: colors.background,
-        borderTopWidth: 1,
-        borderTopColor: colors.border,
-      }]}>
+      <ActionButtonBar
+        visible={!!(personImageUri && clothingItems.length > 0)}
+        bottomContent={
+          <View style={[styles.timingInfo, {
+            backgroundColor: colors.surface,
+            paddingHorizontal: spacing.base,
+            paddingVertical: spacing.xs,
+            borderRadius: 20,
+          }]}>
+            <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
+            <Text style={[styles.timingText, {
+              color: colors.textSecondary,
+              fontSize: typography.scaled.xs,
+              marginLeft: spacing.xs,
+            }]}>
+              Usually takes 10–15 seconds
+            </Text>
+          </View>
+        }
+      >
         <Button
           title={`Generate Try-On${clothingItems.length > 1 ? ` (${clothingItems.length} items)` : ''}`}
           onPress={handleProcess}
           disabled={!personImageUri || clothingItems.length === 0}
-          style={styles.processButton}
+          size="large"
+          style={{ minHeight: 56, width: '100%' }}
         />
-      </View>
+      </ActionButtonBar>
+
+      {/* Image Preview Modal */}
+      <Modal
+        visible={showImagePreview}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowImagePreview(false)}
+      >
+        <TouchableOpacity
+          style={[styles.previewModal, { backgroundColor: 'rgba(0, 0, 0, 0.96)' }]}
+          activeOpacity={1}
+          onPress={() => {
+            haptic.light();
+            setShowImagePreview(false);
+          }}
+        >
+          <SafeAreaView style={styles.previewModalSafeArea} edges={['top', 'bottom']}>
+            <View style={styles.imageContainer}>
+              <View style={[styles.imageWrapper, { backgroundColor: colors.surface + '10' }]}>
+                <Image
+                  source={{ uri: personImageUri || '' }}
+                  style={styles.previewModalImage}
+                  resizeMode="contain"
+                />
+              </View>
+            </View>
+          </SafeAreaView>
+        </TouchableOpacity>
+      </Modal>
+
+      {renderTypePicker()}
     </SafeAreaView>
   );
 };
@@ -512,54 +576,95 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  content: {
-    flex: 1,
+  scrollContent: {
+    flexGrow: 1,
   },
-  introText: {},
+  heroImageWrapper: {
+    width: width - (baseSpacing.base * 2),
+    height: width - (baseSpacing.base * 2),
+    maxHeight: 300,
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+    alignSelf: 'center',
+  },
+  heroImage: {
+    width: '100%',
+    height: '100%',
+  },
+  expandOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: baseSpacing.base,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  expandButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: baseSpacing.md,
+    paddingVertical: baseSpacing.xs,
+    borderRadius: 20,
+    gap: baseSpacing.xs,
+  },
+  badgesContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: baseSpacing.sm,
+    flexWrap: 'wrap',
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: baseSpacing.sm,
+    paddingVertical: baseSpacing.xs,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  timingInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  timingText: {
+    // Dynamic styles applied inline
+  },
+  previewModal: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewModalSafeArea: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+  },
+  imageContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  imageWrapper: {
+    borderRadius: 20,
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  previewModalImage: {
+    width: width - 56,
+    height: (Dimensions.get('window').height * 0.65),
+    borderRadius: 16,
+  },
   sectionContainer: {
     borderRadius: 16,
     borderWidth: 1,
   },
   sectionTitle: {},
-  sectionDescription: {},
-  imagePreviewContainer: {
-    alignItems: 'center',
-  },
-  imagePreview: {
-    width: '100%',
-    height: 300,
-    borderRadius: 12,
-    borderWidth: 2,
-    marginBottom: 12,
-  },
-  changeButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  changeButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  selectorButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  selectorButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 8,
-  },
-  selectorButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
   clothingSectionHeader: {
     marginBottom: 12,
   },

@@ -16,12 +16,11 @@ export type RootStackParamList = {
   GenreSelection: { imageUri?: string; editMode?: EditMode };
   VirtualTryOnSelection: { editMode: EditMode; personImageUri?: string };
   Processing: { imageUri: string; editMode: EditMode; config?: EditModeConfig };
-  Result: { originalImage: string; transformedImage: string; editMode: EditMode; config?: EditModeConfig; fromHistory?: boolean };
+  Result: { originalImage: string; transformedImage: string; editMode: EditMode; config?: EditModeConfig; fromHistory?: boolean; createdAt?: number };
 };
 
 export type TabParamList = {
   Features: undefined;
-  Camera: undefined;
   History: undefined;
   Settings: undefined;
 };
@@ -30,6 +29,9 @@ export type SettingsStackParamList = {
   SettingsMain: undefined;
   AppearanceSettings: undefined;
   Statistics: undefined;
+  LanguageSelection: undefined;
+  Subscription: undefined;
+  ToolMockup: undefined;
 };
 
 export type NavigationProp<T extends keyof RootStackParamList> = NativeStackNavigationProp<RootStackParamList, T>;

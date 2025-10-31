@@ -32,26 +32,13 @@ const PostCaptureFeatureSelectionScreen = () => {
   const modes = useMemo(() => Object.values(EDIT_MODES).filter(Boolean), []);
 
   const handleFeatureSelected = (editMode: EditMode) => {
-    // Route selection logic matches QuickCameraScreen
-    const parentNav = navigation.getParent();
+    // Navigate within the current stack; these routes are defined in both Camera and Features stacks
     if (editMode === EditMode.VIRTUAL_TRY_ON) {
-      if (parentNav) {
-        parentNav.navigate('VirtualTryOnSelection', { editMode, personImageUri: imageUri });
-      } else {
-        navigation.navigate('VirtualTryOnSelection', { editMode, personImageUri: imageUri } as any);
-      }
+      navigation.navigate('VirtualTryOnSelection', { editMode, personImageUri: imageUri } as any);
     } else if (editMode === EditMode.TRANSFORM) {
-      if (parentNav) {
-        parentNav.navigate('GenreSelection', { imageUri, editMode });
-      } else {
-        navigation.navigate('GenreSelection', { imageUri, editMode } as any);
-      }
+      navigation.navigate('GenreSelection', { imageUri, editMode } as any);
     } else {
-      if (parentNav) {
-        parentNav.navigate('ImagePreview', { imageUri, editMode });
-      } else {
-        navigation.navigate('ImagePreview', { imageUri, editMode } as any);
-      }
+      navigation.navigate('ImagePreview', { imageUri, editMode } as any);
     }
   };
 

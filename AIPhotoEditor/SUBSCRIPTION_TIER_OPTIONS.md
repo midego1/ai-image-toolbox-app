@@ -233,3 +233,4 @@ Cons: Requires tap to expand (extra interaction)
 - Vertical space isn't a concern
 - You want full descriptions visible
 
+

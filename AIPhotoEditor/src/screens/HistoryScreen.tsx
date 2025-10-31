@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Dim
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { NavigationProp } from '../types/navigation';
+ 
 import { useTheme, Theme } from '../theme/ThemeProvider';
 import { MainHeader } from '../components/MainHeader';
 import { SectionHeader } from '../components/SectionHeader';
@@ -17,7 +17,7 @@ const ITEM_SIZE = (width - 48) / 2; // 2 columns with padding
 
 const HistoryScreen = () => {
   const { theme } = useTheme();
-  const navigation = useNavigation<NavigationProp<'Result'>>();
+  const navigation = useNavigation<any>();
   const styles = createStyles(theme);
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
   const [selectedFilter, setSelectedFilter] = useState<EditMode | 'all'>('all');
@@ -41,25 +41,18 @@ const HistoryScreen = () => {
   const handleEntryPress = (entry: HistoryEntry) => {
     haptic.light();
     
-    // Navigate to Result screen with the history entry data
-    const parentNav = navigation.getParent();
-    if (parentNav) {
-      parentNav.navigate('Result', {
-        originalImage: entry.originalImageUri,
-        transformedImage: entry.transformedImageUri,
-        editMode: entry.editMode,
-        config: entry.config,
-        fromHistory: true,
-      });
-    } else {
-      navigation.navigate('Result', {
-        originalImage: entry.originalImageUri,
-        transformedImage: entry.transformedImageUri,
-        editMode: entry.editMode,
-        config: entry.config,
-        fromHistory: true,
-      });
-    }
+    // Navigate to Result screen within the Features stack (nested under the Features tab)
+    const params = {
+      originalImage: entry.originalImageUri,
+      transformedImage: entry.transformedImageUri,
+      editMode: entry.editMode,
+      config: entry.config,
+      fromHistory: true,
+      createdAt: entry.timestamp,
+    } as const;
+
+    // Navigate within the History stack so swipe-back returns to History
+    navigation.navigate('Result', params);
   };
 
   const handleDeleteEntry = async (entry: HistoryEntry) => {
@@ -152,9 +145,9 @@ const HistoryScreen = () => {
           />
           
           {/* Edit mode badge */}
-          <View style={[styles.badge, { backgroundColor: theme.colors.primary + '20' }]}>
-            <Text style={[styles.badgeIcon, { fontSize: 14 }]}>{entry.editModeIcon}</Text>
-            <Text style={[styles.badgeText, { color: theme.colors.text, fontSize: theme.typography.scaled.xs }]} numberOfLines={1}>
+          <View style={[styles.badge, { backgroundColor: 'rgba(0, 0, 0, 0.75)' }]}>
+            <Text style={[styles.badgeIcon, { fontSize: 14, color: '#FFFFFF' }]}>{entry.editModeIcon}</Text>
+            <Text style={[styles.badgeText, { color: '#FFFFFF', fontSize: theme.typography.scaled.xs }]} numberOfLines={1}>
               {entry.editModeName}
             </Text>
           </View>

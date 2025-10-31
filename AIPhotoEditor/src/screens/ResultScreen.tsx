@@ -36,6 +36,7 @@ const ResultScreen = () => {
   let editMode: EditMode;
   let config: any;
   let fromHistory: boolean = false;
+  let createdAt: number | undefined;
   
   try {
     const params = route.params;
@@ -51,7 +52,9 @@ const ResultScreen = () => {
       hasConfig: !!config,
       configType: config ? typeof config : 'undefined',
       fromHistory,
+      hasCreatedAt: !!params.createdAt,
     });
+    createdAt = params.createdAt;
   } catch (error: any) {
     console.error('[ResultScreen] Error reading route params:', error);
     // Fallback values
@@ -60,6 +63,7 @@ const ResultScreen = () => {
     editMode = EditMode.TRANSFORM;
     config = undefined;
     fromHistory = false;
+    createdAt = undefined;
   }
   
   const modeData = getEditMode(editMode);
@@ -111,7 +115,8 @@ const ResultScreen = () => {
         editMode,
         modeData.name,
         modeData.icon,
-        config
+        config,
+        createdAt
       ).then(() => {
         setHistorySaved(true);
         console.log('[ResultScreen] Saved to history');
@@ -120,7 +125,16 @@ const ResultScreen = () => {
         // Non-critical, don't block UI
       });
     }
-  }, [fromHistory, historySaved, originalImage, transformedImage, editMode, modeData, config]);
+  }, [fromHistory, historySaved, originalImage, transformedImage, editMode, modeData, config, createdAt]);
+
+  const formatTimestamp = (ts?: number) => {
+    try {
+      const date = ts ? new Date(ts) : new Date();
+      return date.toLocaleString();
+    } catch {
+      return '';
+    }
+  };
 
   // Virtual Try-On specific data
   const isVirtualTryOn = editMode === EditMode.VIRTUAL_TRY_ON;
@@ -447,7 +461,7 @@ const ResultScreen = () => {
                 resizeMode={isVirtualTryOn ? "contain" : "cover"}
               />
               <View style={[styles.expandOverlay, {
-                backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                backgroundColor: 'transparent',
               }]}>
                 <View style={[styles.expandButton, { backgroundColor: colors.primary }]}>
                   <Ionicons name="expand" size={18} color="#FFFFFF" />
@@ -494,6 +508,18 @@ const ResultScreen = () => {
                 </Animated.View>
                 <Text style={[styles.badgeText, { color: colors.text, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}> 
                   {getCreditCostText()}
+                </Text>
+              </View>
+            )}
+            {/* Created at timestamp */}
+            {!showOriginal && (
+              <View style={[styles.badge, {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              }]}> 
+                <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
+                <Text style={[styles.badgeText, { color: colors.textSecondary, fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }]}> 
+                  {formatTimestamp(createdAt)}
                 </Text>
               </View>
             )}

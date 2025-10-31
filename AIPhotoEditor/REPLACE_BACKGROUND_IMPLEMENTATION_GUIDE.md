@@ -517,3 +517,4 @@ Following the same patterns as Remove Background and Remove Object:
 - Only the processor implementation and UI updates are needed
 - Consider adding background presets/gallery in future iterations for better UX
 
+

@@ -15,7 +15,7 @@ import { ImageProcessingService } from '../services/imageProcessingService';
 const EditModeSelectionScreen = () => {
   const { theme } = useTheme();
   const { colors, typography, spacing } = theme;
-  const navigation = useNavigation<NavigationProp<'Camera' | 'ImageSelection'>>();
+  const navigation = useNavigation<NavigationProp<'ImageSelection'>>();
   const [isPremium, setIsPremium] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<'all' | EditModeCategory>('all');
 
@@ -66,7 +66,7 @@ const EditModeSelectionScreen = () => {
       navigation.navigate('ImageSelection', { editMode: mode });
     } else {
       // Navigate to camera with selected edit mode
-      navigation.navigate('Camera', { editMode: mode });
+      navigation.navigate('QuickCameraLocal', { editMode: mode });
     }
   };
 

@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { View, StyleSheet, Alert, Text, TouchableOpacity, Modal, ScrollView, Pressable, Dimensions, Image } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as MediaLibrary from 'expo-media-library';
@@ -29,10 +29,12 @@ const QuickCameraScreen = () => {
   // Always use fallback spacing to ensure it's available - theme.spacing should be the same object
   const spacing = fallbackSpacing;
   const navigation = useNavigation<NavigationProp<'GenreSelection' | 'Processing' | 'ImagePreview'>>();
+  const insets = useSafeAreaInsets();
   // Get route params if available (only when navigated from stack with editMode, not as tab)
   const route = useRoute();
   const editModeFromRoute = (route.params as any)?.editMode as EditMode | undefined;
   const preselectedGenreId = (route.params as any)?.preselectedGenreId as string | undefined;
+  const onPhotoCallback = (route.params as any)?.onPhoto as ((uri: string) => void) | undefined;
   const [facing, setFacing] = useState<CameraType>('back');
   const [flashMode, setFlashMode] = useState<FlashMode>('auto');
   const [selectedLens, setSelectedLens] = useState<CameraLens>('standard');
@@ -195,29 +197,57 @@ const QuickCameraScreen = () => {
 
   const handleImageSelected = (imageUri: string, editMode?: EditMode) => {
     const modeToUse = editMode || editModeFromRoute || EditMode.TRANSFORM;
-    const parentNav = navigation.getParent();
-
     if (modeToUse === EditMode.VIRTUAL_TRY_ON) {
       // Virtual try-on goes to VirtualTryOnSelection with person image pre-filled
-      if (parentNav) {
-        parentNav.navigate('VirtualTryOnSelection', { editMode: modeToUse, personImageUri: imageUri });
-      } else {
-        navigation.navigate('VirtualTryOnSelection', { editMode: modeToUse, personImageUri: imageUri });
-      }
+      navigation.navigate('VirtualTryOnSelection', { editMode: modeToUse, personImageUri: imageUri } as any);
     } else if (modeToUse === EditMode.TRANSFORM) {
-      // Transform goes to GenreSelection for style selection
-      if (parentNav) {
-        (parentNav as any).navigate('GenreSelection', { imageUri, editMode: modeToUse, preselectedGenreId } as any);
-      } else {
-        (navigation as any).navigate('GenreSelection', { imageUri, editMode: modeToUse, preselectedGenreId } as any);
+      // If launched locally from Features stack with a callback, return result in-place
+      if (typeof onPhotoCallback === 'function') {
+        try { onPhotoCallback(imageUri); } catch {}
+        navigation.goBack();
+        return;
       }
+      // Otherwise, navigate to GenreSelection as before
+      (navigation as any).navigate('GenreSelection', { imageUri, editMode: modeToUse, preselectedGenreId } as any);
+    } else if (modeToUse === EditMode.REMOVE_BACKGROUND) {
+      // If launched locally from Features stack with a callback, return result in-place
+      if (typeof onPhotoCallback === 'function') {
+        try { onPhotoCallback(imageUri); } catch {}
+        navigation.goBack();
+        return;
+      }
+      // Otherwise, navigate back to RemoveBackgroundScreen with the captured image
+      (navigation as any).navigate('RemoveBackground', { imageUri } as any);
+    } else if (modeToUse === EditMode.REPLACE_BACKGROUND) {
+      // If launched locally from Features stack with a callback, return result in-place
+      if (typeof onPhotoCallback === 'function') {
+        try { onPhotoCallback(imageUri); } catch {}
+        navigation.goBack();
+        return;
+      }
+      // Otherwise, navigate to ReplaceBackgroundScreen
+      (navigation as any).navigate('ReplaceBackground', { imageUri } as any);
+    } else if (modeToUse === EditMode.REMOVE_OBJECT) {
+      // If launched locally from Features stack with a callback, return result in-place
+      if (typeof onPhotoCallback === 'function') {
+        try { onPhotoCallback(imageUri); } catch {}
+        navigation.goBack();
+        return;
+      }
+      // Otherwise, navigate to RemoveObjectScreen
+      (navigation as any).navigate('RemoveObject', { imageUri } as any);
+    } else if (modeToUse === EditMode.PROFESSIONAL_HEADSHOTS) {
+      // If launched locally from Features stack with a callback, return result in-place
+      if (typeof onPhotoCallback === 'function') {
+        try { onPhotoCallback(imageUri); } catch {}
+        navigation.goBack();
+        return;
+      }
+      // Otherwise, navigate to ProfessionalHeadshotsScreen
+      (navigation as any).navigate('ProfessionalHeadshots', { imageUri } as any);
     } else {
       // Other AI tools go to ImagePreview screen
-      if (parentNav) {
-        parentNav.navigate('ImagePreview', { imageUri, editMode: modeToUse });
-      } else {
-        navigation.navigate('ImagePreview', { imageUri, editMode: modeToUse });
-      }
+      navigation.navigate('ImagePreview', { imageUri, editMode: modeToUse } as any);
     }
   };
 
@@ -246,7 +276,6 @@ const QuickCameraScreen = () => {
         const photo = await cameraRef.current.takePictureAsync({
           quality: 0.8,
           base64: false,
-          exif: true,
         });
         
         if (flashPromise) {
@@ -283,12 +312,7 @@ const QuickCameraScreen = () => {
           if (editModeFromRoute) {
             handleImageSelected(manipulatedImage.uri);
           } else {
-            const parentNav = navigation.getParent();
-            if (parentNav) {
-              parentNav.navigate('PostCaptureFeatureSelection', { imageUri: manipulatedImage.uri });
-            } else {
-              navigation.navigate('PostCaptureFeatureSelection' as any, { imageUri: manipulatedImage.uri } as any);
-            }
+            navigation.navigate('PostCaptureFeatureSelection' as any, { imageUri: manipulatedImage.uri } as any);
           }
         }
       } catch (error) {
@@ -374,12 +398,7 @@ const QuickCameraScreen = () => {
         if (editModeFromRoute) {
           handleImageSelected(fileUri);
         } else {
-          const parentNav = navigation.getParent();
-          if (parentNav) {
-            parentNav.navigate('PostCaptureFeatureSelection', { imageUri: fileUri });
-          } else {
-            navigation.navigate('PostCaptureFeatureSelection' as any, { imageUri: fileUri } as any);
-          }
+          navigation.navigate('PostCaptureFeatureSelection' as any, { imageUri: fileUri } as any);
         }
       }
     } catch (error) {
@@ -508,7 +527,7 @@ const QuickCameraScreen = () => {
           {/* Focus indicator removed (no visual feedback) */}
 
           {/* Bottom Bar */}
-          <View style={styles.bottomSection}>
+          <View style={[styles.bottomSection, { paddingBottom: Math.max(insets.bottom + 8, 24) }]}>
             {/* Zoom Buttons Above Shutter */}
             {availableLenses.length >= 1 && (
               <View style={styles.zoomContainerWrapper}>

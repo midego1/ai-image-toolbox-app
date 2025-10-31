@@ -15,7 +15,7 @@ const { width } = Dimensions.get('window');
 const HomeScreen = () => {
   const { theme } = useTheme();
   const { colors, typography, spacing } = theme;
-  const navigation = useNavigation<NavigationProp<'EditModeSelection' | 'Camera'>>();
+  const navigation = useNavigation<NavigationProp<'EditModeSelection'>>();
 
   const handleStartCreating = () => {
     haptic.medium();
@@ -24,7 +24,8 @@ const HomeScreen = () => {
 
   const handleQuickAction = (mode: EditMode) => {
     haptic.medium();
-    navigation.navigate('Camera', { editMode: mode });
+    // Navigate to QuickCameraLocal in Features stack
+    (navigation as any).navigate('QuickCameraLocal', { editMode: mode });
   };
 
   

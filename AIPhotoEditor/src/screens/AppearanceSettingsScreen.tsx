@@ -75,13 +75,38 @@ const AppearanceSettingsScreen = () => {
     }
   };
 
-  // Theme icon component - half blue, half white circle
-  const ThemeIcon = () => (
-    <View style={styles.themeIconContainer}>
-      <View style={[styles.themeIconHalf, { backgroundColor: theme.colors.primary }]} />
-      <View style={[styles.themeIconHalf, styles.themeIconRight, { backgroundColor: theme.colors.surface }]} />
-    </View>
-  );
+  // Theme icon component - changes based on theme mode
+  const ThemeIcon = () => {
+    if (themeMode === 'light') {
+      return (
+        <View style={styles.themeIconWrapper}>
+          <Ionicons 
+            name="sunny" 
+            size={24} 
+            color={theme.colors.primary} 
+          />
+        </View>
+      );
+    } else if (themeMode === 'dark') {
+      return (
+        <View style={styles.themeIconWrapper}>
+          <Ionicons 
+            name="moon" 
+            size={24} 
+            color={theme.colors.primary} 
+          />
+        </View>
+      );
+    } else {
+      // System/Adaptive mode - half blue, half white circle
+      return (
+        <View style={styles.themeIconContainer}>
+          <View style={[styles.themeIconHalf, { backgroundColor: theme.colors.primary }]} />
+          <View style={[styles.themeIconHalf, styles.themeIconRight, { backgroundColor: theme.colors.surface }]} />
+        </View>
+      );
+    }
+  };
 
   // Language icon component - A with 文 character
   const LanguageIcon = () => (
@@ -201,6 +226,13 @@ const createStyles = (theme: Theme) =>
     },
     categoryContainer: {
       paddingHorizontal: theme.spacing.base,
+    },
+    themeIconWrapper: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     themeIconContainer: {
       width: 40,

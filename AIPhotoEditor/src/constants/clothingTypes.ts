@@ -94,3 +94,4 @@ export function getAllClothingTypes(): ClothingTypeData[] {
   return Object.values(CLOTHING_TYPES);
 }
 
+

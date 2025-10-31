@@ -7,7 +7,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import { NavigationProp } from '../types/navigation';
 import { haptic } from '../utils/haptics';
 
-type TabName = 'Features' | 'Camera' | 'History' | 'Settings';
+type TabName = 'Features' | 'History' | 'Settings';
 
 interface BottomTabBarProps {
   activeTab?: TabName;
@@ -43,7 +43,6 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = React.memo(({ activeTab
 
   const tabs: { name: TabName; label: string; icon: string }[] = [
     { name: 'Features', label: 'Features', icon: 'grid-outline' },
-    { name: 'Camera', label: 'Camera', icon: 'camera-outline' },
     { name: 'History', label: 'History', icon: 'time-outline' },
     { name: 'Settings', label: 'Settings', icon: 'settings-outline' },
   ];
@@ -110,7 +109,7 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = React.memo(({ activeTab
       styles.tabBar,
       {
         backgroundColor: theme.colors.background,
-        paddingBottom: Math.max(insets.bottom, 8),
+        paddingBottom: Math.max(insets.bottom, 4),
         borderTopWidth: 1,
         borderTopColor: theme.colors.border,
       }
@@ -152,8 +151,8 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = React.memo(({ activeTab
 const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
-    minHeight: 60,
-    paddingTop: 8,
+    minHeight: 52,
+    paddingTop: 6,
     paddingHorizontal: 16,
     justifyContent: 'space-around',
     alignItems: 'center',
@@ -164,10 +163,10 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
+    paddingVertical: 2,
   },
   tabLabel: {
-    marginTop: 4,
+    marginTop: 2,
     fontWeight: '500',
   },
 });

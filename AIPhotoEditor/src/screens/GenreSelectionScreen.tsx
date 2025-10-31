@@ -12,6 +12,7 @@ import { AIToolHeader } from '../components/AIToolHeader';
 import { AIToolInfoCard } from '../components/AIToolInfoCard';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
+import { ActionButtonBar } from '../components/ActionButtonBar';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
 import { spacing as baseSpacing } from '../theme/spacing';
@@ -45,18 +46,15 @@ const GenreSelectionScreen = () => {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const selectedUri = result.assets[0].uri;
-        const parentNav = navigation.getParent();
-        if (parentNav) {
-          (parentNav as any).navigate('GenreSelection', { imageUri: selectedUri, editMode: editMode || EditMode.TRANSFORM });
-        } else {
-          (navigation as any).navigate('GenreSelection', { imageUri: selectedUri, editMode: editMode || EditMode.TRANSFORM });
-        }
+        // Stay on the same page; just update params in-place
+        (navigation as any).setParams({ imageUri: selectedUri, editMode: editMode || EditMode.TRANSFORM });
       }
     } catch (error) {
       console.error('Error picking from library:', error);
     }
   };
   const [selectedGenreId, setSelectedGenreId] = useState<string | null>(null);
+  const selectedGenre = useMemo(() => GENRES.find(g => g.id === selectedGenreId) || null, [selectedGenreId]);
   const [expandedGenreId, setExpandedGenreId] = useState<string | null>(null);
 
   // When navigating back here after capturing/selecting an image, preserve the originally tapped style
@@ -92,12 +90,14 @@ const GenreSelectionScreen = () => {
 
       // If no image yet, prompt to take a picture first
       if (!imageUri) {
-        const parentNav = navigation.getParent();
-        if (parentNav) {
-          (parentNav as any).navigate('Camera', { editMode: EditMode.TRANSFORM, preselectedGenreId: genre.id } as any);
-        } else {
-          (navigation as any).navigate('Camera', { editMode: EditMode.TRANSFORM, preselectedGenreId: genre.id } as any);
-        }
+        // Open local camera within Features stack; keep bottom bar
+        (navigation as any).navigate('QuickCameraLocal', {
+          editMode: EditMode.TRANSFORM,
+          preselectedGenreId: genre.id,
+          onPhoto: (uri: string) => {
+            (navigation as any).setParams({ imageUri: uri, editMode: EditMode.TRANSFORM, preselectedGenreId: genre.id });
+          }
+        });
         return;
       }
 
@@ -111,24 +111,18 @@ const GenreSelectionScreen = () => {
     const genre = GENRES.find(g => g.id === selectedGenreId);
     if (!genre) return;
 
-    const parentNav = navigation.getParent();
     const navParams = {
       imageUri,
       editMode: editMode || EditMode.TRANSFORM,
       config: { prompt: genre.prompt, genre: genre.id }
     } as any;
-
-    if (parentNav) {
-      (parentNav as any).navigate('Processing', navParams);
-    } else {
-      (navigation as any).navigate('Processing', navParams);
-    }
+    (navigation as any).navigate('Processing', navParams);
   };
 
   // removed featured/recent/search/sort helpers
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundSecondary }]} edges={['bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundSecondary }]} edges={[]}>
       <AIToolHeader
         title="Transform Your Photo"
         backgroundColor={colors.backgroundSecondary}
@@ -138,7 +132,8 @@ const GenreSelectionScreen = () => {
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: spacing['3xl'] + insets.bottom + (imageUri && selectedGenreId ? 120 : 0) },
+          // Add padding when button is visible to prevent content from being hidden
+          imageUri && selectedGenreId ? { paddingBottom: 120 } : { paddingBottom: insets.bottom + spacing.base },
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -168,7 +163,7 @@ const GenreSelectionScreen = () => {
                   resizeMode="cover"
                 />
                 <View style={[styles.expandOverlay, {
-                  backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                  backgroundColor: 'transparent',
                 }]}> 
                   <View style={[styles.expandButton, { backgroundColor: colors.primary }]}>
                     <Ionicons name="expand" size={18} color="#FFFFFF" />
@@ -202,9 +197,9 @@ const GenreSelectionScreen = () => {
                       haptic.medium();
                       const parentNav = navigation.getParent();
                       if (parentNav) {
-                        parentNav.navigate('Camera', { editMode: EditMode.TRANSFORM });
+                        (parentNav as any).navigate('QuickCameraLocal', { editMode: EditMode.TRANSFORM });
                       } else {
-                        navigation.navigate('Camera', { editMode: EditMode.TRANSFORM });
+                        (navigation as any).navigate('QuickCameraLocal', { editMode: EditMode.TRANSFORM });
                       }
                     }}
                   >
@@ -331,6 +326,13 @@ const GenreSelectionScreen = () => {
                   isLastInGroup={isLast && !isExpanded}
                   showSeparator={!isExpanded && index < array.length - 1}
                   iconColor={colors.primary}
+                  style={[
+                    isSelected && {
+                      borderWidth: 1,
+                      borderColor: colors.primary,
+                      backgroundColor: colors.primary + '0F',
+                    }
+                  ]}
                 />
 
                 {isExpanded && (
@@ -344,8 +346,8 @@ const GenreSelectionScreen = () => {
                     padding: spacing.base,
                   }}>
                     {/* Thumbnails grid */}
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-start', gap: 8 }}>
-                      {[0,1,2,3,4,5].map((i) => (
+                    <View style={{ flexDirection: 'row', flexWrap: 'nowrap', justifyContent: 'space-between' }}>
+                      {[0,1,2].map((i) => (
                         <TouchableOpacity
                           key={i}
                           activeOpacity={0.85}
@@ -354,9 +356,9 @@ const GenreSelectionScreen = () => {
                             setSelectedGenreId(genre.id);
                           }}
                           style={{
-                            width: (width - (spacing.base * 2) - 16) / 3,
+                            width: Math.floor((width - (spacing.base * 2) - 24) / 3) - 6,
                             aspectRatio: 1,
-                            borderRadius: 10,
+                            borderRadius: 8,
                             marginBottom: 8,
                             overflow: 'hidden',
                             borderWidth: isSelected ? 2 : 1,
@@ -375,6 +377,16 @@ const GenreSelectionScreen = () => {
                         </TouchableOpacity>
                       ))}
                     </View>
+                    {/* Brief style description */}
+                    <Text
+                      style={{
+                        marginTop: spacing.sm,
+                        color: colors.textSecondary,
+                        fontSize: typography.scaled.sm,
+                      }}
+                    >
+                      {genre.description}
+                    </Text>
                   </View>
                 )}
               </View>
@@ -383,44 +395,33 @@ const GenreSelectionScreen = () => {
         </View>
       </ScrollView>
 
-      {/* Floating bottom banner with Generate button */}
-      {imageUri && selectedGenreId && (
-        <View style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          padding: spacing.base,
-          backgroundColor: colors.background,
-          borderTopWidth: 1,
-          borderTopColor: colors.border,
-        }}>
-          <Button
-            title="Generate"
-            onPress={handleGenerate}
-            style={{ minHeight: 52 }}
-          />
-          <View style={{ marginTop: spacing.sm, alignItems: 'center' }}>
-            <View style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: colors.surface,
-              paddingHorizontal: spacing.base,
-              paddingVertical: spacing.xs,
-              borderRadius: 20,
-            }}>
-              <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
-              <Text style={{
-                color: colors.textSecondary,
-                fontSize: typography.scaled.xs,
-                marginLeft: spacing.xs,
-              }}>
-                Usually takes 5–10 seconds
-              </Text>
-            </View>
+      <ActionButtonBar
+        visible={!!(imageUri && selectedGenreId)}
+        bottomContent={
+          <View style={[styles.timingInfo, {
+            backgroundColor: colors.surface,
+            paddingHorizontal: spacing.base,
+            paddingVertical: spacing.xs,
+            borderRadius: 20,
+          }]}>
+            <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
+            <Text style={[styles.timingText, {
+              color: colors.textSecondary,
+              fontSize: typography.scaled.xs,
+              marginLeft: spacing.xs,
+            }]}>
+              5–10s
+            </Text>
           </View>
-        </View>
-      )}
+        }
+      >
+        <Button
+          title={selectedGenre ? `Generate ${selectedGenre.name}` : 'Generate'}
+          onPress={handleGenerate}
+          size="large"
+          style={{ minHeight: 56, width: '100%' }}
+        />
+      </ActionButtonBar>
 
       {/* Image Preview Modal */}
       <Modal
@@ -696,6 +697,13 @@ const styles = StyleSheet.create({
   },
   previewModalHint: {
     textAlign: 'center',
+  },
+  timingInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  timingText: {
+    // Dynamic styles applied inline
   },
 });
 
