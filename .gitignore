@@ -18,6 +18,7 @@ AIPhotoEditor/android/
 # But keep Podfile for EAS Build
 !AIPhotoEditor/ios/Podfile
 !AIPhotoEditor/ios/Podfile.lock
+!AIPhotoEditor/ios/Podfile.properties.json
 
 # Xcode
 build/
