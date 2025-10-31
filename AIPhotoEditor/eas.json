@@ -26,7 +26,7 @@
         "buildConfiguration": "Release"
       },
       "env": {
-        "EAS_BUILD_IOS_BUILD_NUMBER": "3"
+        "EAS_BUILD_IOS_BUILD_NUMBER": "5"
       }
     },
     "production-web": {
