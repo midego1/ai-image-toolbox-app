@@ -10,6 +10,8 @@ import { MediaTypeTabs, MediaTypeTabConfig } from '../components/MediaTypeTabs';
 import { useTheme, Theme } from '../theme/ThemeProvider';
 import { SubscriptionService, SubscriptionTier, SubscriptionDuration, CREDIT_PACKS, CreditPack } from '../services/subscriptionService';
 import { iapService } from '../services/iapService';
+import { revenueCatService } from '../services/revenueCatService';
+import { Offering } from 'react-native-purchases';
 import { EDIT_MODES } from '../constants/editModes';
 import { EditModeData } from '../types/editModes';
 import { haptic } from '../utils/haptics';
@@ -144,7 +146,8 @@ const SUBSCRIPTION_DURATIONS: SubscriptionDuration[] = ['weekly', '1month', '3mo
 
 const SUBSCRIPTION_TABS: MediaTypeTabConfig<SubscriptionTabType>[] = [
   { id: 'credits', label: 'Credits', icon: 'wallet-outline' },
-  { id: 'subscriptions', label: 'Subscriptions', icon: 'card-outline' },
+  // Subscriptions tab temporarily disabled for testing credit packs
+  // { id: 'subscriptions', label: 'Subscriptions', icon: 'card-outline' },
 ];
 
 const SubscriptionScreen = () => {
@@ -167,6 +170,7 @@ const SubscriptionScreen = () => {
   const [selectedPackDetail, setSelectedPackDetail] = useState<string | null>(null);
   const [expandedTier, setExpandedTier] = useState<SubscriptionTier | null>('pro');
   const [iapPricesLoaded, setIapPricesLoaded] = useState(false);
+  const [revenueCatOffering, setRevenueCatOffering] = useState<Offering | null>(null);
 
   // Memoize styles to avoid recalculation on every render
   const styles = useMemo(() => createStyles(theme, scrollBottomPadding), [theme, scrollBottomPadding]);
@@ -200,6 +204,17 @@ const SubscriptionScreen = () => {
       setCurrentBillingPeriod(info.billingPeriod);
       setIapPricesLoaded(true);
 
+      // Load RevenueCat offerings if available
+      if (revenueCatService.isReady()) {
+        try {
+          const offering = await revenueCatService.getOfferings();
+          setRevenueCatOffering(offering);
+          console.log('[SubscriptionScreen] RevenueCat offerings loaded successfully');
+        } catch (error) {
+          console.warn('[SubscriptionScreen] Failed to load RevenueCat offerings:', error);
+        }
+      }
+
       // Auto-select current tier when subscribed, but keep weekly as default duration
       if (info.tier !== 'free') {
         setSelectedTier(info.tier);
@@ -230,37 +245,106 @@ const SubscriptionScreen = () => {
   const handleSubscribe = useCallback(async () => {
     haptic.medium();
     const priceInfo = getPrice(selectedTier, selectedDuration, iapPricesLoaded);
-    
+
     // Safety check: ensure priceInfo exists
     if (!priceInfo || !priceInfo.price) {
       Alert.alert('Error', 'Unable to retrieve pricing information. Please try again.');
       return;
     }
-    
+
     const tierName = selectedTierInfo.name;
-    
+
     Alert.alert(
       'Complete Purchase',
       `You're about to purchase ${tierName} Plan (${priceInfo.price} ${priceInfo.period}). Continue to App Store?`,
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Continue', onPress: async () => {
-          const success = await SubscriptionService.purchaseSubscription(selectedTier, selectedDuration);
-          if (success) {
-            haptic.success();
-            Alert.alert(
-              'Purchase Successful! 🎉',
-              `Thank you for upgrading to ${tierName}!\n\nYou now have access to all ${tierName.toLowerCase()} features.`,
-              [{ text: 'Start Using Premium', onPress: loadSubscriptionData }]
-            );
-          } else {
+          try {
+            let success = false;
+
+            // If RevenueCat is available, use it for purchase
+            if (revenueCatService.isReady() && revenueCatOffering) {
+              console.log('[SubscriptionScreen] Using RevenueCat for purchase');
+
+              // Find the right package based on tier and duration
+              // Product ID format: com.midego.aiphotoeditor.[tier].[duration]
+              const productId = `com.midego.aiphotoeditor.${selectedTier}.${selectedDuration}`;
+              console.log('[SubscriptionScreen] Looking for product:', productId);
+
+              // Search through all available packages
+              const allPackages = revenueCatOffering.availablePackages;
+              const matchingPackage = allPackages.find(pkg =>
+                pkg.product.identifier === productId
+              );
+
+              if (matchingPackage) {
+                console.log('[SubscriptionScreen] Found matching package:', matchingPackage.identifier);
+
+                // Purchase through RevenueCat
+                const customerInfo = await revenueCatService.purchasePackage(matchingPackage);
+
+                // Verify purchase was successful by checking entitlements
+                const hasPurchase = customerInfo.entitlements.active[selectedTier] !== undefined;
+
+                if (hasPurchase) {
+                  success = true;
+                  console.log('[SubscriptionScreen] RevenueCat purchase successful');
+
+                  // Refresh subscription data to sync with RevenueCat
+                  await loadSubscriptionData();
+                } else {
+                  console.warn('[SubscriptionScreen] Purchase completed but entitlement not active');
+                }
+              } else {
+                console.warn('[SubscriptionScreen] Package not found for:', productId);
+                console.warn('[SubscriptionScreen] Available packages:', allPackages.map(p => p.product.identifier));
+                Alert.alert(
+                  'Product Not Available',
+                  'This subscription package is not currently available. Please try a different option or contact support.'
+                );
+                return;
+              }
+            } else {
+              // Fallback to local-only purchase (for Expo Go or when RevenueCat not available)
+              console.log('[SubscriptionScreen] Using local storage for purchase (RevenueCat not available)');
+              success = await SubscriptionService.purchaseSubscription(selectedTier, selectedDuration);
+
+              if (success) {
+                await loadSubscriptionData();
+              }
+            }
+
+            if (success) {
+              haptic.success();
+              Alert.alert(
+                'Purchase Successful! 🎉',
+                `Thank you for upgrading to ${tierName}!\n\nYou now have access to all ${tierName.toLowerCase()} features.`,
+                [{ text: 'Start Using Premium' }]
+              );
+            } else {
+              haptic.error();
+              Alert.alert('Error', 'Failed to process subscription. Please try again.');
+            }
+          } catch (error: any) {
+            console.error('[SubscriptionScreen] Purchase error:', error);
             haptic.error();
-            Alert.alert('Error', 'Failed to process subscription. Please try again.');
+
+            // Handle user cancellation gracefully
+            if (error.code === '1' || error.userCancelled) {
+              console.log('[SubscriptionScreen] User cancelled purchase');
+              return;
+            }
+
+            Alert.alert(
+              'Purchase Failed',
+              error.message || 'An error occurred while processing your purchase. Please try again.'
+            );
           }
         }}
       ]
     );
-  }, [selectedTier, selectedDuration, selectedTierInfo, loadSubscriptionData]);
+  }, [selectedTier, selectedDuration, selectedTierInfo, loadSubscriptionData, revenueCatOffering]);
 
   const handleBuyCreditPack = useCallback(async (pack: CreditPack) => {
     haptic.medium();
