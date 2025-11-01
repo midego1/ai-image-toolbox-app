@@ -29,7 +29,7 @@ module.exports = (() => {
     expo: {
       name: "AI Photo Editor",
       slug: "aiphotoeditor",
-      version: "0.1.7",
+      version: "0.1.8",
       orientation: "portrait",
       icon: "./assets/icon.png",
       userInterfaceStyle: "automatic",
@@ -39,7 +39,7 @@ module.exports = (() => {
       ios: {
         supportsTablet: false,
         bundleIdentifier: "com.midego.aiphotoeditor",
-        buildNumber: "15"
+        buildNumber: "16"
       },
       web: {
         favicon: "./assets/images/icon.png",

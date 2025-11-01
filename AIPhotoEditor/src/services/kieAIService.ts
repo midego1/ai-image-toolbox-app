@@ -73,28 +73,9 @@ export class KieAIService {
           },
         };
       } else {
-        // No upload URL available - try sending image as base64 in different formats
-        console.log('[KieAIService] Trying to send image as base64 directly...');
-        
-        // Extract just the base64 part (remove data:image/...;base64, prefix)
-        const base64Data = base64;
-        
-        // Try multiple possible formats
-        requestBody = {
-          model: 'google/nano-banana-edit',
-          input: {
-            prompt: prompt,
-            // Try base64 in different fields
-            image: base64Data,
-            image_base64: base64Data,
-            image_data: base64Data,
-            image_urls: [`data:image/${fileExt};base64,${base64Data}`], // Last resort - data URL
-            output_format: config?.outputFormat || 'jpeg',
-            image_size: config?.imageSize || 'auto',
-          },
-        };
-        
-        console.warn('[KieAIService] No upload endpoint available. Trying to send image directly. This may fail if API requires HTTP URLs.');
+        // No upload URL available - the API requires HTTP URLs
+        // Since we can't upload, we need to inform the user
+        throw new Error('Image upload is required but the upload endpoint is not available. The Kie.ai API requires publicly accessible HTTP URLs for images. Please check if the upload endpoint path has changed or if you need to use a different upload method.');
       }
 
       // Call Kie.ai API using the correct endpoint structure: /jobs/createTask
@@ -121,7 +102,7 @@ export class KieAIService {
         
         // Check for specific error messages
         if (errorMsg.toLowerCase().includes('image_urls') || errorMsg.toLowerCase().includes('file type not supported') || errorMsg.toLowerCase().includes('not supported')) {
-          throw new Error('Image format not supported. The API requires publicly accessible HTTP URLs for images, but the upload endpoint is not available. Please check Kie.ai API documentation for the correct image upload method.');
+          throw new Error('Image format not supported. The API requires publicly accessible HTTP URLs for images. The upload endpoint appears to be unavailable. Please check Kie.ai API documentation for the correct image upload endpoint or method.');
         } else if (errorMsg.toLowerCase().includes('credit') || errorMsg.toLowerCase().includes('payment') || errorMsg.toLowerCase().includes('insufficient')) {
           throw new Error('Insufficient credits or payment issue. Please check your account balance.');
         } else {
@@ -680,58 +661,123 @@ export class KieAIService {
 
   /**
    * Upload image to Kie.ai and get URL
-   * Tries multiple upload endpoint paths since the exact endpoint may vary
+   * Uses Kie.ai's File Upload API: /api/file-url-upload
+   * Since the API requires an HTTP URL, we'll try using the data URL directly first,
+   * and if that doesn't work, we'll need to upload to a temporary hosting service
    */
   private static async uploadImage(imageDataUrl: string): Promise<string> {
     const apiKey = await AIService.getKieAIApiKey();
     
-    // Try multiple possible upload endpoint paths
+    // Extract base64 data and determine file type
+    const base64Match = imageDataUrl.match(/data:image\/(\w+);base64,(.+)/);
+    if (!base64Match) {
+      throw new Error('Invalid image data URL format');
+    }
+    
+    const [, imageType, base64Data] = base64Match;
+    const fileName = `image_${Date.now()}.${imageType === 'png' ? 'png' : 'jpg'}`;
+    
+    // Try the official Kie.ai File Upload API endpoint
+    // Documentation: https://docs.kie.ai/file-upload-api/upload-file-url
+    // Note: This endpoint might require a public URL, so we'll try multiple approaches
     const uploadEndpoints = [
-      `${this.BASE_URL}/upload`,
-      `${this.BASE_URL}/uploads`,
-      `${this.BASE_URL}/files/upload`,
-      `https://api.kie.ai/api/v1/upload`,
-      `https://api.kie.ai/api/v1/uploads`,
+      // First try: Direct file upload (might accept base64 or multipart)
+      {
+        url: 'https://api.kie.ai/api/file-url-upload',
+        method: 'POST',
+        body: {
+          fileUrl: imageDataUrl, // Try data URL directly
+          fileName: fileName,
+        },
+      },
+      // Alternative: Try as base64 field
+      {
+        url: 'https://api.kie.ai/api/file-url-upload',
+        method: 'POST',
+        body: {
+          file: base64Data,
+          fileName: fileName,
+        },
+      },
+      // Alternative: Try multipart/form-data upload (if supported)
+      {
+        url: 'https://api.kie.ai/api/file-upload',
+        method: 'POST',
+        body: base64Data,
+        isFormData: true,
+      },
+      // Alternative: Try older endpoint paths
+      {
+        url: `${this.BASE_URL}/upload`,
+        method: 'POST',
+        body: {
+          file: base64Data,
+          fileName: fileName,
+        },
+      },
     ];
 
     let lastError: any;
     
-    for (const endpoint of uploadEndpoints) {
+    for (const endpointConfig of uploadEndpoints) {
       try {
-        console.log(`[KieAIService] Trying upload endpoint: ${endpoint}`);
+        console.log(`[KieAIService] Trying upload endpoint: ${endpointConfig.url}`);
+        
+        // Prepare headers
+        const headers: any = {
+          Authorization: `Bearer ${apiKey}`,
+        };
+        
+        // Handle multipart/form-data if needed
+        let requestBody: any = endpointConfig.body;
+        if ((endpointConfig as any).isFormData) {
+          // For React Native, we'll need to use a different approach
+          // For now, try as base64 string with appropriate content type
+          headers['Content-Type'] = 'application/octet-stream';
+          requestBody = base64Data;
+        } else {
+          headers['Content-Type'] = 'application/json';
+        }
         
         const response = await axios.post(
-          endpoint,
+          endpointConfig.url,
+          requestBody,
           {
-            file: imageDataUrl,
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              'Content-Type': 'application/json',
-            },
+            headers,
             timeout: 30000,
           }
         );
 
-        const uploadedUrl = response.data.url || response.data.image_url || response.data.upload_url || response.data.data?.url;
-        if (uploadedUrl && !uploadedUrl.startsWith('data:')) {
-          console.log(`[KieAIService] Upload successful via ${endpoint}`);
+        console.log('[KieAIService] Upload response:', JSON.stringify(response.data, null, 2));
+        
+        // Check response structure based on Kie.ai File Upload API docs
+        const uploadedUrl = 
+          response.data.data?.downloadUrl || 
+          response.data.downloadUrl ||
+          response.data.url || 
+          response.data.image_url || 
+          response.data.upload_url || 
+          response.data.data?.url;
+          
+        if (uploadedUrl && !uploadedUrl.startsWith('data:') && uploadedUrl.startsWith('http')) {
+          console.log(`[KieAIService] Upload successful via ${endpointConfig.url}`);
           return uploadedUrl;
         }
         
         // If we got a response but no URL, try next endpoint
-        lastError = new Error('Upload succeeded but no URL returned');
+        lastError = new Error('Upload succeeded but no valid HTTP URL returned');
       } catch (error: any) {
-        console.log(`[KieAIService] Upload endpoint ${endpoint} failed: ${error.response?.status || error.message}`);
+        const statusCode = error.response?.status;
+        const errorData = error.response?.data;
+        console.log(`[KieAIService] Upload endpoint ${endpointConfig.url} failed: ${statusCode || error.message}`, errorData);
         lastError = error;
         // Continue to next endpoint
       }
     }
 
-    // If all upload endpoints fail, throw error instead of falling back to data URL
+    // If all upload endpoints fail, throw error with helpful message
     console.error('[KieAIService] All upload endpoints failed');
-    throw new Error('Failed to upload image. All upload endpoints returned errors. The API may require a different upload method. Please check the API documentation or try again later.');
+    throw new Error('Failed to upload image. The Kie.ai API requires publicly accessible HTTP URLs. Please check the API documentation for the correct file upload method.');
   }
 
   /**
