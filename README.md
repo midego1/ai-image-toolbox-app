@@ -516,10 +516,12 @@ AIPhotoEditor/
    }
    ```
 
-   **Option B: Production (EAS Secrets)**
+   **Option B: Production (EAS Environment Variables)**
    ```bash
-   eas secret:create --scope project --name REPLICATE_API_KEY --value your-key
+   eas env:create production --name REPLICATE_API_KEY --value your-key --visibility secret --scope project
    ```
+   
+   > **Note**: The `eas secret:create` command is deprecated. Use `eas env:create` instead. Specify the environment (`production`, `preview`, or `development`) and use `--visibility secret` for secure storage.
 
    > ⚠️ **Security Note**: Never commit real API keys to git. The `.gitignore` is configured to exclude sensitive files.
 
@@ -553,7 +555,7 @@ eas build --platform android --profile production-android
 
 API keys are securely stored using Expo Secure Store. The app supports:
 - Development: Keys can be configured in `app.json` (for local testing)
-- Production: Keys should be managed through EAS Secrets
+- Production: Keys should be managed through EAS Environment Variables
 
 ### Themes
 

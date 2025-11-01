@@ -6,34 +6,39 @@ This guide explains how to configure the Kie.ai API key so it works in TestFligh
 
 The app supports multiple methods for API key configuration:
 1. **Development**: Set in `app.json` (for local testing)
-2. **Production/TestFlight**: Set via EAS Secrets (for production builds)
+2. **Production/TestFlight**: Set via EAS Environment Variables (for production builds)
 
-## Method 1: EAS Secrets (Recommended for TestFlight)
+## Method 1: EAS Environment Variables (Recommended for TestFlight)
 
-EAS Secrets automatically inject environment variables into your builds. This is the **recommended method** for TestFlight and production builds.
+EAS Environment Variables automatically inject secrets into your builds. This is the **recommended method** for TestFlight and production builds.
 
-### Step 1: Create the EAS Secret
+### Step 1: Create the EAS Environment Variable
 
 Run this command in your terminal from the `AIPhotoEditor` directory:
 
 ```bash
-eas secret:create --scope project --name KIE_AI_API_KEY --value your-kie-ai-api-key-here
+eas env:create production --name KIE_AI_API_KEY --value your-kie-ai-api-key-here --visibility secret --scope project
 ```
 
 Or if you prefer camelCase format:
 
 ```bash
-eas secret:create --scope project --name kieAIApiKey --value your-kie-ai-api-key-here
+eas env:create production --name kieAIApiKey --value your-kie-ai-api-key-here --visibility secret --scope project
 ```
 
-> **Note**: Replace `your-kie-ai-api-key-here` with your actual Kie.ai API key from https://kie.ai
+> **Note**: 
+> - Replace `your-kie-ai-api-key-here` with your actual Kie.ai API key from https://kie.ai
+> - The `eas secret:create` command is deprecated. Use `eas env:create` instead.
+> - Specify the environment (`production`, `preview`, or `development`) - for TestFlight builds, use `production`
+> - Use `--visibility secret` to securely store the key
+> - To overwrite an existing variable, add `--force --non-interactive` flags
 
-### Step 2: Verify the Secret
+### Step 2: Verify the Environment Variable
 
-Check that the secret was created:
+Check that the variable was created:
 
 ```bash
-eas secret:list
+eas env:list production
 ```
 
 You should see `KIE_AI_API_KEY` or `kieAIApiKey` in the list.
@@ -65,7 +70,7 @@ Alternatively, you can add environment variables directly in your `eas.json`:
 }
 ```
 
-> ⚠️ **Warning**: This method stores the key in your codebase. It's better to use EAS Secrets (Method 1) for security.
+> ⚠️ **Warning**: This method stores the key in your codebase. It's better to use EAS Environment Variables (Method 1) for security.
 
 ## Method 3: Development Only (app.json)
 
@@ -84,7 +89,7 @@ For local development and testing, you can add the key directly to `app.json`:
 > ⚠️ **Important**: 
 > - Never commit real API keys to git
 > - This method only works for local development builds
-> - TestFlight builds need Method 1 (EAS Secrets)
+> - TestFlight builds need Method 1 (EAS Environment Variables)
 
 ## How It Works
 
@@ -110,9 +115,9 @@ After building and installing from TestFlight, you can verify the API key is loa
 
 ### Key not working in TestFlight
 
-1. **Verify the secret exists**:
+1. **Verify the environment variable exists**:
    ```bash
-   eas secret:list
+   eas env:list production
    ```
 
 2. **Check secret name**: Make sure it's exactly `KIE_AI_API_KEY` or `kieAIApiKey` (case-sensitive)
@@ -127,13 +132,13 @@ After building and installing from TestFlight, you can verify the API key is loa
 ### Key working in development but not in TestFlight
 
 - Development uses `app.json` which may have the key hardcoded
-- TestFlight uses EAS Secrets - make sure you created the secret
-- The secret name must match exactly (case-sensitive)
+- TestFlight uses EAS Environment Variables - make sure you created the variable for the `production` environment
+- The variable name must match exactly (case-sensitive)
 
 ## Security Best Practices
 
 ✅ **DO**:
-- Use EAS Secrets for production builds
+- Use EAS Environment Variables for production builds
 - Keep your API keys secret
 - Rotate keys if they're exposed
 - Use different keys for development vs production

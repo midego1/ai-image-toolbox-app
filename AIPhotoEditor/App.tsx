@@ -28,7 +28,7 @@ export default function App() {
     AnalyticsService.increment('session_start').catch(() => {});
     
     // Initialize Replicate API key from config (production-ready)
-    // Key is loaded from EAS Secrets or app.json extra config
+    // Key is loaded from EAS Environment Variables or app.json extra config
     const initializeApiKey = async () => {
       try {
         console.log('🔍 Initializing Replicate API key...');
@@ -122,12 +122,12 @@ export default function App() {
             Object.keys(Constants.expoConfig?.extra || {}).join(', ') || 'none');
           console.error('');
           console.error('💡 Solutions:');
-          console.error('   1. For TestFlight/Production: Configure EAS Secret or Environment Variable');
-          console.error('      - Go to expo.dev → Your Project → Secrets (or Environment Variables)');
+          console.error('   1. For TestFlight/Production: Configure EAS Environment Variable');
+          console.error('      - Go to expo.dev → Your Project → Environment Variables');
           console.error('      - Add KIE_AI_API_KEY for "production" and "preview" environments');
-          console.error('      - Or use: eas secret:create --scope project --name KIE_AI_API_KEY --value your-key');
+          console.error('      - Or use: eas env:create production --name KIE_AI_API_KEY --value your-key --visibility secret --scope project');
           console.error('   2. Rebuild after setting: eas build --platform ios --profile production-ios --clear-cache');
-          console.error('   3. Verify secret exists: eas secret:list');
+          console.error('   3. Verify variable exists: eas env:list production');
         }
       } catch (error: any) {
         console.error('❌ Error initializing Kie.ai API key:', error);
