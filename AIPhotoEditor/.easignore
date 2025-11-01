@@ -1,0 +1,12 @@
+# EAS Build ignore patterns
+# Files with 'secret' in name (all case variations)
+**/*secret*
+**/*SECRET*
+**/*Secret*
+# Root level documentation files
+../CHECKING_SECRETS.md
+../checking_secrets.md
+../Checking_Secrets.md
+CHECKING_SECRETS.md
+checking_secrets.md
+Checking_Secrets.md
