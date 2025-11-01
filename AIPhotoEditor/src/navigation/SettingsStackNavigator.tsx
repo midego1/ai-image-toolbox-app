@@ -5,6 +5,7 @@ import AppearanceSettingsScreen from '../screens/AppearanceSettingsScreen';
 import StatisticsScreen from '../screens/StatisticsScreen';
 import LanguageSelectionScreen from '../screens/LanguageSelectionScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
+import ApiKeysSettingsScreen from '../screens/ApiKeysSettingsScreen';
 import ToolMockupScreen from '../screens/ToolMockupScreen';
 import RemoveBackgroundMockupDetailScreen from '../screens/RemoveBackgroundMockupDetailScreen';
 import { SettingsStackParamList } from '../types/navigation';
@@ -49,6 +50,14 @@ export const SettingsStackNavigator = () => {
       <Stack.Screen 
         name="AppearanceSettings" 
         component={AppearanceSettingsScreen}
+        options={{
+          headerShown: false,
+          gestureEnabled: true,
+        }}
+      />
+      <Stack.Screen 
+        name="ApiKeysSettings" 
+        component={ApiKeysSettingsScreen}
         options={{
           headerShown: false,
           gestureEnabled: true,

@@ -1,15 +1,14 @@
 import axios from 'axios';
 import * as FileSystem from 'expo-file-system/legacy';
-import { getKieAIApiKey } from '../config/apiKeys';
 import { VideoTransformResponse } from '../types/video';
-import { TransformResponse } from './aiService';
+import { TransformResponse, AIService } from './aiService';
 
 /**
  * Kie.ai API Service
  * Handles integration with Kie.ai models for video generation, image generation, and editing
  */
 export class KieAIService {
-  private static readonly BASE_URL = 'https://api.kie.ai/v1';
+  private static readonly BASE_URL = 'https://api.kie.ai/api/v1';
   
   /**
    * Transform image using Nano Banana Edit (image editing)
@@ -26,7 +25,7 @@ export class KieAIService {
     }
   ): Promise<TransformResponse> {
     try {
-      const apiKey = getKieAIApiKey();
+      const apiKey = await AIService.getKieAIApiKey();
       if (!apiKey) {
         return {
           success: false,
@@ -43,18 +42,67 @@ export class KieAIService {
       const fileExt = imageUri.toLowerCase().includes('.png') ? 'png' : 'jpeg';
       const imageDataUrl = `data:image/${fileExt};base64,${base64}`;
 
-      // Upload image first and get URL
-      const imageUrl = await this.uploadImage(imageDataUrl);
+      // Try to upload image first, but if that fails, we'll try sending base64 directly
+      let imageUrl: string | null = null;
+      try {
+        imageUrl = await this.uploadImage(imageDataUrl);
+        console.log('[KieAIService] Image uploaded successfully');
+        
+        // Verify we got a real URL (not a data URL)
+        if (imageUrl.startsWith('data:')) {
+          console.warn('[KieAIService] Upload returned data URL, will try alternative method');
+          imageUrl = null;
+        }
+      } catch (uploadError: any) {
+        console.warn('[KieAIService] Upload failed, will try sending image directly:', uploadError.message);
+        imageUrl = null;
+      }
 
-      // Call Kie.ai Nano Banana Edit API (google/nano-banana-edit)
+      // Prepare request body - try different formats
+      let requestBody: any;
+      
+      if (imageUrl) {
+        // We have a valid HTTP URL, use it
+        requestBody = {
+          model: 'google/nano-banana-edit',
+          input: {
+            prompt: prompt,
+            image_urls: [imageUrl],
+            output_format: config?.outputFormat || 'jpeg',
+            image_size: config?.imageSize || 'auto',
+          },
+        };
+      } else {
+        // No upload URL available - try sending image as base64 in different formats
+        console.log('[KieAIService] Trying to send image as base64 directly...');
+        
+        // Extract just the base64 part (remove data:image/...;base64, prefix)
+        const base64Data = base64;
+        
+        // Try multiple possible formats
+        requestBody = {
+          model: 'google/nano-banana-edit',
+          input: {
+            prompt: prompt,
+            // Try base64 in different fields
+            image: base64Data,
+            image_base64: base64Data,
+            image_data: base64Data,
+            image_urls: [`data:image/${fileExt};base64,${base64Data}`], // Last resort - data URL
+            output_format: config?.outputFormat || 'jpeg',
+            image_size: config?.imageSize || 'auto',
+          },
+        };
+        
+        console.warn('[KieAIService] No upload endpoint available. Trying to send image directly. This may fail if API requires HTTP URLs.');
+      }
+
+      // Call Kie.ai API using the correct endpoint structure: /jobs/createTask
+      // Based on API docs: POST /api/v1/jobs/createTask
+      console.log('[KieAIService] Creating job via /jobs/createTask...');
       const response = await axios.post(
-        `${this.BASE_URL}/models/google/nano-banana-edit`,
-        {
-          prompt: prompt,
-          image_urls: [imageUrl],
-          output_format: config?.outputFormat || 'jpeg',
-          image_size: config?.imageSize || 'auto',
-        },
+        `${this.BASE_URL}/jobs/createTask`,
+        requestBody,
         {
           headers: {
             Authorization: `Bearer ${apiKey}`,
@@ -64,20 +112,54 @@ export class KieAIService {
         }
       );
 
-      // Handle response - check if image is returned immediately or needs polling
-      let resultImageUrl: string;
-      
-      if (response.data.output || response.data.image_url || response.data.url) {
-        // Immediate response with image URL
-        resultImageUrl = response.data.output || response.data.image_url || response.data.url;
-        console.log('[KieAIService] Received immediate response with image URL');
-      } else if (response.data.id || response.data.job_id) {
-        // Async response - need to poll
-        console.log('[KieAIService] Received async job, polling for result...');
-        resultImageUrl = await this.pollImageGeneration(response.data.id || response.data.job_id);
-      } else {
-        throw new Error('Invalid API response: no output or job ID');
+      console.log('[KieAIService] Job creation response:', JSON.stringify(response.data, null, 2));
+
+      // Check for error responses first (API may return errors in response.data instead of HTTP status)
+      if (response.data.code && response.data.code !== 200 && response.data.code !== 201) {
+        const errorMsg = response.data.msg || response.data.message || response.data.error || 'Unknown API error';
+        console.error('[KieAIService] API returned error:', response.data);
+        
+        // Check for specific error messages
+        if (errorMsg.toLowerCase().includes('image_urls') || errorMsg.toLowerCase().includes('file type not supported') || errorMsg.toLowerCase().includes('not supported')) {
+          throw new Error('Image format not supported. The API requires publicly accessible HTTP URLs for images, but the upload endpoint is not available. Please check Kie.ai API documentation for the correct image upload method.');
+        } else if (errorMsg.toLowerCase().includes('credit') || errorMsg.toLowerCase().includes('payment') || errorMsg.toLowerCase().includes('insufficient')) {
+          throw new Error('Insufficient credits or payment issue. Please check your account balance.');
+        } else {
+          throw new Error(`API error: ${errorMsg}`);
+        }
       }
+
+      // The API returns a job/task ID that needs to be polled
+      const jobId = response.data.id || response.data.job_id || response.data.task_id || response.data.data?.id;
+      
+      if (!jobId) {
+        // Check if response has immediate output (unlikely but possible)
+        if (response.data.output || response.data.image_url || response.data.url || response.data.data?.output) {
+          const resultImageUrl = response.data.output || response.data.image_url || response.data.url || response.data.data?.output;
+          console.log('[KieAIService] Received immediate output');
+          const localUri = await this.downloadImage(resultImageUrl);
+          return {
+            success: true,
+            imageUri: localUri,
+          };
+        }
+        
+        console.error('[KieAIService] No job ID in response. Full response:', JSON.stringify(response.data, null, 2));
+        
+        // Extract error message from response if available
+        const errorMsg = response.data.msg || response.data.message || response.data.error;
+        if (errorMsg) {
+          throw new Error(`API error: ${errorMsg}`);
+        }
+        
+        throw new Error('Invalid API response: no job ID returned. The server may have encountered an error.');
+      }
+
+      console.log('[KieAIService] Job created, ID:', jobId);
+      console.log('[KieAIService] Polling for job completion...');
+      
+      // Poll for job completion
+      const resultImageUrl = await this.pollImageGeneration(jobId);
       
       // Download image to local storage
       const localUri = await this.downloadImage(resultImageUrl);
@@ -88,10 +170,87 @@ export class KieAIService {
       };
     } catch (error: any) {
       console.error('[KieAIService] Nano Banana transform error:', error);
+      console.error('[KieAIService] Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+      });
       
+      // Enhanced error handling
       let errorMessage = 'Failed to transform image with Nano Banana';
+      
       if (error.response) {
-        errorMessage = error.response.data?.error || error.response.data?.message || `API Error: ${error.response.status}`;
+        const statusCode = error.response.status;
+        const responseData = error.response.data;
+        
+        console.error('[KieAIService] HTTP error:', statusCode, responseData);
+        
+        // Check for error in response data structure (some APIs return errors in data.code/data.msg)
+        if (responseData?.code && responseData.code !== 200) {
+          const apiErrorMsg = responseData.msg || responseData.message || responseData.error || 'Unknown API error';
+          
+          // Check for specific error messages
+          if (apiErrorMsg.toLowerCase().includes('image_urls') || apiErrorMsg.toLowerCase().includes('file type not supported')) {
+            errorMessage = 'Image format not supported. The API requires properly uploaded image URLs. Please try again or check your image format.';
+          } else if (apiErrorMsg.toLowerCase().includes('credit') || apiErrorMsg.toLowerCase().includes('payment') || apiErrorMsg.toLowerCase().includes('insufficient')) {
+            errorMessage = 'Insufficient credits or payment issue. Please check your account balance.';
+          } else {
+            errorMessage = apiErrorMsg;
+          }
+        } else {
+          // Handle specific HTTP status codes
+          if (statusCode === 402) {
+            errorMessage = 'Payment required. Please check your account balance or subscription.';
+          } else if (statusCode === 403) {
+            errorMessage = 'Access forbidden. Please check your API key permissions or account status.';
+          } else if (statusCode === 404) {
+            errorMessage = 'API endpoint not found. The service may have changed or the endpoint path is incorrect.';
+          } else if (statusCode === 429) {
+            errorMessage = 'Rate limit exceeded. Please try again in a few moments.';
+          } else if (statusCode === 401) {
+            errorMessage = 'Authentication failed. Please check your API key.';
+          } else if (statusCode >= 500) {
+            // Check response data for more details on 500 errors
+            const responseText = JSON.stringify(responseData || {}).toLowerCase();
+            if (responseText.includes('image_urls') || responseText.includes('file type')) {
+              errorMessage = 'Image format not supported. The API requires properly uploaded image URLs. Please try again.';
+            } else {
+              errorMessage = `Server error (${statusCode}). Please try again later.`;
+            }
+          } else {
+            // Try to extract meaningful error message
+            errorMessage = responseData?.error || 
+                          responseData?.message || 
+                          responseData?.msg ||
+                          responseData?.detail || 
+                          `API Error: ${statusCode}`;
+          }
+        }
+        
+        // Check for credit/payment related errors in response
+        const errorText = JSON.stringify(responseData || {}).toLowerCase();
+        if (errorText.includes('credit') || 
+            errorText.includes('payment') || 
+            errorText.includes('insufficient') || 
+            errorText.includes('balance') ||
+            errorText.includes('quota')) {
+          errorMessage = responseData?.msg || 
+                        responseData?.error || 
+                        responseData?.message || 
+                        responseData?.detail || 
+                        'Insufficient credits or payment issue. Please check your account balance.';
+        }
+      } else if (error.request) {
+        // Network error
+        console.error('[KieAIService] Network error - no response received');
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+        
+        if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+          errorMessage = 'Request timed out. The server may be busy or your connection is slow. Please try again.';
+        } else if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+          errorMessage = 'Cannot connect to server. Please check your internet connection.';
+        }
       } else if (error.message) {
         errorMessage = error.message;
       }
@@ -118,7 +277,7 @@ export class KieAIService {
     }
   ): Promise<TransformResponse> {
     try {
-      const apiKey = getKieAIApiKey();
+      const apiKey = await AIService.getKieAIApiKey();
       if (!apiKey) {
         return {
           success: false,
@@ -162,14 +321,18 @@ export class KieAIService {
 
       console.log(`[KieAIService] Sending ${imageUrls.length} images to Nano Banana Edit API...`);
 
-      // Call Kie.ai Nano Banana Edit API with multiple images (google/nano-banana-edit)
+      // Call Kie.ai API using the correct endpoint structure: /jobs/createTask
+      console.log('[KieAIService] Creating job via /jobs/createTask for multiple images...');
       const response = await axios.post(
-        `${this.BASE_URL}/models/google/nano-banana-edit`,
+        `${this.BASE_URL}/jobs/createTask`,
         {
-          prompt: prompt,
-          image_urls: imageUrls,
-          output_format: config?.outputFormat || 'jpeg',
-          image_size: config?.imageSize || 'auto',
+          model: 'google/nano-banana-edit',
+          input: {
+            prompt: prompt,
+            image_urls: imageUrls, // Array of image URLs
+            output_format: config?.outputFormat || 'jpeg',
+            image_size: config?.imageSize || 'auto',
+          },
         },
         {
           headers: {
@@ -180,20 +343,32 @@ export class KieAIService {
         }
       );
 
-      // Handle response - check if image is returned immediately or needs polling
-      let resultImageUrl: string;
+      console.log('[KieAIService] Job creation response:', JSON.stringify(response.data, null, 2));
+
+      // The API returns a job/task ID that needs to be polled
+      const jobId = response.data.id || response.data.job_id || response.data.task_id;
       
-      if (response.data.output || response.data.image_url || response.data.url) {
-        // Immediate response with image URL
-        resultImageUrl = response.data.output || response.data.image_url || response.data.url;
-        console.log('[KieAIService] Received immediate response with image URL');
-      } else if (response.data.id || response.data.job_id) {
-        // Async response - need to poll
-        console.log('[KieAIService] Received async job, polling for result...');
-        resultImageUrl = await this.pollImageGeneration(response.data.id || response.data.job_id);
-      } else {
-        throw new Error('Invalid API response: no output or job ID');
+      if (!jobId) {
+        // Check if response has immediate output (unlikely but possible)
+        if (response.data.output || response.data.image_url || response.data.url) {
+          const resultImageUrl = response.data.output || response.data.image_url || response.data.url;
+          console.log('[KieAIService] Received immediate output');
+          const localUri = await this.downloadImage(resultImageUrl);
+          return {
+            success: true,
+            imageUri: localUri,
+          };
+        }
+        
+        console.error('[KieAIService] No job ID in response. Full response:', JSON.stringify(response.data, null, 2));
+        throw new Error('Invalid API response: no job ID returned');
       }
+
+      console.log('[KieAIService] Job created, ID:', jobId);
+      console.log('[KieAIService] Polling for job completion...');
+      
+      // Poll for job completion
+      const resultImageUrl = await this.pollImageGeneration(jobId);
       
       // Download image to local storage
       const localUri = await this.downloadImage(resultImageUrl);
@@ -204,10 +379,65 @@ export class KieAIService {
       };
     } catch (error: any) {
       console.error('[KieAIService] Nano Banana transformImages error:', error);
+      console.error('[KieAIService] Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+      });
       
+      // Enhanced error handling
       let errorMessage = 'Failed to transform images with Nano Banana';
+      
       if (error.response) {
-        errorMessage = error.response.data?.error || error.response.data?.message || `API Error: ${error.response.status}`;
+        const statusCode = error.response.status;
+        const responseData = error.response.data;
+        
+        console.error('[KieAIService] HTTP error:', statusCode, responseData);
+        
+        // Handle specific HTTP status codes
+        if (statusCode === 402) {
+          errorMessage = 'Payment required. Please check your account balance or subscription.';
+        } else if (statusCode === 403) {
+          errorMessage = 'Access forbidden. Please check your API key permissions or account status.';
+        } else if (statusCode === 404) {
+          errorMessage = 'API endpoint not found. The service may have changed or the endpoint path is incorrect.';
+        } else if (statusCode === 429) {
+          errorMessage = 'Rate limit exceeded. Please try again in a few moments.';
+        } else if (statusCode === 401) {
+          errorMessage = 'Authentication failed. Please check your API key.';
+        } else if (statusCode >= 500) {
+          errorMessage = `Server error (${statusCode}). Please try again later.`;
+        } else {
+          // Try to extract meaningful error message
+          errorMessage = responseData?.error || 
+                        responseData?.message || 
+                        responseData?.detail || 
+                        `API Error: ${statusCode}`;
+        }
+        
+        // Check for credit/payment related errors in response
+        const errorText = JSON.stringify(responseData || {}).toLowerCase();
+        if (errorText.includes('credit') || 
+            errorText.includes('payment') || 
+            errorText.includes('insufficient') || 
+            errorText.includes('balance') ||
+            errorText.includes('quota')) {
+          errorMessage = responseData?.error || 
+                        responseData?.message || 
+                        responseData?.detail || 
+                        'Insufficient credits or payment issue. Please check your account balance.';
+        }
+      } else if (error.request) {
+        // Network error
+        console.error('[KieAIService] Network error - no response received');
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+        
+        if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+          errorMessage = 'Request timed out. The server may be busy or your connection is slow. Please try again.';
+        } else if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+          errorMessage = 'Cannot connect to server. Please check your internet connection.';
+        }
       } else if (error.message) {
         errorMessage = error.message;
       }
@@ -232,7 +462,7 @@ export class KieAIService {
     }
   ): Promise<TransformResponse> {
     try {
-      const apiKey = getKieAIApiKey();
+      const apiKey = await AIService.getKieAIApiKey();
       if (!apiKey) {
         return {
           success: false,
@@ -300,9 +530,9 @@ export class KieAIService {
    * Poll for image generation/editing completion
    */
   private static async pollImageGeneration(jobId: string, maxAttempts: number = 60): Promise<string> {
-    const apiKey = getKieAIApiKey();
+    const apiKey = await AIService.getKieAIApiKey();
     
-    console.log(`[KieAIService] Starting to poll image job ${jobId}, max attempts: ${maxAttempts}`);
+    console.log(`[KieAIService] Starting to poll job ${jobId}, max attempts: ${maxAttempts}`);
     
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
@@ -313,68 +543,195 @@ export class KieAIService {
           timeout: 30000,
         });
 
-        const status = response.data.status;
-        console.log(`[KieAIService] Poll attempt ${attempt + 1}/${maxAttempts}, status: ${status}`);
+        // Log response for debugging
+        console.log(`[KieAIService] Poll attempt ${attempt + 1}/${maxAttempts}`);
+        console.log(`[KieAIService] Response data:`, JSON.stringify(response.data, null, 2));
 
-        if (status === 'completed' || status === 'succeeded') {
-          // Extract image URL from response
-          const imageUrl = response.data.output_url || response.data.output || response.data.image_url;
-          if (imageUrl) {
-            console.log(`[KieAIService] Image generation completed, URL: ${imageUrl}`);
-            return imageUrl;
+        // Check if response.data exists
+        if (!response.data) {
+          console.error(`[KieAIService] No data in response. Status code: ${response.status}`);
+          if (attempt === maxAttempts - 1) {
+            throw new Error('API returned empty response. This may indicate a server error or service outage.');
           }
-          throw new Error('Job completed but no image URL in response');
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          continue;
         }
 
-        if (status === 'failed' || status === 'error') {
-          const errorMsg = response.data.error || response.data.message || 'Image generation failed';
+        const status = response.data.status;
+        
+        // Handle undefined/null status
+        if (status === undefined || status === null) {
+          console.error(`[KieAIService] Status is undefined/null. Response:`, JSON.stringify(response.data, null, 2));
+          if (attempt === maxAttempts - 1) {
+            throw new Error('API returned invalid response format. Status field is missing.');
+          }
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          continue;
+        }
+
+        console.log(`[KieAIService] Job status: ${status}`);
+
+        if (status === 'completed' || status === 'succeeded' || status === 'success') {
+          // Extract image URL from response - check multiple possible fields
+          const imageUrl = response.data.output || 
+                          response.data.output_url || 
+                          response.data.image_url || 
+                          response.data.url ||
+                          response.data.result?.url ||
+                          response.data.result?.image_url ||
+                          response.data.result?.output ||
+                          response.data.data?.output ||
+                          response.data.data?.url;
+          
+          if (imageUrl) {
+            console.log(`[KieAIService] Job completed, image URL: ${imageUrl}`);
+            return imageUrl;
+          }
+          
+          console.error(`[KieAIService] Job completed but no image URL found. Response keys:`, Object.keys(response.data));
+          console.error(`[KieAIService] Full response:`, JSON.stringify(response.data, null, 2));
+          throw new Error('Job completed but no image URL in response. Please try again.');
+        }
+
+        if (status === 'failed' || status === 'error' || status === 'failure') {
+          const errorMsg = response.data.error || 
+                          response.data.message || 
+                          response.data.detail || 
+                          response.data.error_message ||
+                          'Image generation failed';
+          
+          // Check for credit/payment related errors
+          const errorMsgLower = errorMsg.toLowerCase();
+          if (errorMsgLower.includes('credit') || 
+              errorMsgLower.includes('payment') || 
+              errorMsgLower.includes('insufficient') || 
+              errorMsgLower.includes('balance') ||
+              errorMsgLower.includes('quota')) {
+            console.error(`[KieAIService] Credit/payment error detected:`, errorMsg);
+            throw new Error(`Insufficient credits or payment issue: ${errorMsg}. Please check your account balance.`);
+          }
+          
+          console.error(`[KieAIService] Job failed with error:`, errorMsg);
           throw new Error(errorMsg);
+        }
+
+        // Handle unknown status values
+        if (status !== 'pending' && status !== 'processing' && status !== 'queued' && status !== 'running') {
+          console.warn(`[KieAIService] Unknown status received: ${status}. Will continue polling.`);
         }
 
         // Wait before next poll (exponential backoff)
         const waitTime = Math.min(2000 * Math.pow(1.2, attempt), 10000);
         await new Promise(resolve => setTimeout(resolve, waitTime));
       } catch (error: any) {
-        if (error.message && (error.message.includes('failed') || error.message.includes('error'))) {
+        console.error(`[KieAIService] Poll error on attempt ${attempt + 1}/${maxAttempts}:`, error);
+        
+        // Check for credit/payment errors in HTTP response
+        if (error.response) {
+          const statusCode = error.response.status;
+          const responseData = error.response.data;
+          
+          console.error(`[KieAIService] HTTP error status: ${statusCode}`);
+          console.error(`[KieAIService] HTTP error response:`, JSON.stringify(responseData, null, 2));
+          
+          // Handle specific HTTP status codes
+          if (statusCode === 402) {
+            throw new Error('Payment required. Please check your account balance or subscription.');
+          } else if (statusCode === 403) {
+            throw new Error('Access forbidden. Please check your API key permissions.');
+          } else if (statusCode === 429) {
+            throw new Error('Rate limit exceeded. Please try again in a few moments.');
+          } else if (statusCode === 401) {
+            throw new Error('Authentication failed. Please check your API key.');
+          } else if (statusCode >= 500) {
+            throw new Error(`Server error (${statusCode}). Please try again later.`);
+          }
+          
+          // Check for credit/payment errors in error message
+          const errorText = JSON.stringify(responseData || {}).toLowerCase();
+          if (errorText.includes('credit') || 
+              errorText.includes('payment') || 
+              errorText.includes('insufficient') || 
+              errorText.includes('balance') ||
+              errorText.includes('quota')) {
+            const errorMsg = responseData?.error || responseData?.message || responseData?.detail || 'Insufficient credits';
+            throw new Error(`Credit/payment issue: ${errorMsg}. Please check your account.`);
+          }
+        }
+        
+        // If error message indicates failure, throw immediately
+        if (error.message && (error.message.includes('failed') || error.message.includes('error') || error.message.includes('credit') || error.message.includes('payment'))) {
           throw error;
         }
+        
+        // On last attempt, throw with detailed error
         if (attempt === maxAttempts - 1) {
-          throw new Error(error.message || 'Image generation timeout');
+          const detailedError = error.message || error.response?.data?.error || error.response?.data?.message || 'Unknown error';
+          throw new Error(`Image generation timeout or error: ${detailedError}`);
         }
+        
+        // For other errors, wait and retry
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
     }
 
-    throw new Error('Image generation timeout');
+    throw new Error('Image generation timed out after maximum polling attempts. The job may still be processing on the server.');
   }
 
   /**
    * Upload image to Kie.ai and get URL
+   * Tries multiple upload endpoint paths since the exact endpoint may vary
    */
   private static async uploadImage(imageDataUrl: string): Promise<string> {
-    try {
-      const apiKey = getKieAIApiKey();
-      
-      const response = await axios.post(
-        `${this.BASE_URL}/upload`,
-        {
-          file: imageDataUrl,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+    const apiKey = await AIService.getKieAIApiKey();
+    
+    // Try multiple possible upload endpoint paths
+    const uploadEndpoints = [
+      `${this.BASE_URL}/upload`,
+      `${this.BASE_URL}/uploads`,
+      `${this.BASE_URL}/files/upload`,
+      `https://api.kie.ai/api/v1/upload`,
+      `https://api.kie.ai/api/v1/uploads`,
+    ];
 
-      return response.data.url || response.data.image_url || response.data.upload_url;
-    } catch (error: any) {
-      console.error('[KieAIService] Image upload error:', error);
-      // If upload fails, try using the data URL directly
-      console.log('[KieAIService] Falling back to direct data URL usage');
-      return imageDataUrl;
+    let lastError: any;
+    
+    for (const endpoint of uploadEndpoints) {
+      try {
+        console.log(`[KieAIService] Trying upload endpoint: ${endpoint}`);
+        
+        const response = await axios.post(
+          endpoint,
+          {
+            file: imageDataUrl,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            timeout: 30000,
+          }
+        );
+
+        const uploadedUrl = response.data.url || response.data.image_url || response.data.upload_url || response.data.data?.url;
+        if (uploadedUrl && !uploadedUrl.startsWith('data:')) {
+          console.log(`[KieAIService] Upload successful via ${endpoint}`);
+          return uploadedUrl;
+        }
+        
+        // If we got a response but no URL, try next endpoint
+        lastError = new Error('Upload succeeded but no URL returned');
+      } catch (error: any) {
+        console.log(`[KieAIService] Upload endpoint ${endpoint} failed: ${error.response?.status || error.message}`);
+        lastError = error;
+        // Continue to next endpoint
+      }
     }
+
+    // If all upload endpoints fail, throw error instead of falling back to data URL
+    console.error('[KieAIService] All upload endpoints failed');
+    throw new Error('Failed to upload image. All upload endpoints returned errors. The API may require a different upload method. Please check the API documentation or try again later.');
   }
 
   /**
@@ -430,7 +787,7 @@ export class KieAIService {
     }
   ): Promise<VideoTransformResponse> {
     try {
-      const apiKey = getKieAIApiKey();
+      const apiKey = await AIService.getKieAIApiKey();
       if (!apiKey) {
         return {
           success: false,
@@ -486,7 +843,7 @@ export class KieAIService {
     }
   ): Promise<VideoTransformResponse> {
     try {
-      const apiKey = getKieAIApiKey();
+      const apiKey = await AIService.getKieAIApiKey();
       if (!apiKey) {
         return {
           success: false,
@@ -538,7 +895,7 @@ export class KieAIService {
     }
   ): Promise<VideoTransformResponse> {
     try {
-      const apiKey = getKieAIApiKey();
+      const apiKey = await AIService.getKieAIApiKey();
       if (!apiKey) {
         return {
           success: false,
@@ -592,7 +949,7 @@ export class KieAIService {
     }
   ): Promise<VideoTransformResponse> {
     try {
-      const apiKey = getKieAIApiKey();
+      const apiKey = await AIService.getKieAIApiKey();
       if (!apiKey) {
         return {
           success: false,
@@ -642,7 +999,7 @@ export class KieAIService {
    * Poll for job completion
    */
   private static async pollForCompletion(jobId: string, maxAttempts: number = 60): Promise<string> {
-    const apiKey = getKieAIApiKey();
+    const apiKey = await AIService.getKieAIApiKey();
     
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
@@ -683,7 +1040,7 @@ export class KieAIService {
       encoding: 'base64',
     });
 
-    const apiKey = getKieAIApiKey();
+    const apiKey = await AIService.getKieAIApiKey();
     const response = await axios.post(
       `${this.BASE_URL}/upload`,
       {

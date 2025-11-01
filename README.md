@@ -503,27 +503,50 @@ AIPhotoEditor/
 
 3. **Configure API Keys**
 
-   The app requires a Replicate API key for AI features. Configure it in one of two ways:
+   The app requires API keys for AI features. Configure them using one of the methods below:
 
-   **Option A: Development (app.json)**
-   ```json
-   {
-     "expo": {
-       "extra": {
-         "replicateApiKey": "your-replicate-api-key-here"
-       }
-     }
+   **Option A: Local Development (.env file) - Recommended**
+   
+   Create a `.env` file in the `AIPhotoEditor` directory:
+   ```bash
+   cp .env.example .env
+   ```
+   
+   Then edit `.env` and add your API keys:
+   ```env
+   REPLICATE_API_KEY=your-replicate-api-key-here
+   KIE_AI_API_KEY=your-kie-ai-api-key-here
+   ```
+   
+   The `.env` file is gitignored and won't be committed to the repository.
+
+   **Option B: Local Development (app.config.js)**
+   
+   You can also set API keys directly in `app.config.js` (not recommended for shared repos):
+   ```javascript
+   extra: {
+     replicateApiKey: "your-key-here",
+     kieAIApiKey: "your-key-here"
    }
    ```
 
-   **Option B: Production (EAS Environment Variables)**
+   **Option C: Production/TestFlight (EAS Environment Variables) - Required for EAS Builds**
+   
+   For TestFlight and production builds, you MUST use EAS Environment Variables:
    ```bash
    eas env:create production --name REPLICATE_API_KEY --value your-key --visibility secret --scope project
+   eas env:create production --name KIE_AI_API_KEY --value your-key --visibility secret --scope project
    ```
+   
+   > **How It Works:**
+   > - **Local Development**: Uses `.env` file (gitignored, never uploaded)
+   > - **EAS Builds**: Uses EAS Environment Variables (automatically injected during build)
+   > - The `.env` file is excluded from EAS builds via `.easignore`
+   > - When you run `eas build`, EAS injects the environment variables into the build process
    
    > **Note**: The `eas secret:create` command is deprecated. Use `eas env:create` instead. Specify the environment (`production`, `preview`, or `development`) and use `--visibility secret` for secure storage.
 
-   > ⚠️ **Security Note**: Never commit real API keys to git. The `.gitignore` is configured to exclude sensitive files.
+   > ⚠️ **Security Note**: Never commit real API keys to git. The `.gitignore` and `.easignore` are configured to exclude sensitive files (including `.env`).
 
 4. **Start the development server**
    ```bash
@@ -553,9 +576,22 @@ eas build --platform android --profile production-android
 
 ### API Keys
 
-API keys are securely stored using Expo Secure Store. The app supports:
-- Development: Keys can be configured in `app.json` (for local testing)
-- Production: Keys should be managed through EAS Environment Variables
+API keys are automatically loaded from the appropriate source based on your build context:
+
+**Local Development:**
+- Uses `.env` file in the `AIPhotoEditor` directory (gitignored, never uploaded)
+- Create `.env` with:
+  ```
+  REPLICATE_API_KEY=your-key-here
+  KIE_AI_API_KEY=your-key-here
+  ```
+
+**Production/TestFlight (EAS Builds):**
+- Uses EAS Environment Variables (automatically injected during build)
+- The `.env` file is excluded from EAS builds via `.easignore`
+- Set up via: `eas env:create production --name REPLICATE_API_KEY --value your-key --visibility secret --scope project`
+
+The `app.config.js` file automatically detects which environment you're in and loads the keys accordingly. No code changes needed when switching between local and production builds!
 
 ### Themes
 

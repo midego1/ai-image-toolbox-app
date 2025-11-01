@@ -31,6 +31,7 @@ export type SettingsStackParamList = {
   Statistics: undefined;
   LanguageSelection: undefined;
   Subscription: undefined;
+  ApiKeysSettings: undefined;
   ToolMockup: undefined;
   RemoveBackgroundMockupDetail: {
     imageUri?: string;

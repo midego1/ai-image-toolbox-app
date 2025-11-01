@@ -3,6 +3,13 @@
 **/*secret*
 **/*SECRET*
 **/*Secret*
+# Environment variable files (for local development only)
+.env
+.env.local
+.env.*.local
+**/.env
+**/.env.local
+**/.env.*.local
 # Documentation directory (exclude entire docs folder)
 ../docs/
 docs/

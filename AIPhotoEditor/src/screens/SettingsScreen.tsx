@@ -18,7 +18,6 @@ import { AnalyticsService } from '../services/analyticsService';
 import { ThemeMode } from '../services/themeService';
 import { LanguageService, Language, LANGUAGES } from '../services/languageService';
 import { AIService } from '../services/aiService';
-import { validateReplicateApiKey, validateKieAIApiKey, isApiKeyConfigured, isKieAIKeyConfigured } from '../config/apiKeys';
 
 const SettingsScreen = () => {
   const { theme, themeMode, setThemeMode } = useTheme();
@@ -43,11 +42,9 @@ const SettingsScreen = () => {
   // Vibration state
   const [vibrationsEnabled, setVibrationsEnabled] = useState(true);
   
-  // API key state
+  // API key state (just for display in main settings)
   const [hasApiKey, setHasApiKey] = useState(false);
   const [hasKieAIKey, setHasKieAIKey] = useState(false);
-  const [validatingReplicate, setValidatingReplicate] = useState(false);
-  const [validatingKieAI, setValidatingKieAI] = useState(false);
 
   useEffect(() => {
     loadAutoSaveSetting();
@@ -70,148 +67,11 @@ const SettingsScreen = () => {
   
   const loadApiKeyStatus = async () => {
     const hasKey = await AIService.hasReplicateApiKey();
+    const hasKieKey = await AIService.hasKieAIApiKey();
     setHasApiKey(hasKey);
-    setHasKieAIKey(isKieAIKeyConfigured());
+    setHasKieAIKey(hasKieKey);
   };
   
-  const handleValidateReplicateKey = async () => {
-    haptic.light();
-    setValidatingReplicate(true);
-    
-    try {
-      const result = await validateReplicateApiKey();
-      
-      if (result.configured === false) {
-        Alert.alert(
-          'Validation Result',
-          'Replicate API key is not configured.\n\nConfigure it via:\n- Settings → Developer → Replicate API Key\n- Or EAS Environment Variables for production',
-          [{ text: 'OK' }]
-        );
-      } else if (result.valid === true) {
-        haptic.success();
-        Alert.alert(
-          '✅ Validation Success',
-          'Replicate API key is valid and working correctly!',
-          [{ text: 'OK' }]
-        );
-      } else if (result.valid === false) {
-        haptic.error();
-        Alert.alert(
-          '❌ Validation Failed',
-          `Replicate API key is invalid:\n\n${result.error || 'Authentication failed'}\n\nPlease check your API key and try again.`,
-          [{ text: 'OK' }]
-        );
-      } else {
-        // valid is null - network error or couldn't test
-        Alert.alert(
-          '⚠️ Could Not Test',
-          `Unable to test the API key:\n\n${result.error || 'Network error'}\n\nThis doesn't mean the key is invalid - it may be a network issue.`,
-          [{ text: 'OK' }]
-        );
-      }
-    } catch (error: any) {
-      haptic.error();
-      Alert.alert('Error', `Failed to validate API key: ${error.message || 'Unknown error'}`);
-    } finally {
-      setValidatingReplicate(false);
-    }
-  };
-  
-  const handleValidateKieAIKey = async () => {
-    haptic.light();
-    setValidatingKieAI(true);
-    
-    try {
-      const result = await validateKieAIApiKey();
-      
-      if (result.configured === false) {
-        Alert.alert(
-          'Validation Result',
-          'Kie.ai API key is not configured.\n\nConfigure it via:\n- app.json (development)\n- EAS Environment Variables (production)',
-          [{ text: 'OK' }]
-        );
-      } else if (result.valid === true) {
-        haptic.success();
-        Alert.alert(
-          '✅ Validation Success',
-          'Kie.ai API key is valid and working correctly!',
-          [{ text: 'OK' }]
-        );
-      } else if (result.valid === false) {
-        haptic.error();
-        Alert.alert(
-          '❌ Validation Failed',
-          `Kie.ai API key is invalid:\n\n${result.error || 'Authentication failed'}\n\nPlease check your API key and try again.`,
-          [{ text: 'OK' }]
-        );
-      } else {
-        // valid is null - network error or couldn't test
-        Alert.alert(
-          '⚠️ Could Not Test',
-          `Unable to test the API key:\n\n${result.error || 'Network error'}\n\nNote: Kie.ai API endpoint may need adjustment. Check their documentation.`,
-          [{ text: 'OK' }]
-        );
-      }
-    } catch (error: any) {
-      haptic.error();
-      Alert.alert('Error', `Failed to validate API key: ${error.message || 'Unknown error'}`);
-    } finally {
-      setValidatingKieAI(false);
-    }
-  };
-  
-  const handleApiKeyPress = () => {
-    haptic.medium();
-    
-    if (Platform.OS === 'ios') {
-      // Use Alert.prompt for iOS
-      Alert.prompt(
-        'Replicate API Key',
-        hasApiKey 
-          ? 'Enter your Replicate API key to update it, or leave blank to view current status.'
-          : 'Enter your Replicate API key to enable AI features. You can get your key from https://replicate.com/account/api-tokens',
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-          {
-            text: hasApiKey ? 'Update' : 'Save',
-            onPress: async (apiKey) => {
-              if (apiKey && apiKey.trim().length > 0) {
-                try {
-                  await AIService.setReplicateApiKey(apiKey.trim());
-                  await loadApiKeyStatus();
-                  haptic.success();
-                  Alert.alert('Success', 'API key has been saved successfully.');
-                } catch (error) {
-                  haptic.error();
-                  Alert.alert('Error', 'Failed to save API key. Please try again.');
-                }
-              } else if (hasApiKey) {
-                // Show current status if user left it blank
-                Alert.alert(
-                  'API Key Status',
-                  'API key is currently configured. To update it, enter a new key.',
-                  [{ text: 'OK' }]
-                );
-              }
-            },
-          },
-        ],
-        'plain-text'
-      );
-    } else {
-      // For Android, use a simple alert with instructions
-      Alert.alert(
-        'API Key Configuration',
-        hasApiKey
-          ? 'API key is configured. To update it, please use the development build or configure via EAS Environment Variables for production builds.'
-          : 'API key is not configured. For production builds, configure via EAS Environment Variables. For development, add it to app.json or set it programmatically.',
-        [{ text: 'OK' }]
-      );
-    }
-  };
 
   const loadLanguage = async () => {
     const language = await LanguageService.getLanguage();
@@ -778,58 +638,16 @@ const SettingsScreen = () => {
           <View style={styles.categoryContainer}>
             <Card
               iconName="key-outline"
-              title="Replicate API Key"
-              subtitle={hasApiKey ? "API key configured" : "Required for AI features"}
-              value={hasApiKey ? "Configured" : "Not Set"}
-              onPress={handleApiKeyPress}
-              iconColor={hasApiKey ? theme.colors.success : theme.colors.warning}
-              showChevron={true}
-              isFirstInGroup={true}
-              isLastInGroup={false}
-              showSeparator={true}
-            />
-            <Card
-              iconName="checkmark-circle-outline"
-              title="Test Replicate Key"
-              subtitle={validatingReplicate ? "Validating..." : "Verify API key is working"}
-              value={validatingReplicate ? "Testing..." : "Test"}
-              onPress={handleValidateReplicateKey}
-              iconColor={theme.colors.primary}
-              showChevron={false}
-              isFirstInGroup={false}
-              isLastInGroup={false}
-              showSeparator={true}
-            />
-            <Card
-              iconName="key-outline"
-              title="Kie.ai API Key"
-              subtitle={hasKieAIKey ? "API key configured" : "Required for video features"}
-              value={hasKieAIKey ? "Configured" : "Not Set"}
+              title="API Keys"
+              subtitle={hasApiKey && hasKieAIKey ? "All API keys configured" : "Configure Replicate & Kie.ai API keys"}
+              value={hasApiKey && hasKieAIKey ? "Configured" : hasApiKey || hasKieAIKey ? "Partial" : "Not Set"}
               onPress={() => {
                 haptic.medium();
-                Alert.alert(
-                  'Kie.ai API Key',
-                  hasKieAIKey
-                    ? 'Kie.ai API key is configured via app.json (development) or EAS Environment Variables (production).'
-                    : 'Kie.ai API key is not configured. Set it in app.json (development) or EAS Environment Variables (production).',
-                  [{ text: 'OK' }]
-                );
+                settingsNavigation.navigate('ApiKeysSettings');
               }}
-              iconColor={hasKieAIKey ? theme.colors.success : theme.colors.warning}
+              iconColor={hasApiKey && hasKieAIKey ? theme.colors.success : theme.colors.warning}
               showChevron={true}
-              isFirstInGroup={false}
-              isLastInGroup={false}
-              showSeparator={true}
-            />
-            <Card
-              iconName="checkmark-circle-outline"
-              title="Test Kie.ai Key"
-              subtitle={validatingKieAI ? "Validating..." : "Verify API key is working"}
-              value={validatingKieAI ? "Testing..." : "Test"}
-              onPress={handleValidateKieAIKey}
-              iconColor={theme.colors.primary}
-              showChevron={false}
-              isFirstInGroup={false}
+              isFirstInGroup={true}
               isLastInGroup={false}
               showSeparator={true}
             />

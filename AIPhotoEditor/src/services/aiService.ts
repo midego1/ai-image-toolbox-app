@@ -5,9 +5,11 @@ import { KieAIService } from './kieAIService';
 
 // Store API keys securely - DO NOT commit real keys to git
 const REPLICATE_API_KEY_STORAGE = 'replicate_api_key';
+const KIE_AI_API_KEY_STORAGE = 'kie_ai_api_key';
 
 // Fallback constant for development (should be set via SecureStore)
 const REPLICATE_API_KEY_FALLBACK = 'YOUR_REPLICATE_API_KEY';
+const KIE_AI_API_KEY_FALLBACK = 'YOUR_KIE_AI_API_KEY';
 
 // Get API key from secure storage (or fallback for development)
 async function getReplicateApiKey(): Promise<string> {
@@ -52,6 +54,50 @@ export class AIService {
     try {
       const key = await getReplicateApiKey();
       return key !== REPLICATE_API_KEY_FALLBACK && key.length > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Set the Kie.ai API key (for local Expo builds via Settings)
+   */
+  static async setKieAIApiKey(key: string): Promise<void> {
+    try {
+      await SecureStore.setItemAsync(KIE_AI_API_KEY_STORAGE, key);
+    } catch (error) {
+      console.error('Failed to store Kie.ai API key:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get the Kie.ai API key from SecureStore or config
+   * Priority: SecureStore (runtime) > config (build-time)
+   */
+  static async getKieAIApiKey(): Promise<string> {
+    // First check SecureStore (runtime setting takes priority)
+    try {
+      const storedKey = await SecureStore.getItemAsync(KIE_AI_API_KEY_STORAGE);
+      if (storedKey && storedKey.length > 0 && storedKey !== KIE_AI_API_KEY_FALLBACK) {
+        return storedKey;
+      }
+    } catch (error) {
+      console.warn('Could not retrieve Kie.ai API key from secure storage');
+    }
+
+    // Fall back to config-based key
+    const { getKieAIApiKey: getConfigKey } = await import('../config/apiKeys');
+    return getConfigKey();
+  }
+
+  /**
+   * Check if Kie.ai API key is configured (SecureStore or config)
+   */
+  static async hasKieAIApiKey(): Promise<boolean> {
+    try {
+      const key = await this.getKieAIApiKey();
+      return key !== KIE_AI_API_KEY_FALLBACK && key.length > 0;
     } catch {
       return false;
     }

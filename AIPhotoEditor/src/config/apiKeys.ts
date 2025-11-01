@@ -1,14 +1,19 @@
 import Constants from 'expo-constants';
+import * as SecureStore from 'expo-secure-store';
 
 /**
  * Get Replicate API key from app configuration
  * This supports:
- * - Development: app.json extra.replicateApiKey
+ * - Local Development: .env file (REPLICATE_API_KEY) - loaded via app.config.js
+ * - Local Development: app.config.js extra.replicateApiKey (can be set directly)
  * - Production: EAS Environment Variables
  * 
  * EAS automatically maps:
  * - Environment Variables: REPLICATE_API_KEY -> extra.REPLICATE_API_KEY (uppercase) or extra.replicateApiKey (camelCase)
  * - Created via: eas env:create production --name REPLICATE_API_KEY --value your-key --visibility secret --scope project
+ * 
+ * For local development, create a .env file in the AIPhotoEditor directory:
+ *   REPLICATE_API_KEY=your-key-here
  */
 export function getReplicateApiKey(): string {
   // Try camelCase first (app.json and EAS Environment Variables)
@@ -52,13 +57,19 @@ export function isApiKeyConfigured(): boolean {
 
 /**
  * Get Kie.ai API key from app configuration
+ * Note: For runtime settings (via Settings screen), use AIService.getKieAIApiKey() instead
+ * 
  * This supports:
- * - Development: app.json extra.kieAIApiKey
+ * - Local Development: .env file (KIE_AI_API_KEY) - loaded via app.config.js
+ * - Local Development: app.config.js extra.kieAIApiKey (can be set directly)
  * - Production: EAS Environment Variables
  * 
  * EAS automatically maps:
  * - Environment Variables: KIE_AI_API_KEY -> extra.KIE_AI_API_KEY (uppercase) or extra.kieAIApiKey (camelCase)
  * - Created via: eas env:create production --name KIE_AI_API_KEY --value your-key --visibility secret --scope project
+ * 
+ * For local development, create a .env file in the AIPhotoEditor directory:
+ *   KIE_AI_API_KEY=your-key-here
  */
 export function getKieAIApiKey(): string {
   // Try camelCase first (app.json and EAS Environment Variables)
@@ -166,10 +177,12 @@ export async function validateReplicateApiKey(): Promise<ApiKeyValidationResult>
 
 /**
  * Validate Kie.ai API key by making a test API call
- * Note: This depends on Kie.ai's API structure - adjust endpoint as needed
+ * Uses the correct API base URL: https://api.kie.ai/api/v1
  */
 export async function validateKieAIApiKey(): Promise<ApiKeyValidationResult> {
-  const key = getKieAIApiKey();
+  // Use AIService to get the key (includes SecureStore check)
+  const { AIService } = await import('../services/aiService');
+  const key = await AIService.getKieAIApiKey();
   
   if (!key || key.length === 0) {
     return {
@@ -180,46 +193,82 @@ export async function validateKieAIApiKey(): Promise<ApiKeyValidationResult> {
   }
 
   try {
-    // Try to get account info or available models
-    // Adjust this endpoint based on Kie.ai's actual API structure
-    // This is a placeholder - check Kie.ai documentation for the correct endpoint
-    const response = await fetch('https://api.kie.ai/v1/models', {
-      method: 'GET',
+    // Try to validate by making a request to the jobs endpoint
+    // This is a light-weight way to test if the API key is valid
+    // We use POST with minimal data to check authentication
+    const response = await fetch('https://api.kie.ai/api/v1/jobs/createTask', {
+      method: 'POST',
       headers: {
         'Authorization': `Bearer ${key}`,
         'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        model: 'google/nano-banana-edit',
+        input: {
+          prompt: 'test',
+          image_urls: ['https://example.com/test.jpg'],
+        },
+      }),
     });
 
-    if (response.status === 200) {
-      return {
-        configured: true,
-        valid: true,
-        testedAt: new Date(),
-      };
-    } else if (response.status === 401 || response.status === 403) {
+    // If we get 401 or 403, the key is invalid
+    if (response.status === 401 || response.status === 403) {
       return {
         configured: true,
         valid: false,
         error: 'Invalid API key (authentication failed)',
         testedAt: new Date(),
       };
-    } else {
-      const errorText = await response.text().catch(() => 'Unknown error');
+    }
+
+    // If we get 400 (Bad Request), the key is likely valid but the request data is invalid
+    // This is actually good - it means authentication worked
+    if (response.status === 400) {
+      const responseData = await response.json().catch(() => null);
+      // Check if it's a validation error (key is valid) vs authentication error
+      const errorText = JSON.stringify(responseData || {}).toLowerCase();
+      if (errorText.includes('invalid') || errorText.includes('required') || errorText.includes('validation')) {
+        // This means the key is valid, but the test data we sent is invalid
+        // That's fine - we just wanted to test authentication
+        return {
+          configured: true,
+          valid: true,
+          testedAt: new Date(),
+        };
+      }
+      // Otherwise, it might be an actual error
       return {
         configured: true,
         valid: false,
-        error: `API error: ${response.status} - ${errorText}`,
+        error: `API error: ${response.status}`,
         testedAt: new Date(),
       };
     }
+
+    // 200-299 means success (unlikely for our test request, but handle it)
+    if (response.status >= 200 && response.status < 300) {
+      return {
+        configured: true,
+        valid: true,
+        testedAt: new Date(),
+      };
+    }
+
+    // Other status codes
+    const errorText = await response.text().catch(() => 'Unknown error');
+    return {
+      configured: true,
+      valid: false,
+      error: `API error: ${response.status} - ${errorText.substring(0, 200)}`,
+      testedAt: new Date(),
+    };
   } catch (error: any) {
     // Network errors don't necessarily mean the key is invalid
     // They might mean the endpoint is wrong or network is unavailable
     return {
       configured: true,
       valid: null,
-      error: `Could not test key: ${error.message || 'Network error or incorrect API endpoint'}. Note: Kie.ai endpoint may need adjustment based on their API documentation.`,
+      error: `Could not test key: ${error.message || 'Network error'}. Please check your internet connection.`,
       testedAt: new Date(),
     };
   }
