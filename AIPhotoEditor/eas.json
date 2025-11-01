@@ -18,10 +18,6 @@
       }
     },
     "production": {
-      "env": {
-        "KIE_AI_API_KEY": "",
-        "REPLICATE_API_KEY": ""
-      },
       "ios": {}
     },
     "production-ios": {
