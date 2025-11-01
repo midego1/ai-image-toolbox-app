@@ -3,6 +3,13 @@
 **/*secret*
 **/*SECRET*
 **/*Secret*
-# Documentation directory (optional, but safe to exclude)
+# Documentation directory (exclude entire docs folder)
 ../docs/
 docs/
+# Explicitly exclude CHECKING_SECRETS.md (case variations)
+../docs/CHECKING_SECRETS.md
+../docs/checking_secrets.md
+../docs/Checking_Secrets.md
+docs/CHECKING_SECRETS.md
+docs/checking_secrets.md
+docs/Checking_Secrets.md
