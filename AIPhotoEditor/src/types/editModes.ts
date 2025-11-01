@@ -15,6 +15,7 @@ export enum EditMode {
   TRANSFORM = 'transform',
   REMOVE_BACKGROUND = 'remove_background',
   ENHANCE = 'enhance',
+  UPSCALE = 'upscale',
   FILTERS = 'filters',
   REMOVE_OBJECT = 'remove_object',
   REPLACE_BACKGROUND = 'replace_background',
@@ -26,6 +27,7 @@ export enum EditMode {
   PROFESSIONAL_HEADSHOTS = 'professional_headshots',
   POP_FIGURE = 'pop_figure',
   PIXEL_ART_GAMER = 'pixel_art_gamer',
+  GHIBLIFY = 'ghiblify',
   // Video modes
   TEXT_TO_VIDEO_VEO = 'text_to_video_veo',
   TEXT_TO_VIDEO_VEO_FAST = 'text_to_video_veo_fast',

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -26,6 +26,34 @@ const HistoryScreen = () => {
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
   const [selectedFilter, setSelectedFilter] = useState<EditMode | 'all'>('all');
   const [activeMediaType, setActiveMediaType] = useState<MediaType>('image');
+  const scrollViewRef = useRef<ScrollView>(null);
+  const lastTabPressTimeRef = useRef<number>(0);
+
+  // Handle double-tap on tab to scroll to top
+  useEffect(() => {
+    // Get the parent tab navigator to listen to tab press events
+    const parentTabNavigator = navigation.getParent();
+    
+    if (!parentTabNavigator) return;
+
+    const unsubscribe = parentTabNavigator.addListener('tabPress', (e: any) => {
+      // Check if this screen is already focused (meaning tab was pressed while active)
+      if (navigation.isFocused()) {
+        const now = Date.now();
+        const timeSinceLastPress = now - lastTabPressTimeRef.current;
+        
+        // If tab was pressed within 500ms of last press, scroll to top
+        if (timeSinceLastPress < 500) {
+          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+          haptic.light();
+        }
+        
+        lastTabPressTimeRef.current = now;
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   const loadHistory = useCallback(async () => {
     try {
@@ -281,6 +309,7 @@ const HistoryScreen = () => {
       />
 
       <ScrollView
+        ref={scrollViewRef}
         style={[styles.scrollView, { backgroundColor: theme.colors.backgroundSecondary }]}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}

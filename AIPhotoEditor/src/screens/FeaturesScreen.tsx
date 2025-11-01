@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -8,10 +8,11 @@ import { NavigationProp } from '../types/navigation';
 import { useTheme, Theme } from '../theme/ThemeProvider';
 import { MainHeader } from '../components/MainHeader';
 import { SectionHeader } from '../components/SectionHeader';
-import { FeaturedBlock } from '../components/FeaturedBlock';
 import { Card } from '../components/Card';
+import { FeaturedToolsGrid } from '../components/FeaturedToolsGrid';
+import { FeaturedToolsList } from '../components/FeaturedToolsList';
 import { MediaTypeTabs, MediaType } from '../components/MediaTypeTabs';
-import { EditMode, EditModeCategory, getEditModesByCategory, PHASE1_FEATURES } from '../constants/editModes';
+import { EditMode, EditModeCategory, getEditModesByCategory, getEditMode } from '../constants/editModes';
 import { SubscriptionService } from '../services/subscriptionService';
 import { ImageProcessingService } from '../services/imageProcessingService';
 import { VideoProcessingService } from '../services/videoProcessingService';
@@ -26,8 +27,36 @@ const FeaturesScreen = () => {
   const styles = createStyles(theme, insets, scrollBottomPadding);
   const [isPremium, setIsPremium] = useState(false);
   const [activeMediaType, setActiveMediaType] = useState<MediaType>('image');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const scrollViewRef = useRef<ScrollView>(null);
   const scrollOffsetRef = useRef<number>(0);
+  const lastTabPressTimeRef = useRef<number>(0);
+
+  // Handle double-tap on tab to scroll to top
+  useEffect(() => {
+    // Get the parent tab navigator to listen to tab press events
+    const parentTabNavigator = navigation.getParent();
+    
+    if (!parentTabNavigator) return;
+
+    const unsubscribe = parentTabNavigator.addListener('tabPress', (e: any) => {
+      // Check if this screen is already focused (meaning tab was pressed while active)
+      if (navigation.isFocused()) {
+        const now = Date.now();
+        const timeSinceLastPress = now - lastTabPressTimeRef.current;
+        
+        // If tab was pressed within 500ms of last press, scroll to top
+        if (timeSinceLastPress < 500) {
+          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+          haptic.light();
+        }
+        
+        lastTabPressTimeRef.current = now;
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   const loadSubscriptionStatus = async () => {
     const premium = await SubscriptionService.checkSubscriptionStatus();
@@ -57,6 +86,7 @@ const FeaturesScreen = () => {
     if (requiresPremium && !isPremium) {
       // Show upgrade prompt
       haptic.error();
+      handleUpgradePress();
       return;
     }
 
@@ -125,6 +155,18 @@ const FeaturesScreen = () => {
       return;
     }
 
+    // Ghiblify should first show pre-capture selection (Library or Camera) in a dedicated screen
+    if (editMode === EditMode.GHIBLIFY) {
+      (navigation as any).navigate('Ghiblify');
+      return;
+    }
+
+    // Enhance (Upscale) should first show pre-capture selection (Library or Camera) in a dedicated screen
+    if (editMode === EditMode.ENHANCE) {
+      (navigation as any).navigate('Upscale');
+      return;
+    }
+
     // Virtual Try-On should go to VirtualTryOnSelection
     if (editMode === EditMode.VIRTUAL_TRY_ON) {
       (navigation as any).navigate('VirtualTryOnSelection', { editMode });
@@ -147,8 +189,27 @@ const FeaturesScreen = () => {
     }
   };
 
+  const handleFeaturedToolPress = (tool: { id: string; editMode: EditMode; screen: string }) => {
+    haptic.medium();
+    
+    const mode = getEditMode(tool.editMode);
+    
+    if (mode?.isPremium && !isPremium) {
+      haptic.error();
+      handleUpgradePress();
+      return;
+    }
+    
+    // Navigate to the tool screen
+    // VirtualTryOnSelection and GenreSelection need editMode parameter
+    if (tool.screen === 'VirtualTryOnSelection' || tool.screen === 'GenreSelection') {
+      (navigation as any).navigate(tool.screen, { editMode: tool.editMode });
+    } else {
+      (navigation as any).navigate(tool.screen);
+    }
+  };
 
-  const renderCategory = (categoryName: string, category: EditModeCategory) => {
+  const renderCategory = (categoryName: string, category: EditModeCategory, rightAction?: React.ReactNode) => {
     const modes = getEditModesByCategory(category);
 
     if (modes.length === 0) return null;
@@ -160,11 +221,27 @@ const FeaturesScreen = () => {
     if (activeMediaType === 'image' && isVideoCategory) return null;
     if (activeMediaType === 'video' && isImageCategory) return null;
 
+    // Filter out modes that are already in featured tools to avoid duplication
+    const featuredToolModes = [
+      EditMode.TRANSFORM, // Filter out Transform since it's in featured tools
+      EditMode.GHIBLIFY, // Filter out Ghiblify since it's in featured tools
+      EditMode.POP_FIGURE,
+      EditMode.PIXEL_ART_GAMER,
+      EditMode.REMOVE_BACKGROUND,
+      EditMode.REPLACE_BACKGROUND,
+      EditMode.VIRTUAL_TRY_ON,
+      EditMode.ENHANCE, // Filter out Enhance since it's in featured tools
+      EditMode.STYLE_TRANSFER,
+    ];
+    const filteredModes = modes.filter(mode => !featuredToolModes.includes(mode.id));
+
+    if (filteredModes.length === 0) return null;
+
     return (
       <View key={category} style={styles.categorySection}>
-        <SectionHeader title={categoryName} />
+        <SectionHeader title={categoryName} rightAction={rightAction} />
         <View style={styles.categoryContainer}>
-          {modes.map((mode, index) => {
+          {filteredModes.map((mode, index) => {
             const isLocked = mode.isPremium && !isPremium;
             // Check support: video modes use VideoProcessingService, others use ImageProcessingService
             const isVideoMode = mode.category === EditModeCategory.VIDEO;
@@ -210,9 +287,44 @@ const FeaturesScreen = () => {
         scrollEventThrottle={16}
       >
         {/* Media Type Tabs */}
-        <MediaTypeTabs activeTab={activeMediaType} onTabChange={setActiveMediaType} />
+        <MediaTypeTabs 
+          activeTab={activeMediaType} 
+          onTabChange={(tab) => setActiveMediaType(tab)}
+          rightAction={
+            activeMediaType === 'image' ? (
+              <TouchableOpacity
+                style={styles.viewToggleButton}
+                onPress={() => {
+                  haptic.light();
+                  setViewMode(viewMode === 'grid' ? 'list' : 'grid');
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={viewMode === 'grid' ? 'list-outline' : 'grid-outline'}
+                  size={18}
+                  color={theme.colors.textSecondary}
+                  style={{ marginRight: theme.spacing.xs / 2 }}
+                />
+                <Text style={[styles.viewToggleText, { color: theme.colors.textSecondary }]}>
+                  {viewMode === 'grid' ? 'List' : 'Grid'}
+                </Text>
+              </TouchableOpacity>
+            ) : undefined
+          }
+        />
 
-        {/* Removed Featured Block */}
+        {/* Featured Tools - Only show on Image tab */}
+        {activeMediaType === 'image' && (
+          <>
+            {/* Featured Tools Grid or List */}
+            {viewMode === 'grid' ? (
+              <FeaturedToolsGrid onToolPress={handleFeaturedToolPress} isPremium={isPremium} />
+            ) : (
+              <FeaturedToolsList onToolPress={handleFeaturedToolPress} isPremium={isPremium} />
+            )}
+          </>
+        )}
 
         {/* Subscription Status Banner */}
         {!isPremium && (
@@ -262,7 +374,7 @@ const FeaturesScreen = () => {
             {renderCategory('✏️ EDIT', EditModeCategory.EDIT)}
 
             {/* Enhance Category */}
-            {renderCategory('✨ ENHANCE', EditModeCategory.ENHANCE)}
+            {renderCategory('✨ UPSCALE', EditModeCategory.ENHANCE)}
 
             {/* Stylize Category */}
             {renderCategory('🖌️ STYLIZE', EditModeCategory.STYLIZE)}
@@ -351,6 +463,17 @@ const createStyles = (theme: Theme, insets: { bottom: number }, scrollBottomPadd
     },
     categoryContainer: {
       paddingHorizontal: theme.spacing.base,
+    },
+    viewToggleButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 4,
+      paddingHorizontal: 8,
+      borderRadius: 6,
+    },
+    viewToggleText: {
+      fontSize: theme.typography.scaled.sm,
+      fontWeight: theme.typography.weight.medium,
     },
   });
 

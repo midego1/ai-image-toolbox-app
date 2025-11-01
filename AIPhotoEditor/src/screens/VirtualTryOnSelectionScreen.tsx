@@ -17,8 +17,8 @@ import { ActionButtonBar } from '../components/ActionButtonBar';
 import { ToolStatsBar } from '../components/ToolStatsBar';
 import { TopTabSwitcher } from '../components/TopTabSwitcher';
 import { ToolGuideTab } from '../components/ToolGuideTab';
-import { ToolExamplesTab } from '../components/ToolExamplesTab';
 import { ToolHistoryTab } from '../components/ToolHistoryTab';
+import { ToolCreditsTab } from '../components/ToolCreditsTab';
 import { TabView } from '../components/TabView';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
@@ -447,7 +447,7 @@ const VirtualTryOnSelectionScreen = () => {
           <View style={{ paddingHorizontal: spacing.base, marginTop: spacing.sm }}>
             <ToolStatsBar
               time="12-18 sec"
-              credits="0.8 credit"
+              cost="0.8 cost"
               rating="4.6/5"
               usage="650 today"
             />
@@ -517,8 +517,8 @@ const VirtualTryOnSelectionScreen = () => {
           <TabView
             tabs={[
               { id: 'guide', label: 'Guide', icon: 'book-outline' },
-              { id: 'examples', label: 'Examples', icon: 'images-outline' },
               { id: 'info', label: 'Info', icon: 'information-circle-outline' },
+              { id: 'cost', label: 'Cost', icon: 'card-outline' },
             ]}
             defaultTab="guide"
             containerStyle={{ marginHorizontal: spacing.base, marginTop: spacing.lg }}
@@ -527,35 +527,12 @@ const VirtualTryOnSelectionScreen = () => {
             <ToolGuideTab
               title="How to Use Virtual Try-On"
               content={`Try on clothing items virtually with realistic fit and appearance.\n\n📸 Step 1: Select Person Photo\nChoose a photo showing a person (full body or upper body works best). Clear photos with good lighting produce better results.\n\n👕 Step 2: Add Clothing Items\nAdd one or more clothing items:\n• Tap "Add Clothing Item"\n• Choose from your library or take a photo\n• You can add multiple items for a complete outfit\n• Clothing items should be photographed on a plain background\n\n✨ Step 3: Generate Try-On\nTap Generate Try-On and wait 10-15 seconds. The AI will place the clothing on the person with realistic fit, shadows, and lighting.\n\n🎯 Pro Tips\n• Full-body or upper-body photos work best\n• Clothing items on plain backgrounds blend better\n• Multiple items create complete outfit looks\n• The AI automatically adjusts fit and lighting\n• Natural poses produce more realistic results`}
-            />
-
-            {/* Examples Tab */}
-            <ToolExamplesTab
-              title="Virtual Try-On Examples"
-              examples={[
+              images={[
                 {
-                  id: '1',
-                  title: 'Single Item Try-On',
-                  description: 'Try on a shirt with realistic fit and appearance',
-                  tags: ['Shirt', 'Single Item'],
-                },
-                {
-                  id: '2',
-                  title: 'Complete Outfit',
-                  description: 'Try on multiple items for a complete outfit look',
-                  tags: ['Outfit', 'Multiple Items'],
-                },
-                {
-                  id: '3',
-                  title: 'Casual Wear',
-                  description: 'Try on casual clothing with natural fit',
-                  tags: ['Casual', 'Natural'],
-                },
+                  source: require('../../assets/images/virtual-try-on/modelcard_virtualtryon.jpg'),
+                  caption: 'Example of virtual try-on'
+                }
               ]}
-              onExamplePress={(example) => {
-                haptic.light();
-                console.log('Example pressed:', example.title);
-              }}
             />
 
             {/* Info Tab */}
@@ -573,6 +550,12 @@ const VirtualTryOnSelectionScreen = () => {
                 expandableHow={false}
               />
             </View>
+
+            {/* Credits Tab */}
+            <ToolCreditsTab
+              creditCost={0.8}
+              processingTime="12-18 sec"
+            />
           </TabView>
           
           {/* Extra bottom padding */}

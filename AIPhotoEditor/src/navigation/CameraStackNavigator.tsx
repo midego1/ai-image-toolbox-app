@@ -10,6 +10,7 @@ import VirtualTryOnSelectionScreen from '../screens/VirtualTryOnSelectionScreen'
 import ProcessingScreen from '../screens/ProcessingScreen';
 import ResultScreen from '../screens/ResultScreen';
 import StyleTransferScreen from '../screens/StyleTransferScreen';
+import GhiblifyScreen from '../screens/GhiblifyScreen';
 
 type CameraStackParamList = {
   QuickCameraMain: { editMode?: any; preselectedGenreId?: string; onPhoto?: (uri: string) => void } | undefined;
@@ -19,6 +20,7 @@ type CameraStackParamList = {
   GenreSelection: { imageUri?: string; editMode?: any };
   VirtualTryOnSelection: { editMode: any; personImageUri?: string };
   StyleTransfer: { imageUri?: string };
+  Ghiblify: { imageUri?: string };
   Processing: { imageUri: string; editMode: any; config?: any };
   Result: { originalImage: string; transformedImage: string; editMode: any; config?: any; fromHistory?: boolean };
 };
@@ -55,6 +57,7 @@ const CameraStackContent = () => {
       <Stack.Screen name="GenreSelection" component={GenreSelectionScreen} />
       <Stack.Screen name="VirtualTryOnSelection" component={VirtualTryOnSelectionScreen} />
       <Stack.Screen name="StyleTransfer" component={StyleTransferScreen} />
+      <Stack.Screen name="Ghiblify" component={GhiblifyScreen} />
       <Stack.Screen name="Processing" component={ProcessingScreen} />
       <Stack.Screen name="Result" component={ResultScreen} />
     </Stack.Navigator>

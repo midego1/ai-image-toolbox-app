@@ -476,12 +476,18 @@ export class AIService {
             outputUrl = response.data.output;
             console.log('[AIService] Output is string:', outputUrl);
           } else if (Array.isArray(response.data.output)) {
-            // Output is an array of URLs
-            outputUrl = response.data.output[0];
-            console.log('[AIService] Output is array, using first element:', outputUrl);
+            // Output is an array of URLs - use the LAST element (latest image)
+            const outputArray = response.data.output;
+            outputUrl = outputArray.length > 0 ? outputArray[outputArray.length - 1] : undefined;
+            console.log('[AIService] Output is array, using last element (latest image):', outputUrl);
           } else if (response.data.output && typeof response.data.output === 'object') {
-            // Sometimes output might be an object with a url property
-            outputUrl = (response.data.output as any).url || (response.data.output as any)[0];
+            // Sometimes output might be an object with a url property or array
+            if (Array.isArray(response.data.output)) {
+              const outputArray = response.data.output;
+              outputUrl = outputArray.length > 0 ? outputArray[outputArray.length - 1] : undefined;
+            } else {
+              outputUrl = (response.data.output as any).url;
+            }
             console.log('[AIService] Output is object, extracted:', outputUrl);
           }
 

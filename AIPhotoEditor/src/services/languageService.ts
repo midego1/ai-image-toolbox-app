@@ -2,35 +2,28 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const LANGUAGE_KEY = 'app_language';
 
-export type Language = 'automatic' | 'en' | 'es' | 'fr' | 'de' | 'it' | 'pt' | 'zh' | 'ja' | 'ko';
+export type Language = 'en' | 'other';
 
 export interface LanguageOption {
   code: Language;
   label: string;
   nativeLabel: string;
+  disabled?: boolean;
 }
 
 export const LANGUAGES: LanguageOption[] = [
-  { code: 'automatic', label: 'Automatic', nativeLabel: 'Automatic' },
   { code: 'en', label: 'English', nativeLabel: 'English' },
-  { code: 'es', label: 'Spanish', nativeLabel: 'Español' },
-  { code: 'fr', label: 'French', nativeLabel: 'Français' },
-  { code: 'de', label: 'German', nativeLabel: 'Deutsch' },
-  { code: 'it', label: 'Italian', nativeLabel: 'Italiano' },
-  { code: 'pt', label: 'Portuguese', nativeLabel: 'Português' },
-  { code: 'zh', label: 'Chinese', nativeLabel: '中文' },
-  { code: 'ja', label: 'Japanese', nativeLabel: '日本語' },
-  { code: 'ko', label: 'Korean', nativeLabel: '한국어' },
+  { code: 'other', label: 'Other Languages', nativeLabel: 'Not available right now', disabled: true },
 ];
 
 export class LanguageService {
   static async getLanguage(): Promise<Language> {
     try {
       const language = await AsyncStorage.getItem(LANGUAGE_KEY);
-      return (language as Language) || 'automatic';
+      return (language as Language) || 'en';
     } catch (error) {
       console.error('Failed to get language:', error);
-      return 'automatic';
+      return 'en';
     }
   }
 
@@ -49,11 +42,8 @@ export class LanguageService {
 
   static getLanguageDisplayText(language: Language): string {
     const option = LANGUAGES.find(l => l.code === language);
-    if (!option) return 'Automatic (English)';
-    
-    if (language === 'automatic') {
-      return 'Automatic (English)';
-    }
+    if (!option) return 'English';
+
     return option.nativeLabel;
   }
 }

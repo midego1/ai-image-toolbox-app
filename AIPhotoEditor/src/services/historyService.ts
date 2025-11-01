@@ -5,7 +5,8 @@ const HISTORY_STORAGE_KEY = 'image_history';
 const MAX_HISTORY_ENTRIES = 100; // Limit to prevent storage bloat
 
 export interface HistoryEntry {
-  id: string;              // Unique ID (timestamp-based)
+  id: string;              // Unique history entry ID (timestamp-based)
+  creationId?: string;     // Unique creation ID for tracking and matching
   originalImageUri: string; // Original image URI
   transformedImageUri: string; // Transformed image URI
   editMode: EditMode;      // Which edit mode was used
@@ -45,13 +46,15 @@ export class HistoryService {
     editModeName: string,
     editModeIcon: string,
     config?: EditModeConfig,
-    timestampOverride?: number
+    timestampOverride?: number,
+    creationId?: string
   ): Promise<void> {
     try {
       const entries = await this.getHistoryEntries();
-      
+
       const newEntry: HistoryEntry = {
         id: `history_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        creationId,
         originalImageUri,
         transformedImageUri,
         editMode,

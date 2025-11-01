@@ -16,6 +16,8 @@ import ProfessionalHeadshotsScreen from '../screens/ProfessionalHeadshotsScreen'
 import PopFigureScreen from '../screens/PopFigureScreen';
 import PixelArtGamerScreen from '../screens/PixelArtGamerScreen';
 import StyleTransferScreen from '../screens/StyleTransferScreen';
+import GhiblifyScreen from '../screens/GhiblifyScreen';
+import UpscaleScreen from '../screens/UpscaleScreen';
 import VideoPromptScreen from '../screens/VideoPromptScreen';
 import VideoSelectionScreen from '../screens/VideoSelectionScreen';
 import VideoPreviewScreen from '../screens/VideoPreviewScreen';
@@ -39,6 +41,8 @@ type FeaturesStackParamList = {
   PopFigure: { imageUri?: string; fromToolMockup?: boolean };
   PixelArtGamer: { imageUri?: string };
   StyleTransfer: { imageUri?: string };
+  Ghiblify: { imageUri?: string; fromToolMockup?: boolean };
+  Upscale: { imageUri?: string; fromToolMockup?: boolean };
   // Video screens
   VideoPrompt: { editMode?: any };
   VideoSelection: { editMode?: any };
@@ -60,6 +64,8 @@ export const FeaturesStackNavigator = () => {
       <Stack.Screen name="PopFigure" component={PopFigureScreen} />
       <Stack.Screen name="PixelArtGamer" component={PixelArtGamerScreen} />
       <Stack.Screen name="StyleTransfer" component={StyleTransferScreen} />
+      <Stack.Screen name="Ghiblify" component={GhiblifyScreen} />
+      <Stack.Screen name="Upscale" component={UpscaleScreen} />
       <Stack.Screen name="ImageSelection" component={ImageSelectionScreen} />
       <Stack.Screen name="ImagePreview" component={ImagePreviewScreen} />
       <Stack.Screen name="PostCaptureFeatureSelection" component={PostCaptureFeatureSelectionScreen} />

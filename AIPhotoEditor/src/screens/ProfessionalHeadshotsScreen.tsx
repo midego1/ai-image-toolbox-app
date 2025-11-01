@@ -17,8 +17,8 @@ import { CollapsibleSection } from '../components/CollapsibleSection';
 import { ToolStatsBar } from '../components/ToolStatsBar';
 import { TopTabSwitcher } from '../components/TopTabSwitcher';
 import { ToolGuideTab } from '../components/ToolGuideTab';
-import { ToolExamplesTab } from '../components/ToolExamplesTab';
 import { ToolHistoryTab } from '../components/ToolHistoryTab';
+import { ToolCreditsTab } from '../components/ToolCreditsTab';
 import { TabView } from '../components/TabView';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
@@ -154,20 +154,30 @@ const ProfessionalHeadshotsScreen = () => {
                 shadowOpacity: 0.1,
                 shadowRadius: 12,
                 elevation: 4,
-              }]}> 
+              }]}>
                 <Image
                   source={{ uri: localImageUri }}
                   style={styles.heroImage}
                   resizeMode="cover"
                 />
-                <View style={[styles.expandOverlay, { backgroundColor: 'transparent' }]}> 
-                  <View style={[styles.expandButton, { backgroundColor: colors.primary }]}> 
+                <View style={[styles.expandOverlay, { backgroundColor: 'transparent' }]}>
+                  <View style={[styles.expandButton, { backgroundColor: colors.primary }]}>
                     <Ionicons name="expand" size={18} color="#FFFFFF" />
                     <Text style={{ color: '#FFFFFF', fontSize: typography.scaled.sm, fontWeight: typography.weight.medium }}>
                       Tap to view full size
                     </Text>
                   </View>
                 </View>
+                <TouchableOpacity
+                  style={[styles.removeButton, { backgroundColor: colors.error }]}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    haptic.light();
+                    setLocalImageUri(undefined);
+                  }}
+                >
+                  <Ionicons name="close" size={16} color="#FFFFFF" />
+                </TouchableOpacity>
               </View>
             </TouchableOpacity>
           ) : (
@@ -210,7 +220,7 @@ const ProfessionalHeadshotsScreen = () => {
           <View style={{ paddingHorizontal: spacing.base, marginTop: spacing.sm }}>
             <ToolStatsBar
               time="8-12 sec"
-              credits="0.5 credit"
+              cost="0.5 cost"
               rating="4.8/5"
               usage="950 today"
             />
@@ -281,8 +291,8 @@ const ProfessionalHeadshotsScreen = () => {
           <TabView
             tabs={[
               { id: 'guide', label: 'Guide', icon: 'book-outline' },
-              { id: 'examples', label: 'Examples', icon: 'images-outline' },
               { id: 'info', label: 'Info', icon: 'information-circle-outline' },
+              { id: 'cost', label: 'Cost', icon: 'card-outline' },
             ]}
             defaultTab="guide"
             containerStyle={{ marginHorizontal: spacing.base, marginTop: spacing.lg }}
@@ -291,35 +301,6 @@ const ProfessionalHeadshotsScreen = () => {
             <ToolGuideTab
               title="How to Create Professional Headshots"
               content={`Create professional headshots perfect for LinkedIn, resumes, and business profiles.\n\n📸 Step 1: Select Your Photo\nChoose a portrait photo from your library or take a new one. Clear, well-lit photos work best.\n\n🎨 Step 2: Choose Style (Optional)\nSelect a professional style that suits your needs:\n• Corporate - Traditional business look\n• Creative - Modern, artistic style\n• Executive - Premium professional appearance\n\n✨ Step 3: Generate\nTap Generate Headshot and wait 10-15 seconds. The AI will enhance facial clarity, improve lighting, and apply professional backgrounds while preserving your natural appearance.\n\n💼 Step 4: Use Your Headshot\nYour professional headshot is perfect for:\n• LinkedIn profiles\n• Resume photos\n• Business cards\n• Professional websites\n• Email signatures\n\n🎯 Pro Tips\n• Your identity is preserved while enhancing quality\n• Multiple styles let you match your profession\n• Studio-quality backgrounds create a polished look\n• Enhanced lighting makes you look professional\n• Works great even with casual photos`}
-            />
-
-            {/* Examples Tab */}
-            <ToolExamplesTab
-              title="Professional Headshot Examples"
-              examples={[
-                {
-                  id: '1',
-                  title: 'Corporate Headshot',
-                  description: 'Professional corporate style with office background',
-                  tags: ['Corporate', 'Office'],
-                },
-                {
-                  id: '2',
-                  title: 'Creative Headshot',
-                  description: 'Modern creative style with studio background',
-                  tags: ['Creative', 'Studio'],
-                },
-                {
-                  id: '3',
-                  title: 'Executive Headshot',
-                  description: 'Executive style with professional lighting',
-                  tags: ['Executive', 'Professional'],
-                },
-              ]}
-              onExamplePress={(example) => {
-                haptic.light();
-                console.log('Example pressed:', example.title);
-              }}
             />
 
             {/* Info Tab */}
@@ -337,6 +318,12 @@ const ProfessionalHeadshotsScreen = () => {
                 expandableHow={false}
               />
             </View>
+
+            {/* Credits Tab */}
+            <ToolCreditsTab
+              creditCost={0.5}
+              processingTime="8-12 sec"
+            />
           </TabView>
           
           {/* Extra bottom padding */}
@@ -350,26 +337,9 @@ const ProfessionalHeadshotsScreen = () => {
 
       <ActionButtonBar
         visible={activeTopTab === 'tool' && !!localImageUri}
-        bottomContent={
-          <View style={[styles.timingInfo, {
-            backgroundColor: colors.surface,
-            paddingHorizontal: spacing.base,
-            paddingVertical: spacing.xs,
-            borderRadius: 20,
-          }]}>
-            <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
-            <Text style={[styles.timingText, {
-              color: colors.textSecondary,
-              fontSize: typography.scaled.xs,
-              marginLeft: spacing.xs,
-            }]}>
-              Usually takes 10–15 seconds
-            </Text>
-          </View>
-        }
       >
         <Button
-          title="Generate Headshot"
+          title="Generate Headshot (10-15s)"
           onPress={handleGenerate}
           size="large"
           style={{ minHeight: 56, width: '100%' }}
@@ -494,6 +464,16 @@ const styles = StyleSheet.create({
   },
   timingText: {
     // Dynamic styles applied inline
+  },
+  removeButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

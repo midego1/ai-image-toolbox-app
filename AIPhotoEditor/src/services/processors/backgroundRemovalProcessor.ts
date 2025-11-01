@@ -182,9 +182,31 @@ export class BackgroundRemovalProcessor extends BaseProcessor {
         
         if (status === 'succeeded') {
           const output = statusResponse.data.output;
-          const imageUrl = Array.isArray(output) ? output[0] : output;
+          // Use the last element of array (latest image) instead of first
+          const imageUrl = Array.isArray(output) && output.length > 0 
+            ? output[output.length - 1] 
+            : output;
           
-          return this.createSuccessResponse(imageUrl);
+          if (!imageUrl) {
+            return this.createErrorResponse('No output URL in response');
+          }
+
+          // Download the image to local storage before returning
+          try {
+            console.log('[BackgroundRemovalProcessor] Downloading image from:', imageUrl);
+            const fileUri = `${FileSystem.cacheDirectory}rembg_${Date.now()}.png`;
+            const downloadResult = await FileSystem.downloadAsync(imageUrl, fileUri);
+            
+            if (!downloadResult.uri) {
+              return this.createErrorResponse('Failed to download processed image');
+            }
+            
+            console.log('[BackgroundRemovalProcessor] Image downloaded successfully to:', downloadResult.uri);
+            return this.createSuccessResponse(downloadResult.uri);
+          } catch (downloadError: any) {
+            console.error('[BackgroundRemovalProcessor] Download error:', downloadError);
+            return this.createErrorResponse(`Failed to download image: ${downloadError.message}`);
+          }
         } else if (status === 'failed' || status === 'canceled') {
           return this.createErrorResponse(
             statusResponse.data.error || 'Background removal failed'

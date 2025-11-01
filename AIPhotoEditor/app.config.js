@@ -1,7 +1,7 @@
 // app.config.js - Expo configuration that supports environment variables
 // 
 // For LOCAL DEVELOPMENT:
-//   - Create a .env file in this directory with REPLICATE_API_KEY and KIE_AI_API_KEY
+//   - Create a .env file in this directory with REPLICATE_API_KEY, KIE_AI_API_KEY, and REVENUE_CAT_API_KEY
 //   - The .env file is gitignored and will NOT be uploaded to EAS builds
 //
 // For PRODUCTION/TESTFLIGHT (EAS Builds):
@@ -24,12 +24,15 @@ module.exports = (() => {
   // we also check for them in case they're available in a different way.
   const replicateApiKey = process.env.REPLICATE_API_KEY || "";
   const kieAIApiKey = process.env.KIE_AI_API_KEY || "";
+  const revenueCatApiKey = process.env.REVENUE_CAT_API_KEY || "";
+  const supabaseUrl = process.env.SUPABASE_URL || "";
+  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "";
 
   return {
     expo: {
-      name: "AI Photo Editor",
+      name: "Pixel Potion",
       slug: "aiphotoeditor",
-      version: "0.1.8",
+      version: "0.1.9",
       orientation: "portrait",
       icon: "./assets/icon.png",
       userInterfaceStyle: "automatic",
@@ -39,7 +42,7 @@ module.exports = (() => {
       ios: {
         supportsTablet: false,
         bundleIdentifier: "com.midego.aiphotoeditor",
-        buildNumber: "16"
+        buildNumber: "17"
       },
       web: {
         favicon: "./assets/images/icon.png",
@@ -52,13 +55,17 @@ module.exports = (() => {
         "expo-media-library",
         "expo-font"
       ],
+      scheme: "com.midego.aiphotoeditor",
       extra: {
         // API keys: Read from environment variables or use empty strings
-        // For local development: Create a .env file with REPLICATE_API_KEY and KIE_AI_API_KEY
+        // For local development: Create a .env file with all required keys
         // For production: Use EAS Environment Variables (eas env:create)
         // EAS automatically injects these during builds
         replicateApiKey: replicateApiKey,
         kieAIApiKey: kieAIApiKey,
+        revenueCatApiKey: revenueCatApiKey,
+        supabaseUrl: supabaseUrl,
+        supabaseAnonKey: supabaseAnonKey,
         eas: {
           projectId: "9a839619-d86d-41cd-b86b-2eeb6a7f0edb"
         }

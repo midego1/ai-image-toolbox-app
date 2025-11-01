@@ -6,8 +6,11 @@ import StatisticsScreen from '../screens/StatisticsScreen';
 import LanguageSelectionScreen from '../screens/LanguageSelectionScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
 import ApiKeysSettingsScreen from '../screens/ApiKeysSettingsScreen';
-import ToolMockupScreen from '../screens/ToolMockupScreen';
-import RemoveBackgroundMockupDetailScreen from '../screens/RemoveBackgroundMockupDetailScreen';
+import RevenueCatPackagesTestScreen from '../screens/RevenueCatPackagesTestScreen';
+import ResultScreenMockup from '../screens/ResultScreenMockup';
+import WorkflowBetaScreen from '../screens/WorkflowBetaScreen';
+import ProcessingScreen from '../screens/ProcessingScreen';
+import ResultScreen from '../screens/ResultScreen';
 import { SettingsStackParamList } from '../types/navigation';
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
@@ -72,16 +75,40 @@ export const SettingsStackNavigator = () => {
         }}
       />
       <Stack.Screen
-        name="ToolMockup"
-        component={ToolMockupScreen}
+        name="RevenueCatPackagesTest"
+        component={RevenueCatPackagesTestScreen}
         options={{
           headerShown: false,
           gestureEnabled: true,
         }}
       />
       <Stack.Screen
-        name="RemoveBackgroundMockupDetail"
-        component={RemoveBackgroundMockupDetailScreen}
+        name="ResultScreenMockup"
+        component={ResultScreenMockup}
+        options={{
+          headerShown: false,
+          gestureEnabled: true,
+        }}
+      />
+      <Stack.Screen
+        name="WorkflowBeta"
+        component={WorkflowBetaScreen}
+        options={{
+          headerShown: false,
+          gestureEnabled: true,
+        }}
+      />
+      <Stack.Screen
+        name="Processing"
+        component={ProcessingScreen}
+        options={{
+          headerShown: false,
+          gestureEnabled: true,
+        }}
+      />
+      <Stack.Screen
+        name="Result"
+        component={ResultScreen}
         options={{
           headerShown: false,
           gestureEnabled: true,

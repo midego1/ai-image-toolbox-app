@@ -1,26 +1,24 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, ScrollView, Image, Dimensions, Text, TouchableOpacity, Modal, Pressable, Animated, Alert, Platform } from 'react-native';
-import { useRoute, useNavigation, usePreventRemove } from '@react-navigation/native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, StyleSheet, ScrollView, Image, Dimensions, Text, TouchableOpacity, Modal, Pressable, Animated, Alert } from 'react-native';
+import { useRoute, useNavigation } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { NavigationProp, RouteProp } from '../types/navigation';
 import { EditMode } from '../types/editModes';
 import { AIToolHeader } from '../components/AIToolHeader';
-import { AIToolInfoCard } from '../components/AIToolInfoCard';
 import { Button } from '../components/Button';
-import { CaptureLibraryButtons } from '../components/CaptureLibraryButtons';
 import { ActionButtonBar } from '../components/ActionButtonBar';
+import { CaptureLibraryButtons } from '../components/CaptureLibraryButtons';
+import { CollapsibleSection } from '../components/CollapsibleSection';
 import ColorPicker from '../components/ColorPicker';
 import { TopTabSwitcher } from '../components/TopTabSwitcher';
 import { ToolGuideTab } from '../components/ToolGuideTab';
-import { ToolExamplesTab, Example } from '../components/ToolExamplesTab';
 import { ToolHistoryTab } from '../components/ToolHistoryTab';
 import { TabView } from '../components/TabView';
-import { ToolStatsBar } from '../components/ToolStatsBar';
-import { CollapsibleSection } from '../components/CollapsibleSection';
-import { AdvancedOptionsSelector } from '../components/AdvancedOptionsSelector';
+import { AIToolInfoCard } from '../components/AIToolInfoCard';
+import { ToolCreditsTab } from '../components/ToolCreditsTab';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
 import { spacing as baseSpacing } from '../theme/spacing';
@@ -31,26 +29,30 @@ const { width, height } = Dimensions.get('window');
 const PixelArtGamerScreen = () => {
   const { theme } = useTheme();
   const { colors, typography, spacing } = theme;
-  const insets = useSafeAreaInsets();
   const scrollBottomPadding = useScrollBottomPadding();
   const scrollBottomPaddingWithButton = useScrollBottomPaddingWithActionButton();
   const navigation = useNavigation<NavigationProp<'Processing'>>();
   const route = useRoute<RouteProp<'GenreSelection'>>();
   const { imageUri, fromToolMockup, config: routeConfig } = (route.params as any) || {};
+
+  // Default values
+  const DEFAULT_BIT_DEPTH = '16-bit';
+  const DEFAULT_GAME_STYLE = 'rpg';
+  const DEFAULT_BACKGROUND_TYPE = 'color';
+  const DEFAULT_BACKGROUND_COLOR = '#FFFFFF';
+  const DEFAULT_IS_TRANSPARENT = false;
+  const DEFAULT_SCENE_TYPE = 'gaming';
+  const DEFAULT_GRADIENT_TYPE = 'sunset';
+
   const [localImageUri, setLocalImageUri] = useState<string | undefined>(imageUri);
   const [showImagePreview, setShowImagePreview] = useState(false);
-  const [selectedBitDepth, setSelectedBitDepth] = useState<'8-bit' | '16-bit'>((routeConfig?.bitDepth as any) || '16-bit');
-  const [selectedGameStyle, setSelectedGameStyle] = useState<'rpg' | 'platformer' | 'arcade' | 'fighter' | 'adventure' | 'indie'>((routeConfig?.gameStyle as any) || 'rpg');
-  const [selectedBackground, setSelectedBackground] = useState<'color' | 'scene' | 'gradient'>((() => {
-    const bg = (routeConfig?.backgroundStyle as any);
-    // Migrate old 'transparent' or 'solid' to 'color'
-    return (bg === 'transparent' || bg === 'solid') ? 'color' : (bg || 'color');
-  })());
-  // Background sub-options
-  const [backgroundColor, setBackgroundColor] = useState<string>((routeConfig?.transparentColor as string) || (routeConfig?.backgroundColor as string) || '#FFFFFF');
-  const [isTransparent, setIsTransparent] = useState<boolean>((routeConfig?.backgroundStyle as any) === 'transparent' || (routeConfig?.isTransparent as boolean) || false);
-  const [sceneType, setSceneType] = useState<'gaming' | 'fantasy' | 'cyberpunk' | 'nature'>((routeConfig?.sceneType as any) || 'gaming');
-  const [gradientType, setGradientType] = useState<'sunset' | 'ocean' | 'forest' | 'neon'>((routeConfig?.gradientType as any) || 'sunset');
+  const [selectedBitDepth, setSelectedBitDepth] = useState<'8-bit' | '16-bit'>((routeConfig?.bitDepth as any) || DEFAULT_BIT_DEPTH);
+  const [selectedGameStyle, setSelectedGameStyle] = useState<'rpg' | 'platformer' | 'arcade' | 'fighter' | 'adventure' | 'indie'>((routeConfig?.gameStyle as any) || DEFAULT_GAME_STYLE);
+  const [selectedBackgroundType, setSelectedBackgroundType] = useState<'color' | 'scene' | 'gradient'>(DEFAULT_BACKGROUND_TYPE);
+  const [backgroundColor, setBackgroundColor] = useState<string>(DEFAULT_BACKGROUND_COLOR);
+  const [isTransparent, setIsTransparent] = useState<boolean>(DEFAULT_IS_TRANSPARENT);
+  const [sceneType, setSceneType] = useState<'gaming' | 'fantasy' | 'cyberpunk' | 'nature'>(DEFAULT_SCENE_TYPE);
+  const [gradientType, setGradientType] = useState<'sunset' | 'ocean' | 'forest' | 'neon'>(DEFAULT_GRADIENT_TYPE);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [activeTopTab, setActiveTopTab] = useState<'tool' | 'guide' | 'history'>('tool');
   const cardScale = useRef(new Animated.Value(0.96)).current;
@@ -94,13 +96,62 @@ const PixelArtGamerScreen = () => {
 
   const openCamera = () => {
     haptic.medium();
-    // Navigate to QuickCameraLocal within Features stack
-    (navigation as any).navigate('QuickCameraLocal', { 
+    (navigation as any).navigate('QuickCameraLocal', {
       editMode: EditMode.PIXEL_ART_GAMER,
       onPhoto: (uri: string) => {
         setLocalImageUri(uri);
       }
     });
+  };
+
+  const handleResetToDefaults = () => {
+    haptic.medium();
+    setSelectedBitDepth(DEFAULT_BIT_DEPTH);
+    setSelectedGameStyle(DEFAULT_GAME_STYLE);
+    setSelectedBackgroundType(DEFAULT_BACKGROUND_TYPE);
+    setBackgroundColor(DEFAULT_BACKGROUND_COLOR);
+    setIsTransparent(DEFAULT_IS_TRANSPARENT);
+    setSceneType(DEFAULT_SCENE_TYPE);
+    setGradientType(DEFAULT_GRADIENT_TYPE);
+  };
+
+  const handleRandomize = () => {
+    haptic.medium();
+
+    // Randomize bit depth
+    const bitDepths: ('8-bit' | '16-bit')[] = ['8-bit', '16-bit'];
+    setSelectedBitDepth(bitDepths[Math.floor(Math.random() * bitDepths.length)]);
+
+    // Randomize game style
+    const gameStyles: ('rpg' | 'platformer' | 'arcade' | 'fighter' | 'adventure' | 'indie')[] =
+      ['rpg', 'platformer', 'arcade', 'fighter', 'adventure', 'indie'];
+    setSelectedGameStyle(gameStyles[Math.floor(Math.random() * gameStyles.length)]);
+
+    // Randomize background type
+    const backgroundTypes: ('color' | 'scene' | 'gradient')[] = ['color', 'scene', 'gradient'];
+    const randomBgType = backgroundTypes[Math.floor(Math.random() * backgroundTypes.length)];
+    setSelectedBackgroundType(randomBgType);
+
+    // If color, randomize color
+    if (randomBgType === 'color') {
+      const colors = ['#FFFFFF', '#000000', '#FF6B6B', '#4ECDC4', '#95E1D3', '#F38181', '#AA96DA', '#FCBAD3'];
+      setBackgroundColor(colors[Math.floor(Math.random() * colors.length)]);
+      setIsTransparent(Math.random() > 0.7); // 30% chance of transparent
+    }
+
+    // If scene, randomize scene type
+    if (randomBgType === 'scene') {
+      const sceneTypes: ('gaming' | 'fantasy' | 'cyberpunk' | 'nature')[] =
+        ['gaming', 'fantasy', 'cyberpunk', 'nature'];
+      setSceneType(sceneTypes[Math.floor(Math.random() * sceneTypes.length)]);
+    }
+
+    // If gradient, randomize gradient type
+    if (randomBgType === 'gradient') {
+      const gradientTypes: ('sunset' | 'ocean' | 'forest' | 'neon')[] =
+        ['sunset', 'ocean', 'forest', 'neon'];
+      setGradientType(gradientTypes[Math.floor(Math.random() * gradientTypes.length)]);
+    }
   };
 
   const handleContinue = () => {
@@ -110,21 +161,19 @@ const PixelArtGamerScreen = () => {
       bitDepth: selectedBitDepth,
       gameStyle: selectedGameStyle,
     };
-    
-    // Map background selection to processor's expected format
-    if (selectedBackground === 'color') {
-      // Convert 'color' to 'transparent' or 'solid' based on isTransparent flag
+
+    if (selectedBackgroundType === 'color') {
       config.backgroundStyle = isTransparent ? 'transparent' : 'solid';
       config.transparentColor = backgroundColor;
     } else {
-      config.backgroundStyle = selectedBackground; // 'scene' or 'gradient'
-      if (selectedBackground === 'scene') {
+      config.backgroundStyle = selectedBackgroundType;
+      if (selectedBackgroundType === 'scene') {
         config.sceneType = sceneType;
-      } else if (selectedBackground === 'gradient') {
+      } else if (selectedBackgroundType === 'gradient') {
         config.gradientType = gradientType;
       }
     }
-    
+
     const params = {
       imageUri: localImageUri,
       editMode: EditMode.PIXEL_ART_GAMER,
@@ -133,78 +182,20 @@ const PixelArtGamerScreen = () => {
     (navigation as any).navigate('Processing', params);
   };
 
-  // Handle swipe back when coming from ToolMockupScreen
-  const handleBackToToolMockup = React.useCallback(() => {
-    const parentNav = navigation.getParent();
-    if (parentNav) {
-      // Navigate back to Settings tab, then to ToolMockup screen
-      (parentNav as any).navigate('MainTabs', {
-        screen: 'Settings',
-        params: {
-          screen: 'ToolMockup',
-        }
-      });
-    } else {
-      // Fallback: just go back
-      navigation.goBack();
-    }
-  }, [navigation]);
-
-  // Prevent native back when coming from ToolMockupScreen and handle it ourselves
-  usePreventRemove(
-    fromToolMockup === true,
-    ({ data }) => {
-      handleBackToToolMockup();
-    }
-  );
-
-  // Helper to format labels (e.g., "rpg" -> "RPG", "gaming" -> "Gaming")
-  const formatLabel = (value?: string, fallback: string = ''): string => {
-    const v = (value || fallback).toString().toLowerCase();
-    if (!v.length) return '';
-    
-    // Special cases for acronyms
-    const acronyms: Record<string, string> = {
-      'rpg': 'RPG',
-      'nes': 'NES',
-      'snes': 'SNES',
-    };
-    
-    if (acronyms[v]) {
-      return acronyms[v];
-    }
-    
-    // Capitalize first letter
-    return v.charAt(0).toUpperCase() + v.slice(1);
+  const formatLabel = (value?: string): string => {
+    if (!value) return '';
+    const acronyms: Record<string, string> = { 'rpg': 'RPG' };
+    if (acronyms[value.toLowerCase()]) return acronyms[value.toLowerCase()];
+    return value.charAt(0).toUpperCase() + value.slice(1);
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundSecondary }]} edges={[]}> 
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundSecondary }]} edges={[]}>
       <AIToolHeader
         title="Pixel Art Gamer"
         backgroundColor={colors.backgroundSecondary}
         showBackButton={true}
-        onBack={() => {
-          if (fromToolMockup) {
-            // Navigate back to ToolMockupScreen in Settings stack
-            const parentNav = navigation.getParent();
-            if (parentNav) {
-              // Navigate to Settings tab, then to ToolMockup screen
-              (parentNav as any).navigate('MainTabs', {
-                screen: 'Settings',
-                params: {
-                  screen: 'ToolMockup',
-                }
-              });
-            } else {
-              // Fallback: just go back
-              navigation.goBack();
-            }
-          } else {
-            // Normal back behavior - go back in Features stack
-            navigation.goBack();
-          }
-        }}
+        onBack={() => navigation.goBack()}
       />
 
       {/* Floating Top Tab Switcher */}
@@ -218,7 +209,6 @@ const PixelArtGamerScreen = () => {
         onTabChange={(tabId) => setActiveTopTab(tabId as 'tool' | 'guide' | 'history')}
       />
 
-      {/* Add top padding to content to account for floating tab bar */}
       <View style={{ height: 12 + 48 + 12 }} />
 
       {activeTopTab === 'tool' && (
@@ -226,23 +216,21 @@ const PixelArtGamerScreen = () => {
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
-          // Use proper padding that accounts for floating tab bar
-          // When button is visible, account for ActionButtonBar height
-          localImageUri 
-            ? { paddingBottom: scrollBottomPaddingWithButton } 
+          localImageUri
+            ? { paddingBottom: scrollBottomPaddingWithButton }
             : { paddingBottom: scrollBottomPadding },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero Section */}
-        <View style={{ paddingHorizontal: spacing.base, paddingTop: spacing.md, alignItems: 'center' }}>
+        {/* Hero Section with Integrated Controls */}
+        <View style={{ paddingHorizontal: spacing.base, paddingTop: spacing.md }}>
           {localImageUri ? (
             <TouchableOpacity
               onPress={() => { haptic.light(); setShowImagePreview(true); }}
               activeOpacity={0.9}
-              style={{ alignSelf: 'center' }}
             >
               <View style={[styles.heroImageWrapper, {
+                aspectRatio: 1,
                 backgroundColor: colors.surface,
                 borderColor: colors.border,
                 shadowColor: '#000',
@@ -250,20 +238,30 @@ const PixelArtGamerScreen = () => {
                 shadowOpacity: 0.1,
                 shadowRadius: 12,
                 elevation: 4,
-              }]}> 
+              }]}>
                 <Image
                   source={{ uri: localImageUri }}
                   style={styles.heroImage}
                   resizeMode="cover"
                 />
-                <View style={[styles.expandOverlay, { backgroundColor: 'transparent' }]}> 
-                  <View style={[styles.expandButton, { backgroundColor: colors.primary }]}> 
-                    <Ionicons name="expand" size={18} color="#FFFFFF" />
-                    <Text style={{ color: '#FFFFFF', fontSize: typography.scaled.sm, fontWeight: typography.weight.medium }}>
-                      Tap to view full size
+                <View style={styles.expandOverlay}>
+                  <View style={[styles.expandButton, { backgroundColor: colors.primary + 'DD' }]}>
+                    <Ionicons name="expand" size={16} color="#FFFFFF" />
+                    <Text style={{ color: '#FFFFFF', fontSize: typography.scaled.xs, fontWeight: typography.weight.medium }}>
+                      Tap to view full
                     </Text>
                   </View>
                 </View>
+                <TouchableOpacity
+                  style={[styles.removeButton, { backgroundColor: colors.error }]}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    haptic.light();
+                    setLocalImageUri(undefined);
+                  }}
+                >
+                  <Ionicons name="close" size={16} color="#FFFFFF" />
+                </TouchableOpacity>
               </View>
             </TouchableOpacity>
           ) : (
@@ -302,227 +300,431 @@ const PixelArtGamerScreen = () => {
             </View>
           )}
 
-          {/* Tool Stats Bar */}
-          <View style={{ paddingHorizontal: spacing.base, marginTop: spacing.sm }}>
-            <ToolStatsBar
-              time="8-12 sec"
-              credits="0.3 credit"
-              rating="4.9/5"
-              usage="850 today"
-            />
+          {/* Inline Stats */}
+          <View style={[styles.inlineStats, {
+            backgroundColor: colors.surface,
+            borderRadius: 12,
+            marginTop: spacing.sm,
+          }]}>
+            <View style={styles.statItem}>
+              <Ionicons name="flash" size={16} color={colors.primary} />
+              <Text style={[styles.statText, { color: colors.text, fontSize: typography.scaled.xs }]}>8-12s</Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.statItem}>
+              <Ionicons name="diamond" size={16} color={colors.primary} />
+              <Text style={[styles.statText, { color: colors.text, fontSize: typography.scaled.xs }]}>0.3</Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.statItem}>
+              <Ionicons name="star" size={16} color={colors.primary} />
+              <Text style={[styles.statText, { color: colors.text, fontSize: typography.scaled.xs }]}>4.9/5</Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.statItem}>
+              <Ionicons name="flame" size={16} color={colors.primary} />
+              <Text style={[styles.statText, { color: colors.text, fontSize: typography.scaled.xs }]}>850 today</Text>
+            </View>
           </View>
         </View>
 
-        {/* Advanced Options - Using Reusable CollapsibleSection Component */}
-        <View style={{ paddingHorizontal: spacing.base, marginTop: spacing.lg }}>
+        {/* Advanced Settings */}
+        <View style={{ paddingHorizontal: spacing.base, marginTop: spacing.xl }}>
           <CollapsibleSection
-            title="Advanced Options"
+            title="⚙️ Advanced Settings"
             defaultExpanded={true}
-            containerStyle={{ marginBottom: spacing.base }}
-            previewText={[
-              selectedBitDepth === '8-bit' ? '8-bit' : '16-bit',
-              formatLabel(selectedGameStyle),
-              formatLabel(selectedBackground === 'color' ? (isTransparent ? 'Transparent' : 'Color') : selectedBackground),
-            ].filter(Boolean).join(' • ')}
+            hideIcon={true}
           >
-            {/* Bit Depth */}
-            <AdvancedOptionsSelector
-              label="Bit Depth"
-              labelIcon="📊"
-              options={[
-                { id: '8-bit', label: '8-bit', icon: '📱' },
-                { id: '16-bit', label: '16-bit', icon: '🎮' },
-              ]}
-              selectedId={selectedBitDepth}
-              onSelect={(id) => {
-                haptic.light();
-                setSelectedBitDepth(id as '8-bit' | '16-bit');
-              }}
-              layout="horizontal"
-              showSeparator={true}
-            />
+            <View style={[styles.optionCard, {
+              backgroundColor: 'transparent',
+              borderWidth: 0,
+              paddingHorizontal: 0,
+              paddingBottom: spacing.xs,
+              marginTop: -spacing.xs,
+            }]}>
+              {/* Card Header */}
+              <View style={[styles.cardHeader, { marginBottom: spacing.xs }]}>
+                <Text style={[styles.cardHeaderText, {
+                  color: colors.textSecondary,
+                  fontSize: typography.scaled.sm,
+                  fontWeight: typography.weight.bold,
+                  letterSpacing: 1,
+                  textTransform: 'uppercase',
+                }]}>
+                  Style Options
+                </Text>
+              </View>
 
-            {/* Game Style */}
-            <AdvancedOptionsSelector
-              label="Game Style"
-              labelIcon="🎮"
-              options={[
-                { id: 'rpg', label: 'RPG', icon: '⚔️' },
-                { id: 'platformer', label: 'Platformer', icon: '🏃' },
-                { id: 'fighter', label: 'Fighter', icon: '👊' },
-                { id: 'adventure', label: 'Adventure', icon: '🗡️' },
-                { id: 'arcade', label: 'Arcade', icon: '🎯' },
-                { id: 'indie', label: 'Indie', icon: '🎨' },
-              ]}
-              selectedId={selectedGameStyle}
-              onSelect={(id) => {
-                haptic.light();
-                setSelectedGameStyle(id as any);
-              }}
-              layout="horizontal"
-              showSeparator={true}
-            />
+            {/* Pixel Quality Toggle */}
+            <View style={styles.inlineOption}>
+              <Text style={[styles.inlineLabel, {
+                color: colors.textSecondary,
+                fontSize: typography.scaled.sm,
+                fontWeight: typography.weight.medium,
+              }]}>
+                Pixel Quality
+              </Text>
+              <View style={[styles.qualityToggle, {
+                backgroundColor: colors.backgroundSecondary,
+                borderRadius: 8,
+              }]}>
+                <TouchableOpacity
+                  onPress={() => {
+                    haptic.light();
+                    setSelectedBitDepth('8-bit');
+                  }}
+                  style={[styles.qualityToggleButton, {
+                    backgroundColor: selectedBitDepth === '8-bit' ? colors.primary : 'transparent',
+                  }]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.qualityToggleText, {
+                    color: selectedBitDepth === '8-bit' ? '#FFFFFF' : colors.text,
+                    fontSize: typography.scaled.sm,
+                    fontWeight: selectedBitDepth === '8-bit' ? typography.weight.semibold : typography.weight.medium,
+                  }]}>
+                    8-bit
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    haptic.light();
+                    setSelectedBitDepth('16-bit');
+                  }}
+                  style={[styles.qualityToggleButton, {
+                    backgroundColor: selectedBitDepth === '16-bit' ? colors.primary : 'transparent',
+                  }]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.qualityToggleText, {
+                    color: selectedBitDepth === '16-bit' ? '#FFFFFF' : colors.text,
+                    fontSize: typography.scaled.sm,
+                    fontWeight: selectedBitDepth === '16-bit' ? typography.weight.semibold : typography.weight.medium,
+                  }]}>
+                    16-bit
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
 
-            {/* Background */}
-            <AdvancedOptionsSelector
-              label="Background"
-              labelIcon="🖼️"
-              options={[
-                {
-                  id: 'color',
-                  label: 'Color',
-                  icon: '🎨',
-                  renderCustom: (isSelected: boolean, onPress: () => void) => (
+            {/* Game Style Slider */}
+            <View style={styles.inlineOption}>
+              <Text style={[styles.inlineLabel, {
+                color: colors.textSecondary,
+                fontSize: typography.scaled.sm,
+                fontWeight: typography.weight.medium,
+                marginRight: spacing.base,
+              }]}>
+                Game Style
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.gameStyleSlider}
+                contentContainerStyle={{ gap: spacing.xs, paddingLeft: spacing.xs }}
+              >
+                {[
+                  { id: 'rpg', label: 'RPG', icon: '⚔️' },
+                  { id: 'platformer', label: 'Platform', icon: '🏃' },
+                  { id: 'fighter', label: 'Fighter', icon: '👊' },
+                  { id: 'adventure', label: 'Adventure', icon: '🗡️' },
+                  { id: 'arcade', label: 'Arcade', icon: '🎯' },
+                  { id: 'indie', label: 'Indie', icon: '🎨' },
+                ].map((style) => {
+                  const isSelected = selectedGameStyle === style.id;
+                  return (
                     <TouchableOpacity
-                      onPress={onPress}
-                      style={[styles.bitDepthButton, {
-                        backgroundColor: isSelected ? colors.primary : colors.background,
+                      key={style.id}
+                      onPress={() => {
+                        haptic.light();
+                        setSelectedGameStyle(style.id as any);
+                      }}
+                      style={[styles.gameStyleSliderChip, {
+                        backgroundColor: isSelected ? colors.primary : colors.backgroundSecondary,
                         borderColor: isSelected ? colors.primary : colors.border,
                       }]}
+                      activeOpacity={0.7}
                     >
-                      <View style={[styles.colorIndicator, { 
-                        backgroundColor: isTransparent ? 'transparent' : backgroundColor,
-                        borderWidth: isTransparent ? 1 : 0,
-                        borderColor: colors.border,
-                      }]} />
-                      <Text style={[styles.bitDepthText, {
+                      <Text style={{ fontSize: 14 }}>{style.icon}</Text>
+                      <Text style={[styles.gameStyleSliderLabel, {
                         color: isSelected ? '#FFFFFF' : colors.text,
-                        fontSize: typography.scaled.xs,
+                        fontSize: typography.scaled.sm,
                         fontWeight: typography.weight.medium,
                       }]}>
-                        Color
+                        {style.label}
                       </Text>
                     </TouchableOpacity>
-                  ),
-                },
-                { id: 'scene', label: 'Gaming Scene', icon: '🎮' },
-                { id: 'gradient', label: 'Gradient', icon: '🌈' },
-              ]}
-              selectedId={selectedBackground}
-              onSelect={(id) => {
-                haptic.light();
-                if (id === 'color') {
-                  setSelectedBackground('color');
-                } else {
-                  setSelectedBackground(id as any);
-                }
-              }}
-              layout="horizontal"
-            />
+                  );
+                })}
+              </ScrollView>
+            </View>
 
-            {/* Background Sub-options */}
-            {selectedBackground === 'color' && (
+            {/* Background Tabs - Inline */}
+            <View style={styles.inlineOption}>
+              <Text style={[styles.inlineLabel, {
+                color: colors.textSecondary,
+                fontSize: typography.scaled.sm,
+                fontWeight: typography.weight.medium,
+                marginRight: spacing.base,
+              }]}>
+                Background
+              </Text>
+              <View style={[styles.backgroundTabsInline, {
+                backgroundColor: colors.backgroundSecondary,
+                borderRadius: 8,
+              }]}>
+                {[
+                  { id: 'color', label: 'Color', icon: '🎨' },
+                  { id: 'scene', label: 'Scene', icon: '🎮' },
+                  { id: 'gradient', label: 'Fade', icon: '🌈' },
+                ].map((tab) => {
+                  const isSelected = selectedBackgroundType === tab.id;
+                  return (
+                    <TouchableOpacity
+                      key={tab.id}
+                      onPress={() => {
+                        haptic.light();
+                        setSelectedBackgroundType(tab.id as any);
+                      }}
+                      style={[styles.backgroundTabInline, {
+                        backgroundColor: isSelected ? colors.primary : 'transparent',
+                      }]}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={{ fontSize: 12 }}>{tab.icon}</Text>
+                      <Text style={[styles.backgroundTabLabelInline, {
+                        color: isSelected ? '#FFFFFF' : colors.text,
+                        fontSize: typography.scaled.sm,
+                        fontWeight: isSelected ? typography.weight.semibold : typography.weight.medium,
+                      }]}>
+                        {tab.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Color Options - Only show when Color is selected */}
+            {selectedBackgroundType === 'color' && (
               <>
-                <View style={[styles.bitDepthContainer]}>
-                  <Text style={[styles.bitDepthLabel, {
-                    color: colors.text,
-                    fontSize: typography.scaled.xs,
+                {/* Transparent Background Toggle */}
+                <View style={styles.inlineOption}>
+                  <Text style={[styles.inlineLabel, {
+                    color: colors.textSecondary,
+                    fontSize: typography.scaled.sm,
                     fontWeight: typography.weight.medium,
                   }]}>
-                    🎨 Color
+                    Transparent Background
                   </Text>
-                  <TouchableOpacity
-                    style={[styles.colorPickerButton, {
-                      backgroundColor: colors.background,
-                      borderColor: colors.border,
-                      flex: 1,
-                      minHeight: 36,
-                    }]}
-                    onPress={() => {
-                      haptic.light();
-                      setShowColorPicker(true);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <View style={[styles.colorSwatchSmall, { 
-                      backgroundColor: isTransparent ? 'transparent' : backgroundColor,
-                      borderWidth: isTransparent ? 1 : 0,
-                      borderColor: colors.border,
-                    }]} />
-                    <Text style={[styles.compactChipLabel, {
-                      color: colors.text,
-                      fontSize: typography.scaled.xs * 0.9,
-                      fontWeight: typography.weight.medium,
-                      flex: 1,
-                    }]}>
-                      {isTransparent ? 'Transparent' : backgroundColor}
-                    </Text>
-                    <Ionicons name="color-palette-outline" size={14} color={colors.textSecondary} />
-                  </TouchableOpacity>
+                  <View style={[styles.qualityToggle, {
+                    backgroundColor: colors.backgroundSecondary,
+                    borderRadius: 8,
+                  }]}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        haptic.light();
+                        setIsTransparent(false);
+                      }}
+                      style={[styles.qualityToggleButton, {
+                        backgroundColor: !isTransparent ? colors.primary : 'transparent',
+                      }]}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.qualityToggleText, {
+                        color: !isTransparent ? '#FFFFFF' : colors.text,
+                        fontSize: typography.scaled.sm,
+                        fontWeight: !isTransparent ? typography.weight.semibold : typography.weight.medium,
+                      }]}>
+                        No
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => {
+                        haptic.light();
+                        setIsTransparent(true);
+                      }}
+                      style={[styles.qualityToggleButton, {
+                        backgroundColor: isTransparent ? colors.primary : 'transparent',
+                      }]}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.qualityToggleText, {
+                        color: isTransparent ? '#FFFFFF' : colors.text,
+                        fontSize: typography.scaled.sm,
+                        fontWeight: isTransparent ? typography.weight.semibold : typography.weight.medium,
+                      }]}>
+                        Yes
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-                {/* Transparent Toggle */}
-                <View style={[styles.bitDepthContainer, { marginTop: spacing.sm }]}>
-                  <Text style={[styles.bitDepthLabel, {
-                    color: colors.text,
-                    fontSize: typography.scaled.xs,
+
+                {/* Quick Color Presets */}
+                <View style={styles.inlineOption}>
+                  <Text style={[styles.inlineLabel, {
+                    color: colors.textSecondary,
+                    fontSize: typography.scaled.sm,
                     fontWeight: typography.weight.medium,
                   }]}>
-                    🔲 Transparent
+                    Quick Colors
                   </Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      haptic.light();
-                      setIsTransparent(!isTransparent);
-                    }}
-                    style={[styles.bitDepthButton, {
-                      backgroundColor: isTransparent ? colors.primary : colors.background,
-                      borderColor: isTransparent ? colors.primary : colors.border,
-                      minWidth: 100,
-                    }]}
-                  >
-                    <Text style={[styles.bitDepthText, {
-                      color: isTransparent ? '#FFFFFF' : colors.text,
-                      fontSize: typography.scaled.xs,
+                  <View style={styles.colorPresetsContainer}>
+                    {[
+                      { color: '#FFFFFF', label: 'White' },
+                      { color: '#000000', label: 'Black' },
+                      { color: '#FF6B6B', label: 'Red' },
+                      { color: '#4ECDC4', label: 'Teal' },
+                    ].map((preset) => {
+                      const isSelected = backgroundColor === preset.color && !isTransparent;
+                      return (
+                        <TouchableOpacity
+                          key={preset.color}
+                          onPress={() => {
+                            haptic.light();
+                            setBackgroundColor(preset.color);
+                            setIsTransparent(false);
+                          }}
+                          style={[styles.colorPresetButton, {
+                            backgroundColor: colors.backgroundSecondary,
+                            borderColor: isSelected ? colors.primary : colors.border,
+                            borderWidth: isSelected ? 2 : 1,
+                          }]}
+                          activeOpacity={0.7}
+                        >
+                          <View style={[styles.colorPresetSwatch, {
+                            backgroundColor: preset.color,
+                            borderWidth: 1,
+                            borderColor: preset.color === '#FFFFFF' ? colors.border : 'transparent',
+                          }]} />
+                          {isSelected && (
+                            <View style={styles.colorPresetCheckmark}>
+                              <Ionicons name="checkmark" size={12} color={colors.primary} />
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                    <TouchableOpacity
+                      onPress={() => {
+                        haptic.light();
+                        setShowColorPicker(true);
+                      }}
+                      style={[styles.colorPresetButton, {
+                        backgroundColor: colors.backgroundSecondary,
+                        borderColor: colors.border,
+                        borderWidth: 1,
+                      }]}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="color-palette-outline" size={20} color={colors.primary} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Custom Color Display */}
+                {!isTransparent && ![
+                  '#FFFFFF', '#000000', '#FF6B6B', '#4ECDC4'
+                ].includes(backgroundColor) && (
+                  <View style={styles.inlineOption}>
+                    <Text style={[styles.inlineLabel, {
+                      color: colors.textSecondary,
+                      fontSize: typography.scaled.sm,
                       fontWeight: typography.weight.medium,
                     }]}>
-                      {isTransparent ? 'Enabled' : 'Disabled'}
+                      Custom Color
                     </Text>
-                  </TouchableOpacity>
-                </View>
+                    <TouchableOpacity
+                      onPress={() => {
+                        haptic.light();
+                        setShowColorPicker(true);
+                      }}
+                      style={[styles.customColorDisplay, {
+                        backgroundColor: colors.backgroundSecondary,
+                        borderColor: colors.border,
+                      }]}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[styles.colorSwatchInline, {
+                        backgroundColor: backgroundColor,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                      }]} />
+                      <Text style={[styles.colorPickerInlineText, {
+                        color: colors.text,
+                        fontSize: typography.scaled.sm,
+                        fontWeight: typography.weight.medium,
+                      }]}>
+                        {backgroundColor}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </>
             )}
 
-            {selectedBackground === 'scene' && (
-              <AdvancedOptionsSelector
-                label="Scene Type"
-                labelIcon="🎮"
-                options={[
-                  { id: 'gaming', label: 'Gaming', icon: '🎮' },
-                  { id: 'fantasy', label: 'Fantasy', icon: '🧙' },
-                  { id: 'cyberpunk', label: 'Cyberpunk', icon: '🤖' },
-                  { id: 'nature', label: 'Nature', icon: '🌲' },
-                ]}
-                selectedId={sceneType}
-                onSelect={(id) => {
-                  haptic.light();
-                  setSceneType(id as any);
-                }}
-                layout="horizontal"
-              />
-            )}
+            {/* Action Tags */}
+            <View style={{ flexDirection: 'row', gap: spacing.xs, marginTop: spacing.xs }}>
+              <TouchableOpacity
+                onPress={handleRandomize}
+                style={[styles.actionTag, {
+                  backgroundColor: colors.primary + '10',
+                  borderColor: colors.primary + '30',
+                }]}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="shuffle" size={12} color={colors.primary} />
+                <Text style={[styles.actionTagText, {
+                  color: colors.primary,
+                  fontSize: typography.scaled.xs,
+                  fontWeight: typography.weight.medium,
+                }]}>
+                  Randomize
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleResetToDefaults}
+                style={[styles.actionTag, {
+                  backgroundColor: colors.backgroundSecondary,
+                  borderColor: colors.border,
+                }]}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="refresh" size={12} color={colors.textSecondary} />
+                <Text style={[styles.actionTagText, {
+                  color: colors.textSecondary,
+                  fontSize: typography.scaled.xs,
+                  fontWeight: typography.weight.medium,
+                }]}>
+                  Reset
+                </Text>
+              </TouchableOpacity>
+            </View>
 
-            {selectedBackground === 'gradient' && (
-              <AdvancedOptionsSelector
-                label="Gradient Type"
-                labelIcon="🌈"
-                options={[
-                  { id: 'sunset', label: 'Sunset', icon: '🌅' },
-                  { id: 'ocean', label: 'Ocean', icon: '🌊' },
-                  { id: 'forest', label: 'Forest', icon: '🌲' },
-                  { id: 'neon', label: 'Neon', icon: '💫' },
-                ]}
-                selectedId={gradientType}
-                onSelect={(id) => {
-                  haptic.light();
-                  setGradientType(id as any);
-                }}
-                layout="horizontal"
-              />
-            )}
+          </View>
           </CollapsibleSection>
         </View>
-        
-        {/* Extra bottom padding to ensure scrolling */}
+
+        {/* Contextual Tip */}
+        {selectedBitDepth === '16-bit' && selectedGameStyle === 'rpg' && (
+          <View style={{ paddingHorizontal: spacing.base, marginTop: spacing.base }}>
+            <View style={[styles.tipCard, {
+              backgroundColor: colors.primary + '10',
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: colors.primary + '30',
+            }]}>
+              <Ionicons name="bulb" size={20} color={colors.primary} />
+              <Text style={[styles.tipText, {
+                color: colors.text,
+                fontSize: typography.scaled.sm,
+              }]}>
+                <Text style={{ fontWeight: typography.weight.bold }}>Pro Tip:</Text> 16-bit RPG style works best with portrait photos!
+              </Text>
+            </View>
+          </View>
+        )}
+
         <View style={{ height: spacing.xl }} />
       </ScrollView>
       )}
@@ -536,68 +738,31 @@ const PixelArtGamerScreen = () => {
           ]}
           showsVerticalScrollIndicator={false}
         >
-          {/* Guide Tab Content with sub-tabs */}
           <TabView
             tabs={[
               { id: 'guide', label: 'Guide', icon: 'book-outline' },
-              { id: 'examples', label: 'Examples', icon: 'images-outline' },
               { id: 'info', label: 'Info', icon: 'information-circle-outline' },
+              { id: 'cost', label: 'Cost', icon: 'card-outline' },
             ]}
             defaultTab="guide"
             containerStyle={{ marginHorizontal: spacing.base, marginTop: spacing.lg }}
           >
-            {/* Guide Tab */}
             <ToolGuideTab
               title="How to Use"
-              content={`Transform yourself into a retro video game character sprite with authentic 16-bit pixel art styling.\n\n📸 Step 1: Select Your Photo\nChoose a portrait photo from your library or take a new one. Photos with clear faces work best.\n\n🎮 Step 2: Choose Game Style\nSelect from authentic game styles:\nRPG - Classic Final Fantasy style\nPlatformer - Side-scrolling adventure hero\nArcade - Retro arcade game character\nFighter - Fighting game champion\nAdventure - Epic quest protagonist\nIndie - Modern indie game aesthetic\n\n🎨 Step 3: Set Bit Depth\n8-bit - Classic retro look, more pixelated\n16-bit - More detail, smoother appearance\n\n🖼️ Step 4: Configure Background\nColor - Solid color (with transparency option)\nScene - Gaming-themed background\nGradient - Colorful gradient backdrop\n\n✨ Step 5: Generate\nTap Create Pixel Art Sprite and wait 5-15 seconds for your retro game character.\n\n🎯 Pro Tips\nPortrait photos with clear faces produce the best sprites.\n16-bit works great for detailed photos.\nTransparent backgrounds are perfect for game integration.\nRPG style works beautifully with fantasy-themed photos.\nEach game style has unique characteristics. Try them all.\nPerfect for creating game avatars or unique profile pictures.`}
+              content={`Transform yourself into a retro video game character sprite with authentic 16-bit pixel art styling.\n\n📸 Step 1: Select Your Photo\nChoose a portrait photo from your library or take a new one. Photos with clear faces work best.\n\n🎮 Step 2: Choose Game Style\nSelect from authentic game styles:\nRPG - Classic Final Fantasy style\nPlatformer - Side-scrolling adventure hero\nArcade - Retro arcade game character\nFighter - Fighting game champion\nAdventure - Epic quest protagonist\nIndie - Modern indie game aesthetic\n\n🎨 Step 3: Set Bit Depth\n8-bit - Classic retro look, more pixelated\n16-bit - More detail, smoother appearance\n\n🖼️ Step 4: Configure Background\nColor - Solid color (with transparency option)\nScene - Gaming-themed background\nGradient - Colorful gradient backdrop\n\n✨ Step 5: Generate\nTap Create Pixel Art Sprite and wait 5-15 seconds for your retro game character.`}
               images={[
-                // Add your guide images here when ready
-                // { source: { uri: 'https://example.com/guide-image.jpg' }, caption: 'Example: RPG style sprite' },
+                {
+                  source: require('../../assets/images/pixel-art/modelcard_pixelart.jpg'),
+                  caption: 'Example of pixel art transformation'
+                }
               ]}
             />
 
-            {/* Examples Tab */}
-            <ToolExamplesTab
-              title="Pixel Art Examples"
-              examples={[
-                {
-                  id: '1',
-                  title: 'RPG Character - 16-bit',
-                  description: 'Classic RPG style with transparent background, perfect for game integration',
-                  tags: ['16-bit', 'RPG', 'Transparent'],
-                },
-                {
-                  id: '2',
-                  title: 'Arcade Style - 8-bit',
-                  description: 'Retro arcade character with neon gradient background',
-                  tags: ['8-bit', 'Arcade', 'Gradient'],
-                },
-                {
-                  id: '3',
-                  title: 'Platformer Hero - 16-bit',
-                  description: 'Side-scrolling platformer style with gaming scene background',
-                  tags: ['16-bit', 'Platformer', 'Scene'],
-                },
-                {
-                  id: '4',
-                  title: 'Fighter Character - 16-bit',
-                  description: 'Fighting game style with dramatic lighting and solid background',
-                  tags: ['16-bit', 'Fighter', 'Solid'],
-                },
-              ]}
-              onExamplePress={(example) => {
-                haptic.light();
-                // You can implement modal or navigation here to show full example
-                console.log('Example pressed:', example.title);
-              }}
-            />
-
-            {/* Info Tab */}
             <View style={{ paddingHorizontal: spacing.base, paddingTop: spacing.base, paddingBottom: spacing.base }}>
               <AIToolInfoCard
                 icon="game-controller-outline"
-                whatDescription="Transform your photo into a retro 16-bit video game sprite in the style of classic RPG games like Final Fantasy. The sprite will accurately represent you or your subject with authentic pixel art styling, blocky features, and adventure game aesthetics."
-                howDescription="Our AI analyzes your reference photo and creates a pixelated character sprite in classic 16-bit RPG style, preserving facial features, clothing, and distinctive characteristics while applying authentic pixel art techniques and retro game aesthetics."
+                whatDescription="Transform your photo into a retro 16-bit video game sprite in the style of classic RPG games like Final Fantasy."
+                howDescription="Our AI analyzes your reference photo and creates a pixelated character sprite in classic 16-bit RPG style."
                 howItems={[
                   { text: 'Accurate representation of your photo' },
                   { text: 'Authentic 16-bit pixel art style' },
@@ -607,9 +772,12 @@ const PixelArtGamerScreen = () => {
                 expandableHow={false}
               />
             </View>
+
+            <ToolCreditsTab
+              creditCost={0.3}
+              processingTime="8-12s"
+            />
           </TabView>
-          
-          {/* Extra bottom padding */}
           <View style={{ height: spacing.xl }} />
         </ScrollView>
       )}
@@ -618,28 +786,12 @@ const PixelArtGamerScreen = () => {
         <ToolHistoryTab editMode={EditMode.PIXEL_ART_GAMER} />
       )}
 
+      {/* Action Button Bar */}
       <ActionButtonBar
         visible={activeTopTab === 'tool' && !!localImageUri}
-        bottomContent={
-          <View style={[styles.timingInfo, {
-            backgroundColor: colors.surface,
-            paddingHorizontal: spacing.base,
-            paddingVertical: spacing.xs,
-            borderRadius: 20,
-          }]}>
-            <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
-            <Text style={[styles.timingText, {
-              color: colors.textSecondary,
-              fontSize: typography.scaled.xs,
-              marginLeft: spacing.xs,
-            }]}>
-              Usually takes 5–15 seconds
-            </Text>
-          </View>
-        }
       >
         <Button
-          title="Create Pixel Art Sprite"
+          title="🎮 Create Pixel Art Sprite (5-15s)"
           onPress={handleContinue}
           size="large"
           style={{ minHeight: 56, width: '100%' }}
@@ -659,9 +811,7 @@ const PixelArtGamerScreen = () => {
         >
           <SafeAreaView style={styles.previewModalSafeArea} edges={['top', 'bottom']}>
             <View style={styles.imageContainer}>
-              <View style={[styles.imageWrapper, { backgroundColor: colors.surface + '10' }]}> 
-                <Image source={{ uri: localImageUri || '' }} style={styles.previewModalImage} resizeMode="contain" />
-              </View>
+              <Image source={{ uri: localImageUri || '' }} style={styles.previewModalImage} resizeMode="contain" />
             </View>
           </SafeAreaView>
         </Pressable>
@@ -672,15 +822,13 @@ const PixelArtGamerScreen = () => {
         visible={showColorPicker}
         initialColor={isTransparent ? 'transparent' : backgroundColor}
         onColorSelect={(color) => {
-          // If color is 'transparent' string, set transparent
           if (color === 'transparent') {
             setIsTransparent(true);
-            setBackgroundColor('#FFFFFF'); // Keep a default color for fallback
+            setBackgroundColor('#FFFFFF');
           } else {
             setIsTransparent(false);
             setBackgroundColor(color);
           }
-          setSelectedBackground('color'); // Ensure color option is selected
           setShowColorPicker(false);
         }}
         onClose={() => setShowColorPicker(false)}
@@ -700,13 +848,10 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   heroImageWrapper: {
-    width: width - (baseSpacing.base * 2),
-    height: width - (baseSpacing.base * 2),
-    maxHeight: 300,
-    borderRadius: 16,
-    borderWidth: 1,
+    width: '100%',
+    borderRadius: 20,
+    borderWidth: 2,
     overflow: 'hidden',
-    alignSelf: 'center',
   },
   heroImage: {
     width: '100%',
@@ -718,16 +863,209 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: baseSpacing.base,
-    justifyContent: 'center',
     alignItems: 'center',
   },
   expandButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: baseSpacing.md,
+    paddingHorizontal: baseSpacing.base,
     paddingVertical: baseSpacing.xs,
     borderRadius: 20,
     gap: baseSpacing.xs,
+  },
+  inlineStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: baseSpacing.sm,
+    paddingHorizontal: baseSpacing.base,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  statText: {
+    // Dynamic styles
+  },
+  statDivider: {
+    width: 1,
+    height: 16,
+  },
+  sectionMainHeader: {
+    marginBottom: baseSpacing.xs,
+  },
+  randomizeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: baseSpacing.xs,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  randomizeButtonText: {
+    // Dynamic styles
+  },
+  actionTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  actionTagText: {
+    // Dynamic styles
+  },
+  optionCard: {
+    padding: baseSpacing.base,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: baseSpacing.base,
+  },
+  cardHeaderText: {
+    letterSpacing: 0.5,
+  },
+  selectedBadge: {
+    paddingHorizontal: baseSpacing.sm,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  selectedBadgeText: {
+    // Dynamic styles
+  },
+  inlineOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: baseSpacing.base,
+  },
+  inlineLabel: {
+    // Dynamic styles
+  },
+  qualityToggle: {
+    flexDirection: 'row',
+    padding: 3,
+    gap: 3,
+  },
+  qualityToggleButton: {
+    paddingVertical: baseSpacing.xs,
+    paddingHorizontal: baseSpacing.base,
+    borderRadius: 6,
+  },
+  qualityToggleText: {
+    // Dynamic styles
+  },
+  gameStyleSlider: {
+    flex: 1,
+  },
+  gameStyleSliderChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: baseSpacing.xs,
+    paddingHorizontal: baseSpacing.sm,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  gameStyleSliderLabel: {
+    // Dynamic styles
+  },
+  sectionDivider: {
+    height: 1,
+  },
+  compactSectionLabel: {
+    // Dynamic styles
+  },
+  backgroundTabsInline: {
+    flexDirection: 'row',
+    padding: 3,
+    gap: 3,
+  },
+  backgroundTabInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: baseSpacing.xs,
+    paddingHorizontal: baseSpacing.sm,
+    borderRadius: 6,
+  },
+  backgroundTabLabelInline: {
+    // Dynamic styles
+  },
+  colorPresetsContainer: {
+    flexDirection: 'row',
+    gap: baseSpacing.xs,
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  colorPresetButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  colorPresetSwatch: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+  },
+  colorPresetCheckmark: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    width: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  customColorDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: baseSpacing.xs,
+    paddingVertical: baseSpacing.xs,
+    paddingHorizontal: baseSpacing.sm,
+    borderRadius: 8,
+    borderWidth: 1,
+    flex: 1,
+  },
+  colorPickerInlineButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: baseSpacing.xs,
+    paddingVertical: baseSpacing.xs,
+    paddingHorizontal: baseSpacing.sm,
+    borderRadius: 8,
+    borderWidth: 1,
+    flex: 1,
+  },
+  colorSwatchInline: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+  },
+  colorPickerInlineText: {
+    flex: 1,
+  },
+  tipCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: baseSpacing.sm,
+    padding: baseSpacing.base,
+  },
+  tipText: {
+    flex: 1,
+    lineHeight: 20,
   },
   previewModal: {
     flex: 1,
@@ -745,185 +1083,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
   },
-  imageWrapper: {
-    borderRadius: 20,
-    padding: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 12,
-  },
   previewModalImage: {
     width: width - 56,
     height: height * 0.65,
     borderRadius: 16,
   },
-  badgesContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: baseSpacing.sm,
-    flexWrap: 'wrap',
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: baseSpacing.sm,
-    paddingVertical: baseSpacing.xs,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: baseSpacing.xs,
-  },
-  badgeText: {
-    // Dynamic styles applied inline
-  },
-  timingInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  timingText: {
-    // Dynamic styles applied inline
-  },
-  advancedToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: baseSpacing.base,
-    paddingVertical: baseSpacing.sm,
-    borderRadius: 12,
-    borderWidth: 1,
-    minHeight: 48,
-    height: 48,
-  },
-  advancedToggleText: {
-    // Dynamic styles applied inline
-  },
-  compactOptionsContainer: {
-    gap: baseSpacing.base,
-  },
-  compactOptionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: baseSpacing.sm,
-  },
-  compactLabel: {
-    // Dynamic styles applied inline
-  },
-  compactChipRow: {
-    flexDirection: 'row',
-    flex: 1,
-    gap: baseSpacing.xs,
-    flexWrap: 'wrap',
-  },
-  compactChipScrollContainer: {
-    flex: 1,
-  },
-  compactChipScroll: {
-    gap: baseSpacing.xs,
-    paddingRight: baseSpacing.base,
-  },
-  compactChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 36,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 18,
-    gap: 6,
-  },
-  compactChipIcon: {
-    fontSize: 16,
-  },
-  compactChipLabel: {
-    // Dynamic styles applied inline
-  },
-  subOptionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: baseSpacing.sm,
-  },
-  colorPickerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: baseSpacing.sm,
-    paddingVertical: baseSpacing.xs,
-    borderRadius: 18,
-    borderWidth: 1,
-    gap: baseSpacing.xs,
-    minHeight: 36,
-  },
-  colorSwatchSmall: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  colorIndicator: {
-    width: 16,
-    height: 16,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  optionButton: {
-    flex: 1,
-    minWidth: '22%',
-    paddingVertical: baseSpacing.sm,
-    paddingHorizontal: baseSpacing.xs,
-    borderRadius: 8,
-    borderWidth: 1,
+  removeButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: baseSpacing.xs / 2,
-  },
-  optionText: {
-    // Dynamic styles applied inline
-    textAlign: 'center',
-  },
-  bitDepthContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: baseSpacing.md,
-    paddingVertical: 0,
-    minHeight: 36,
-  },
-  bitDepthLabel: {
-    // Dynamic styles applied inline
-    minWidth: 90,
-  },
-  bitDepthScrollView: {
-    flex: 1,
-  },
-  bitDepthOptions: {
-    flexDirection: 'row',
-    gap: baseSpacing.sm,
-    paddingRight: baseSpacing.md,
-  },
-  bitDepthButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: baseSpacing.sm,
-    paddingHorizontal: baseSpacing.base,
-    borderRadius: 20,
-    borderWidth: 1,
-    flexShrink: 0,
-    minHeight: 36,
-    gap: baseSpacing.xs,
-  },
-  bitDepthIcon: {
-    fontSize: 14,
-  },
-  bitDepthText: {
-    // Dynamic styles applied inline
-  },
-  separatorLine: {
-    height: StyleSheet.hairlineWidth,
-    marginLeft: -baseSpacing.sm,
-    marginRight: -baseSpacing.sm,
-    marginVertical: baseSpacing.xs / 2,
   },
 });
 
 export default PixelArtGamerScreen;
-

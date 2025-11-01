@@ -246,7 +246,7 @@ export const Card: React.FC<CardProps> = ({
           disabled && !isLocked && { opacity: 0.6 },
         ]}
         onPress={handlePress}
-        disabled={!onPress || (disabled && !isLocked)}
+        disabled={Boolean(!onPress || (disabled && !isLocked))}
         activeOpacity={onPress ? 0.7 : 1}
       >
         {renderIcon()}
@@ -305,7 +305,7 @@ export const Card: React.FC<CardProps> = ({
         disabled && { opacity: 0.5 },
       ]}
       onPress={handlePress}
-      disabled={disabled}
+      disabled={Boolean(disabled)}
       activeOpacity={0.7}
     >
       {children}
@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },

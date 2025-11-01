@@ -12,6 +12,8 @@ export interface CollapsibleSectionProps {
   containerStyle?: any;
   /** Optional preview text to show when collapsed (e.g., "16-bit • RPG • Scene") */
   previewText?: string;
+  /** Hide the icon next to the title */
+  hideIcon?: boolean;
 }
 
 export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
@@ -20,6 +22,7 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   defaultExpanded = true,
   containerStyle,
   previewText,
+  hideIcon = false,
 }) => {
   const { theme } = useTheme();
   const { colors, typography, spacing } = theme;
@@ -41,12 +44,12 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
         activeOpacity={0.7}
       >
         <View style={styles.headerContent}>
-          <Ionicons name="settings-outline" size={18} color={colors.primary} />
+          {!hideIcon && <Ionicons name="settings-outline" size={18} color={colors.primary} />}
           <Text style={[styles.title, {
             color: colors.text,
             fontSize: typography.scaled.sm,
             fontWeight: typography.weight.semibold,
-            marginLeft: spacing.xs,
+            marginLeft: hideIcon ? 0 : spacing.xs,
           }]}>
             {title}
           </Text>

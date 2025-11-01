@@ -18,8 +18,8 @@ import { AdvancedOptionsSelector } from '../components/AdvancedOptionsSelector';
 import { ToolStatsBar } from '../components/ToolStatsBar';
 import { TopTabSwitcher } from '../components/TopTabSwitcher';
 import { ToolGuideTab } from '../components/ToolGuideTab';
-import { ToolExamplesTab } from '../components/ToolExamplesTab';
 import { ToolHistoryTab } from '../components/ToolHistoryTab';
+import { ToolCreditsTab } from '../components/ToolCreditsTab';
 import { TabView } from '../components/TabView';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
@@ -302,7 +302,7 @@ const StyleTransferScreen = () => {
           <View style={{ paddingHorizontal: spacing.base, marginTop: spacing.sm }}>
             <ToolStatsBar
               time="10-15 sec"
-              credits="0.5 credit"
+              cost="0.5 cost"
               rating="4.7/5"
               usage="950 today"
             />
@@ -312,103 +312,184 @@ const StyleTransferScreen = () => {
         {/* Style Selection - Always visible */}
         <View style={{ paddingHorizontal: spacing.base, marginTop: spacing.lg }}>
           <CollapsibleSection
-            title="Advanced Options"
+            title="⚙️ Advanced Settings"
             defaultExpanded={true}
-            containerStyle={{ marginBottom: spacing.base }}
-            previewText={[
-              styleImageUri ? 'Custom Style' : (selectedPreset ? presetStyles.find(p => p.id === selectedPreset)?.name || '' : ''),
-              styleStrength === 0.3 ? 'Light' : styleStrength === 0.5 ? 'Moderate' : styleStrength === 0.7 ? 'Strong' : styleStrength === 0.9 ? 'Very Strong' : '',
-            ].filter(Boolean).join(' • ')}
+            hideIcon={true}
           >
-            {/* Style Image Option */}
-            <View style={{ marginTop: spacing.sm }}>
-              <Text style={[styles.optionLabel, { color: colors.text, fontSize: typography.scaled.sm, fontWeight: typography.weight.semibold, marginBottom: spacing.sm }]}>
-                Use Custom Style Image
-              </Text>
+            <View style={[styles.optionCard, {
+              backgroundColor: 'transparent',
+              borderWidth: 0,
+              paddingHorizontal: 0,
+              paddingBottom: spacing.xs,
+              marginTop: -spacing.xs,
+            }]}>
+              {/* Card Header */}
+              <View style={[styles.cardHeader, { marginBottom: spacing.xs }]}>
+                <Text style={[styles.cardHeaderText, {
+                  color: colors.textSecondary,
+                  fontSize: typography.scaled.sm,
+                  fontWeight: typography.weight.bold,
+                  letterSpacing: 1,
+                  textTransform: 'uppercase',
+                }]}>
+                  Style Options
+                </Text>
+              </View>
+
+              {/* Custom Style Image Option */}
               {styleImageUri ? (
-                <TouchableOpacity
-                  onPress={() => { haptic.light(); setShowStylePreview(true); }}
-                  activeOpacity={0.9}
-                  style={{ alignSelf: 'center' }}
-                >
-                  <View style={[styles.styleImageWrapper, {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.primary,
-                    borderWidth: 2,
-                  }]}> 
-                    <Image
-                      source={{ uri: styleImageUri }}
-                      style={styles.styleImage}
-                      resizeMode="cover"
-                    />
-                    <TouchableOpacity
-                      style={[styles.removeButton, { backgroundColor: colors.error }]}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        haptic.light();
-                        setStyleImageUri(undefined);
-                      }}
-                    >
-                      <Ionicons name="close" size={16} color="#FFFFFF" />
-                    </TouchableOpacity>
-                  </View>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={[styles.selectStyleButton, {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
-                  }]}
-                  onPress={pickStyleFromLibrary}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="image-outline" size={28} color={colors.primary} />
-                  <Text style={[styles.selectStyleText, { color: colors.text, fontSize: typography.scaled.sm, fontWeight: typography.weight.medium, marginTop: spacing.xs }]}>
-                    Select Style Image
+                <View style={{ marginBottom: spacing.base }}>
+                  <Text style={[styles.inlineLabel, {
+                    color: colors.textSecondary,
+                    fontSize: typography.scaled.sm,
+                    fontWeight: typography.weight.medium,
+                    marginBottom: spacing.xs,
+                  }]}>
+                    Custom Style Image
                   </Text>
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => { haptic.light(); setShowStylePreview(true); }}
+                    activeOpacity={0.9}
+                  >
+                    <View style={[styles.styleImageWrapper, {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.primary,
+                      borderWidth: 2,
+                    }]}>
+                      <Image
+                        source={{ uri: styleImageUri }}
+                        style={styles.styleImage}
+                        resizeMode="cover"
+                      />
+                      <TouchableOpacity
+                        style={[styles.removeButton, { backgroundColor: colors.error }]}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          haptic.light();
+                          setStyleImageUri(undefined);
+                        }}
+                      >
+                        <Ionicons name="close" size={16} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.inlineOption}>
+                  <Text style={[styles.inlineLabel, {
+                    color: colors.textSecondary,
+                    fontSize: typography.scaled.sm,
+                    fontWeight: typography.weight.medium,
+                  }]}>
+                    Custom Style Image
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.selectStyleButtonInline, {
+                      backgroundColor: colors.backgroundSecondary,
+                      borderColor: colors.border,
+                    }]}
+                    onPress={pickStyleFromLibrary}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="image-outline" size={16} color={colors.primary} />
+                    <Text style={[styles.selectStyleText, { color: colors.text, fontSize: typography.scaled.sm, fontWeight: typography.weight.medium }]}>
+                      Select Image
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               )}
+
+              {/* Preset Styles Slider */}
+              <View style={styles.inlineOption}>
+                <Text style={[styles.inlineLabel, {
+                  color: colors.textSecondary,
+                  fontSize: typography.scaled.sm,
+                  fontWeight: typography.weight.medium,
+                  marginRight: spacing.base,
+                }]}>
+                  Preset Style
+                </Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.gameStyleSlider}
+                  contentContainerStyle={{ gap: spacing.xs, paddingLeft: spacing.xs }}
+                >
+                  {presetStyles.map((preset) => {
+                    const isSelected = selectedPreset === preset.id;
+                    return (
+                      <TouchableOpacity
+                        key={preset.id}
+                        onPress={() => handlePresetSelect(preset.id)}
+                        style={[styles.gameStyleSliderChip, {
+                          backgroundColor: isSelected ? colors.primary : colors.backgroundSecondary,
+                          borderColor: isSelected ? colors.primary : colors.border,
+                        }]}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={{ fontSize: 14 }}>{preset.icon}</Text>
+                        <Text style={[styles.gameStyleSliderLabel, {
+                          color: isSelected ? '#FFFFFF' : colors.text,
+                          fontSize: typography.scaled.sm,
+                          fontWeight: typography.weight.medium,
+                        }]}>
+                          {preset.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              {/* Style Strength */}
+              <View style={styles.inlineOption}>
+                <Text style={[styles.inlineLabel, {
+                  color: colors.textSecondary,
+                  fontSize: typography.scaled.sm,
+                  fontWeight: typography.weight.medium,
+                  marginRight: spacing.base,
+                }]}>
+                  Style Strength
+                </Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.gameStyleSlider}
+                  contentContainerStyle={{ gap: spacing.xs, paddingLeft: spacing.xs }}
+                >
+                  {[
+                    { id: 0.3, label: 'Light' },
+                    { id: 0.5, label: 'Moderate' },
+                    { id: 0.7, label: 'Strong' },
+                    { id: 0.9, label: 'Very Strong' },
+                  ].map((option) => {
+                    const isSelected = styleStrength === option.id;
+                    return (
+                      <TouchableOpacity
+                        key={option.id}
+                        onPress={() => {
+                          haptic.light();
+                          setStyleStrength(option.id);
+                        }}
+                        style={[styles.gameStyleSliderChip, {
+                          backgroundColor: isSelected ? colors.primary : colors.backgroundSecondary,
+                          borderColor: isSelected ? colors.primary : colors.border,
+                        }]}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.gameStyleSliderLabel, {
+                          color: isSelected ? '#FFFFFF' : colors.text,
+                          fontSize: typography.scaled.sm,
+                          fontWeight: typography.weight.medium,
+                        }]}>
+                          {option.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
             </View>
-
-            {/* OR Divider */}
-            <View style={{ marginVertical: spacing.md, flexDirection: 'row', alignItems: 'center' }}>
-              <View style={[styles.divider, { backgroundColor: colors.border, flex: 1 }]} />
-              <Text style={[styles.dividerText, { color: colors.textSecondary, fontSize: typography.scaled.xs, marginHorizontal: spacing.sm }]}>
-                OR
-              </Text>
-              <View style={[styles.divider, { backgroundColor: colors.border, flex: 1 }]} />
-            </View>
-
-            {/* Preset Styles */}
-            <AdvancedOptionsSelector
-              label="Choose Preset Style"
-              options={presetStyles.map(preset => ({
-                id: preset.id,
-                label: preset.name,
-                icon: preset.icon,
-              }))}
-              selectedId={selectedPreset || ''}
-              onSelect={(id) => handlePresetSelect(id)}
-              layout="horizontal"
-              showSeparator={true}
-            />
-
-            {/* Style Strength */}
-            <AdvancedOptionsSelector
-              label="Style Strength"
-              options={[
-                { id: '0.3', label: 'Light' },
-                { id: '0.5', label: 'Moderate' },
-                { id: '0.7', label: 'Strong' },
-                { id: '0.9', label: 'Very Strong' },
-              ]}
-              selectedId={styleStrength.toString()}
-              onSelect={(id) => {
-                haptic.light();
-                setStyleStrength(parseFloat(id));
-              }}
-              layout="horizontal"
-            />
           </CollapsibleSection>
         </View>
       </ScrollView>
@@ -427,8 +508,8 @@ const StyleTransferScreen = () => {
           <TabView
             tabs={[
               { id: 'guide', label: 'Guide', icon: 'book-outline' },
-              { id: 'examples', label: 'Examples', icon: 'images-outline' },
               { id: 'info', label: 'Info', icon: 'information-circle-outline' },
+              { id: 'cost', label: 'Cost', icon: 'card-outline' },
             ]}
             defaultTab="guide"
             containerStyle={{ marginHorizontal: spacing.base, marginTop: spacing.lg }}
@@ -437,35 +518,12 @@ const StyleTransferScreen = () => {
             <ToolGuideTab
               title="How to Apply Style Transfer"
               content={`Apply artistic styles from famous paintings or any style image to your photos.\n\n📸 Step 1: Select Your Photo\nChoose a photo from your library or take a new one. This is your content image that will receive the style.\n\n🎨 Step 2: Choose Style Source\nYou have two options:\n• Preset Styles - Choose from famous artistic styles like Van Gogh, Watercolor, Oil Painting\n• Custom Style Image - Upload your own style reference image\n\n⚙️ Step 3: Adjust Strength (Optional)\nControl how strong the style effect is applied:\n• Subtle - Preserves more of your original photo\n• Bold - More dramatic style transformation\n\n✨ Step 4: Generate\nTap Apply Style Transfer and wait 10-20 seconds. The AI will blend the artistic characteristics onto your photo while maintaining recognizable details.\n\n🎯 Pro Tips\n• Your photo's composition and subject are preserved\n• Preset styles provide consistent, tested results\n• Custom style images let you experiment with any look\n• Adjust strength to find your perfect balance\n• Works great for artistic profile pictures and creative projects`}
-            />
-
-            {/* Examples Tab */}
-            <ToolExamplesTab
-              title="Style Transfer Examples"
-              examples={[
+              images={[
                 {
-                  id: '1',
-                  title: 'Van Gogh Style',
-                  description: 'Post-impressionist brushstroke effects on portraits',
-                  tags: ['Van Gogh', 'Artistic'],
-                },
-                {
-                  id: '2',
-                  title: 'Watercolor Effect',
-                  description: 'Soft watercolor painting style transformation',
-                  tags: ['Watercolor', 'Soft'],
-                },
-                {
-                  id: '3',
-                  title: 'Oil Painting',
-                  description: 'Classic oil painting texture and style',
-                  tags: ['Oil Painting', 'Classic'],
-                },
+                  source: require('../../assets/images/style-transfer/modelcard_styletransfer.jpg'),
+                  caption: 'Example of style transfer'
+                }
               ]}
-              onExamplePress={(example) => {
-                haptic.light();
-                console.log('Example pressed:', example.title);
-              }}
             />
 
             {/* Info Tab */}
@@ -483,6 +541,12 @@ const StyleTransferScreen = () => {
                 expandableHow={false}
               />
             </View>
+
+            {/* Credits Tab */}
+            <ToolCreditsTab
+              creditCost={0.5}
+              processingTime="10-15 sec"
+            />
           </TabView>
           
           {/* Extra bottom padding */}
@@ -496,26 +560,9 @@ const StyleTransferScreen = () => {
 
       <ActionButtonBar
         visible={activeTopTab === 'tool' && !!(localImageUri && (styleImageUri || selectedPreset))}
-        bottomContent={
-          <View style={[styles.timingInfo, {
-            backgroundColor: colors.surface,
-            paddingHorizontal: spacing.base,
-            paddingVertical: spacing.xs,
-            borderRadius: 20,
-          }]}>
-            <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
-            <Text style={[styles.timingText, {
-              color: colors.textSecondary,
-              fontSize: typography.scaled.xs,
-              marginLeft: spacing.xs,
-            }]}>
-              Usually takes 10–20 seconds
-            </Text>
-          </View>
-        }
       >
         <Button
-          title="Apply Style Transfer"
+          title="Apply Style Transfer (10-20s)"
           onPress={handleGenerate}
           size="large"
           style={{ minHeight: 56, width: '100%' }}
@@ -704,6 +751,63 @@ const styles = StyleSheet.create({
   },
   dividerText: {
     // Dynamic styles applied inline
+  },
+  optionCard: {
+    padding: baseSpacing.base,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  cardHeaderText: {
+    letterSpacing: 0.5,
+  },
+  inlineOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: baseSpacing.base,
+  },
+  inlineLabel: {
+    // Dynamic styles
+  },
+  qualityToggle: {
+    flexDirection: 'row',
+    padding: 3,
+    gap: 3,
+  },
+  qualityToggleButton: {
+    paddingVertical: baseSpacing.xs,
+    paddingHorizontal: baseSpacing.sm,
+    borderRadius: 6,
+  },
+  qualityToggleText: {
+    // Dynamic styles
+  },
+  gameStyleSlider: {
+    flex: 1,
+  },
+  gameStyleSliderChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: baseSpacing.xs,
+    paddingHorizontal: baseSpacing.sm,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  gameStyleSliderLabel: {
+    // Dynamic styles
+  },
+  selectStyleButtonInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: baseSpacing.xs,
+    paddingVertical: baseSpacing.xs,
+    paddingHorizontal: baseSpacing.sm,
+    borderRadius: 8,
+    borderWidth: 1,
   },
 });
 

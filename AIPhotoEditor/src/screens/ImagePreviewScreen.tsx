@@ -179,12 +179,12 @@ const ImagePreviewScreen = () => {
                     isProfessionalHeadshotsMode ? "8-12 sec" :
                     "10-15 sec"
                   }
-                  credits={
-                    isRemoveBackgroundMode ? "0.1 credit" :
-                    isRemoveObjectMode ? "0.2 credit" :
-                    isReplaceBackgroundMode ? "0.3 credit" :
-                    isProfessionalHeadshotsMode ? "0.5 credit" :
-                    "0.5 credit"
+                  cost={
+                    isRemoveBackgroundMode ? "0.1 cost" :
+                    isRemoveObjectMode ? "0.2 cost" :
+                    isReplaceBackgroundMode ? "0.3 cost" :
+                    isProfessionalHeadshotsMode ? "0.5 cost" :
+                    "0.5 cost"
                   }
                   rating={
                     isRemoveBackgroundMode ? "4.9/5" :

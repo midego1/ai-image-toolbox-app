@@ -2,6 +2,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp as RNRouteProp } from '@react-navigation/native';
 import { Genre } from '../constants/Genres';
 import { EditMode, EditModeConfig } from './editModes';
+import { WorkflowConfig, WorkflowStepResult } from './workflow';
 
 export type RootStackParamList = {
   MainTabs: undefined;
@@ -15,8 +16,24 @@ export type RootStackParamList = {
   PostCaptureFeatureSelection: { imageUri: string };
   GenreSelection: { imageUri?: string; editMode?: EditMode };
   VirtualTryOnSelection: { editMode: EditMode; personImageUri?: string };
-  Processing: { imageUri: string; editMode: EditMode; config?: EditModeConfig };
-  Result: { originalImage: string; transformedImage: string; editMode: EditMode; config?: EditModeConfig; fromHistory?: boolean; createdAt?: number };
+  Processing: {
+    imageUri: string;
+    editMode: EditMode;
+    config?: EditModeConfig;
+    creationId?: string;
+    workflow?: WorkflowConfig;
+    workflowStepIndex?: number;
+  };
+  Result: {
+    originalImage: string;
+    transformedImage: string;
+    editMode: EditMode;
+    config?: EditModeConfig;
+    fromHistory?: boolean;
+    createdAt?: number;
+    creationId?: string;
+    workflowResults?: WorkflowStepResult[];
+  };
 };
 
 export type TabParamList = {
@@ -32,9 +49,27 @@ export type SettingsStackParamList = {
   LanguageSelection: undefined;
   Subscription: undefined;
   ApiKeysSettings: undefined;
-  ToolMockup: undefined;
-  RemoveBackgroundMockupDetail: {
-    imageUri?: string;
+  RevenueCatPackagesTest: undefined;
+  ResultScreenMockup: undefined;
+  PixelArtGamerBeta: { imageUri?: string; fromToolMockup?: boolean; config?: any };
+  WorkflowBeta: undefined;
+  Processing: {
+    imageUri: string;
+    editMode: EditMode;
+    config?: EditModeConfig;
+    creationId?: string;
+    workflow?: WorkflowConfig;
+    workflowStepIndex?: number;
+  };
+  Result: {
+    originalImage: string;
+    transformedImage: string;
+    editMode: EditMode;
+    config?: EditModeConfig;
+    fromHistory?: boolean;
+    createdAt?: number;
+    creationId?: string;
+    workflowResults?: WorkflowStepResult[];
   };
 };
 

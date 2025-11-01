@@ -15,9 +15,9 @@ import { ActionButtonBar } from '../components/ActionButtonBar';
 import { ToolStatsBar } from '../components/ToolStatsBar';
 import { TopTabSwitcher } from '../components/TopTabSwitcher';
 import { ToolGuideTab } from '../components/ToolGuideTab';
-import { ToolExamplesTab } from '../components/ToolExamplesTab';
 import { ToolHistoryTab } from '../components/ToolHistoryTab';
 import { TabView } from '../components/TabView';
+import { ToolCreditsTab } from '../components/ToolCreditsTab';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
 import { spacing as baseSpacing } from '../theme/spacing';
@@ -152,20 +152,30 @@ const RemoveObjectScreen = () => {
                 shadowOpacity: 0.1,
                 shadowRadius: 12,
                 elevation: 4,
-              }]}> 
+              }]}>
                 <Image
                   source={{ uri: localImageUri }}
                   style={styles.heroImage}
                   resizeMode="cover"
                 />
-                <View style={[styles.expandOverlay, { backgroundColor: 'transparent' }]}> 
-                  <View style={[styles.expandButton, { backgroundColor: colors.primary }]}> 
+                <View style={[styles.expandOverlay, { backgroundColor: 'transparent' }]}>
+                  <View style={[styles.expandButton, { backgroundColor: colors.primary }]}>
                     <Ionicons name="expand" size={18} color="#FFFFFF" />
                     <Text style={{ color: '#FFFFFF', fontSize: typography.scaled.sm, fontWeight: typography.weight.medium }}>
                       Tap to view full size
                     </Text>
                   </View>
                 </View>
+                <TouchableOpacity
+                  style={[styles.removeButton, { backgroundColor: colors.error }]}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    haptic.light();
+                    setLocalImageUri(undefined);
+                  }}
+                >
+                  <Ionicons name="close" size={16} color="#FFFFFF" />
+                </TouchableOpacity>
               </View>
             </TouchableOpacity>
           ) : (
@@ -208,7 +218,7 @@ const RemoveObjectScreen = () => {
           <View style={{ paddingHorizontal: spacing.base, marginTop: spacing.sm }}>
             <ToolStatsBar
               time="3-6 sec"
-              credits="0.2 credit"
+              cost="0.2 cost"
               rating="4.8/5"
               usage="1.5k today"
             />
@@ -262,8 +272,8 @@ const RemoveObjectScreen = () => {
           <TabView
             tabs={[
               { id: 'guide', label: 'Guide', icon: 'book-outline' },
-              { id: 'examples', label: 'Examples', icon: 'images-outline' },
               { id: 'info', label: 'Info', icon: 'information-circle-outline' },
+              { id: 'cost', label: 'Cost', icon: 'card-outline' },
             ]}
             defaultTab="guide"
             containerStyle={{ marginHorizontal: spacing.base, marginTop: spacing.lg }}
@@ -272,35 +282,6 @@ const RemoveObjectScreen = () => {
             <ToolGuideTab
               title="How to Remove Objects"
               content={`Remove unwanted objects, people, or distractions from your photos with AI precision.\n\n📸 Step 1: Select Your Photo\nChoose a photo from your library or take a new one.\n\n✏️ Step 2: Describe What to Remove\nEnter a description of what you want to remove. For example:\n• "person on the left"\n• "car in the background"\n• "text sign on the wall"\n• "trash can"\n\n✨ Step 3: Generate\nTap Remove Object and wait 5-10 seconds. Our AI will intelligently remove the specified object and fill in the background naturally.\n\n🎯 Pro Tips\n• Be specific about what to remove for better results\n• Works great for removing people from crowds\n• Perfect for cleaning up street scenes or backgrounds\n• The AI fills in backgrounds naturally\n• Complex objects may take slightly longer to process`}
-            />
-
-            {/* Examples Tab */}
-            <ToolExamplesTab
-              title="Remove Object Examples"
-              examples={[
-                {
-                  id: '1',
-                  title: 'Remove Person',
-                  description: 'Clean removal of people from crowded scenes',
-                  tags: ['Person', 'Crowd'],
-                },
-                {
-                  id: '2',
-                  title: 'Remove Vehicle',
-                  description: 'Remove cars and vehicles from street scenes',
-                  tags: ['Vehicle', 'Street'],
-                },
-                {
-                  id: '3',
-                  title: 'Remove Signs',
-                  description: 'Remove text signs and advertisements from photos',
-                  tags: ['Sign', 'Text'],
-                },
-              ]}
-              onExamplePress={(example) => {
-                haptic.light();
-                console.log('Example pressed:', example.title);
-              }}
             />
 
             {/* Info Tab */}
@@ -318,6 +299,11 @@ const RemoveObjectScreen = () => {
                 expandableHow={false}
               />
             </View>
+
+            <ToolCreditsTab
+              creditCost={0.2}
+              processingTime="3-6s"
+            />
           </TabView>
           
           {/* Extra bottom padding */}
@@ -331,26 +317,9 @@ const RemoveObjectScreen = () => {
 
       <ActionButtonBar
         visible={activeTopTab === 'tool' && !!(localImageUri && removalPrompt.trim())}
-        bottomContent={
-          <View style={[styles.timingInfo, {
-            backgroundColor: colors.surface,
-            paddingHorizontal: spacing.base,
-            paddingVertical: spacing.xs,
-            borderRadius: 20,
-          }]}>
-            <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
-            <Text style={[styles.timingText, {
-              color: colors.textSecondary,
-              fontSize: typography.scaled.xs,
-              marginLeft: spacing.xs,
-            }]}>
-              Usually takes 5–10 seconds
-            </Text>
-          </View>
-        }
       >
         <Button
-          title="Remove Object"
+          title="Remove Object (5-10s)"
           onPress={handleGenerate}
           size="large"
           style={{ minHeight: 56, width: '100%' }}
@@ -490,6 +459,16 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     minHeight: 44,
+  },
+  removeButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

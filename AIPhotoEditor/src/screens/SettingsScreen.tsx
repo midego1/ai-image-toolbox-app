@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert, Linking, Share, Platform, LayoutAnimation } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -26,6 +26,8 @@ const SettingsScreen = () => {
   const insets = useSafeAreaInsets();
   const scrollBottomPadding = useScrollBottomPadding();
   const styles = createStyles(theme, insets, scrollBottomPadding);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const lastTabPressTimeRef = useRef<number>(0);
   
   // Subscription state
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -36,7 +38,7 @@ const SettingsScreen = () => {
   const [analyticsConsent, setAnalyticsConsent] = useState(false);
   
   // Appearance and language state
-  const [currentLanguage, setCurrentLanguage] = useState<Language>('automatic');
+  const [currentLanguage, setCurrentLanguage] = useState<Language>('en');
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   
   // Vibration state
@@ -53,6 +55,32 @@ const SettingsScreen = () => {
     loadVibrationsSetting();
     loadApiKeyStatus();
   }, []);
+
+  // Handle double-tap on tab to scroll to top
+  useEffect(() => {
+    // Get the parent tab navigator to listen to tab press events
+    const parentTabNavigator = rootNavigation.getParent();
+    
+    if (!parentTabNavigator) return;
+
+    const unsubscribe = parentTabNavigator.addListener('tabPress', (e: any) => {
+      // Check if this screen is already focused (meaning tab was pressed while active)
+      if (rootNavigation.isFocused()) {
+        const now = Date.now();
+        const timeSinceLastPress = now - lastTabPressTimeRef.current;
+        
+        // If tab was pressed within 500ms of last press, scroll to top
+        if (timeSinceLastPress < 500) {
+          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+          haptic.light();
+        }
+        
+        lastTabPressTimeRef.current = now;
+      }
+    });
+
+    return unsubscribe;
+  }, [rootNavigation]);
 
   // Reload subscription data whenever the screen comes into focus
   // This ensures the status updates when navigating back from subscription screen
@@ -275,7 +303,11 @@ const SettingsScreen = () => {
     setShowLanguageDropdown(!showLanguageDropdown);
   };
 
-  const handleLanguageSelect = async (language: Language) => {
+  const handleLanguageSelect = async (language: Language, disabled?: boolean) => {
+    if (disabled) {
+      haptic.error();
+      return;
+    }
     haptic.medium();
     setCurrentLanguage(language);
     await LanguageService.setLanguage(language);
@@ -331,13 +363,6 @@ const SettingsScreen = () => {
     }
   };
 
-  // Language icon component - A with 文 character
-  const LanguageIcon = () => (
-    <View style={styles.languageIconContainer}>
-      <Text style={[styles.languageIconText, { color: theme.colors.primary }]}>A</Text>
-      <Text style={[styles.languageIconCharacter, { color: theme.colors.primary }]}>文</Text>
-    </View>
-  );
 
   const handleStatistics = () => {
     settingsNavigation.navigate('Statistics');
@@ -363,6 +388,7 @@ const SettingsScreen = () => {
       <MainHeader title="Settings" showConnected={false} backgroundColor={theme.colors.backgroundSecondary} />
 
       <ScrollView
+        ref={scrollViewRef}
         style={[styles.scrollView, { backgroundColor: theme.colors.backgroundSecondary }]}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -420,7 +446,7 @@ const SettingsScreen = () => {
               showSeparator={true}
             />
             <Card
-              icon={<LanguageIcon />}
+              iconName="language-outline"
               title="Current Language"
               value={LanguageService.getLanguageDisplayText(currentLanguage)}
               onPress={handleLanguagePress}
@@ -441,12 +467,13 @@ const SettingsScreen = () => {
               <>
                 {LANGUAGES.map((languageOption, index, array) => {
                   const isSelected = currentLanguage === languageOption.code;
+                  const isDisabled = languageOption.disabled;
                   return (
                     <Card
                       key={languageOption.code}
                       title={languageOption.nativeLabel}
                       subtitle={languageOption.label}
-                      onPress={() => handleLanguageSelect(languageOption.code)}
+                      onPress={() => handleLanguageSelect(languageOption.code, isDisabled)}
                       isFirstInGroup={false}
                       isLastInGroup={index === array.length - 1}
                       showSeparator={index < array.length - 1}
@@ -456,11 +483,14 @@ const SettingsScreen = () => {
                           <Ionicons name="checkmark-circle" size={24} color={theme.colors.primary} />
                         ) : undefined
                       }
-                      style={
+                      style={[
                         isSelected
                           ? { backgroundColor: theme.colors.surfaceElevated, borderColor: theme.colors.primary, borderWidth: 2 }
+                          : {},
+                        isDisabled
+                          ? { opacity: 0.5 }
                           : {}
-                      }
+                      ]}
                     />
                   );
                 })}
@@ -637,6 +667,21 @@ const SettingsScreen = () => {
         <View style={styles.sectionContainer}>
           <View style={styles.categoryContainer}>
             <Card
+              iconName="git-network-outline"
+              title="Multi-Step Workflows (Beta)"
+              subtitle="Test chaining multiple AI tools together"
+              value="Beta"
+              onPress={() => {
+                haptic.medium();
+                settingsNavigation.navigate('WorkflowBeta');
+              }}
+              iconColor={theme.colors.primary}
+              showChevron={true}
+              isFirstInGroup={true}
+              isLastInGroup={false}
+              showSeparator={true}
+            />
+            <Card
               iconName="key-outline"
               title="API Keys"
               subtitle={hasApiKey && hasKieAIKey ? "All API keys configured" : "Configure Replicate & Kie.ai API keys"}
@@ -647,17 +692,31 @@ const SettingsScreen = () => {
               }}
               iconColor={hasApiKey && hasKieAIKey ? theme.colors.success : theme.colors.warning}
               showChevron={true}
-              isFirstInGroup={true}
+              isFirstInGroup={false}
               isLastInGroup={false}
               showSeparator={true}
             />
             <Card
-              iconName="brush-outline"
-              title="Tool Mockups"
-              subtitle="View redesigned AI Tools UI"
+              iconName="image-outline"
+              title="Result Screen Mockup"
+              subtitle="Interactive demo of the redesigned result screen"
               onPress={() => {
                 haptic.medium();
-                settingsNavigation.navigate('ToolMockup');
+                settingsNavigation.navigate('ResultScreenMockup');
+              }}
+              iconColor={theme.colors.primary}
+              showChevron={true}
+              isFirstInGroup={false}
+              isLastInGroup={false}
+              showSeparator={true}
+            />
+            <Card
+              iconName="cube-outline"
+              title="RevenueCat Packages"
+              subtitle="Test and view all subscription packages"
+              onPress={() => {
+                haptic.medium();
+                settingsNavigation.navigate('RevenueCatPackagesTest');
               }}
               iconColor={theme.colors.primary}
               showChevron={true}
@@ -728,29 +787,6 @@ const createStyles = (theme: Theme, insets: { bottom: number }, scrollBottomPadd
     themeIconRight: {
       borderLeftWidth: 1,
       borderLeftColor: theme.colors.border,
-    },
-    languageIconContainer: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: theme.colors.surfaceElevated,
-      alignItems: 'center',
-      justifyContent: 'center',
-      position: 'relative',
-    },
-    languageIconText: {
-      fontSize: 18,
-      fontWeight: 'bold',
-      position: 'absolute',
-      left: 8,
-      top: 6,
-    },
-    languageIconCharacter: {
-      fontSize: 16,
-      fontWeight: 'bold',
-      position: 'absolute',
-      right: 6,
-      bottom: 6,
     },
   });
 

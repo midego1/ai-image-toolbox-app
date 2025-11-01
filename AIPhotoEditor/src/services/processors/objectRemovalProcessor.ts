@@ -166,7 +166,10 @@ export class ObjectRemovalProcessor extends BaseProcessor {
         
         if (status === 'succeeded') {
           const output = statusResponse.data.output;
-          const imageUrl = Array.isArray(output) ? output[0] : output;
+          // Use the last element of array (latest image) instead of first
+          const imageUrl = Array.isArray(output) && output.length > 0 
+            ? output[output.length - 1] 
+            : output;
           
           return this.createSuccessResponse(imageUrl);
         } else if (status === 'failed' || status === 'canceled') {

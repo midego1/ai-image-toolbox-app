@@ -15,6 +15,7 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
     description: 'Apply curated AI art styles while preserving identity and composition. Great for portraits and social posts.',
     icon: '🎨',
     category: EditModeCategory.TRANSFORM,
+    isPremium: true,
     requiresConfig: true,
     requiresSubscription: false, // Free but credit-limited
     creditCost: 1,
@@ -26,17 +27,27 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
     icon: '🎯',
     category: EditModeCategory.EDIT,
     requiresSubscription: false, // Free but credit-limited
-    creditCost: 0.1, // 0.1 credits (10x cheaper to encourage maximum usage)
+    creditCost: 0.3, // 0.3 credits - low-cost model pricing
   },
   [EditMode.ENHANCE]: {
     id: EditMode.ENHANCE,
-    name: 'Enhance',
+    name: 'Upscale',
     description: 'Upscale, sharpen, and reduce noise while keeping skin tones natural. Ideal for low‑light and old photos.',
     icon: '✨',
     category: EditModeCategory.ENHANCE,
     requiresConfig: true,
     requiresSubscription: false, // Free but credit-limited
-    creditCost: 1,
+    creditCost: 0.3, // 0.3 credits - Real-ESRGAN pricing (~$0.024-0.03 with 2x markup)
+  },
+  [EditMode.UPSCALE]: {
+    id: EditMode.UPSCALE,
+    name: 'Upscale',
+    description: 'Upscale, sharpen, and reduce noise while keeping skin tones natural. Ideal for low‑light and old photos.',
+    icon: '✨',
+    category: EditModeCategory.ENHANCE,
+    requiresConfig: true,
+    requiresSubscription: false, // Free but credit-limited
+    creditCost: 0.3, // 0.3 credits - Real-ESRGAN pricing (~$0.024-0.03 with 2x markup)
   },
   [EditMode.FILTERS]: {
     id: EditMode.FILTERS,
@@ -152,6 +163,17 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
     requiresSubscription: true, // Subscription-only
     creditCost: 1,
   },
+  [EditMode.GHIBLIFY]: {
+    id: EditMode.GHIBLIFY,
+    name: 'Ghiblify',
+    description: 'Transform your photo into Studio Ghibli\'s iconic animation style with soft colors, hand-painted aesthetics, and whimsical charm.',
+    icon: '🌸',
+    category: EditModeCategory.TRANSFORM,
+    isPremium: true,
+    requiresConfig: true,
+    requiresSubscription: true, // Subscription-only
+    creditCost: 1,
+  },
   // Video modes
   [EditMode.TEXT_TO_VIDEO_VEO]: {
     id: EditMode.TEXT_TO_VIDEO_VEO,
@@ -162,7 +184,7 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
     isPremium: true,
     requiresConfig: true,
     requiresSubscription: true, // Subscription-only
-    creditCost: 2, // Higher cost for video generation
+    creditCost: 25, // Higher cost for video generation - ensures 50%+ profit margin
   },
   [EditMode.TEXT_TO_VIDEO_VEO_FAST]: {
     id: EditMode.TEXT_TO_VIDEO_VEO_FAST,
@@ -173,7 +195,7 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
     isPremium: true,
     requiresConfig: true,
     requiresSubscription: true, // Subscription-only
-    creditCost: 1.5, // Slightly lower cost for fast variant
+    creditCost: 20, // Lower cost for fast variant - ensures 50%+ profit margin
   },
   [EditMode.TEXT_TO_VIDEO_KLING]: {
     id: EditMode.TEXT_TO_VIDEO_KLING,
@@ -184,7 +206,7 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
     isPremium: true,
     requiresConfig: true,
     requiresSubscription: true, // Subscription-only
-    creditCost: 2,
+    creditCost: 30, // Higher cost for premium quality - ensures 50%+ profit margin
   },
   [EditMode.EDIT_VIDEO_RUNWAY]: {
     id: EditMode.EDIT_VIDEO_RUNWAY,
@@ -195,7 +217,7 @@ export const EDIT_MODES: Record<EditMode, EditModeData> = {
     isPremium: true,
     requiresConfig: true,
     requiresSubscription: true, // Subscription-only
-    creditCost: 2,
+    creditCost: 40, // Highest cost for complex editing - ensures 50%+ profit margin
   },
 };
 

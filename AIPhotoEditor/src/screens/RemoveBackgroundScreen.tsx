@@ -15,9 +15,9 @@ import { ActionButtonBar } from '../components/ActionButtonBar';
 import { ToolStatsBar } from '../components/ToolStatsBar';
 import { TopTabSwitcher } from '../components/TopTabSwitcher';
 import { ToolGuideTab } from '../components/ToolGuideTab';
-import { ToolExamplesTab } from '../components/ToolExamplesTab';
 import { ToolHistoryTab } from '../components/ToolHistoryTab';
 import { TabView } from '../components/TabView';
+import { ToolCreditsTab } from '../components/ToolCreditsTab';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
 import { spacing as baseSpacing } from '../theme/spacing';
@@ -197,20 +197,30 @@ const RemoveBackgroundScreen = () => {
                 shadowOpacity: 0.1,
                 shadowRadius: 12,
                 elevation: 4,
-              }]}> 
+              }]}>
                 <Image
                   source={{ uri: localImageUri }}
                   style={styles.heroImage}
                   resizeMode="cover"
                 />
-                <View style={[styles.expandOverlay, { backgroundColor: 'transparent' }]}> 
-                  <View style={[styles.expandButton, { backgroundColor: colors.primary }]}> 
+                <View style={[styles.expandOverlay, { backgroundColor: 'transparent' }]}>
+                  <View style={[styles.expandButton, { backgroundColor: colors.primary }]}>
                     <Ionicons name="expand" size={18} color="#FFFFFF" />
                     <Text style={{ color: '#FFFFFF', fontSize: typography.scaled.sm, fontWeight: typography.weight.medium }}>
                       Tap to view full size
                     </Text>
                   </View>
                 </View>
+                <TouchableOpacity
+                  style={[styles.removeButton, { backgroundColor: colors.error }]}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    haptic.light();
+                    setLocalImageUri(undefined);
+                  }}
+                >
+                  <Ionicons name="close" size={16} color="#FFFFFF" />
+                </TouchableOpacity>
               </View>
             </TouchableOpacity>
           ) : (
@@ -253,7 +263,7 @@ const RemoveBackgroundScreen = () => {
           <View style={{ paddingHorizontal: spacing.base, marginTop: spacing.sm }}>
             <ToolStatsBar
               time="2-5 sec"
-              credits="0.1 credit"
+              cost="0.1 cost"
               rating="4.9/5"
               usage="2.3k today"
             />
@@ -275,8 +285,8 @@ const RemoveBackgroundScreen = () => {
           <TabView
             tabs={[
               { id: 'guide', label: 'Guide', icon: 'book-outline' },
-              { id: 'examples', label: 'Examples', icon: 'images-outline' },
               { id: 'info', label: 'Info', icon: 'information-circle-outline' },
+              { id: 'cost', label: 'Cost', icon: 'card-outline' },
             ]}
             defaultTab="guide"
             containerStyle={{ marginHorizontal: spacing.base, marginTop: spacing.lg }}
@@ -285,35 +295,12 @@ const RemoveBackgroundScreen = () => {
             <ToolGuideTab
               title="How to Remove Background"
               content={`Remove backgrounds from your photos with precision, preserving fine details like hair and edges.\n\n📸 Step 1: Select Your Photo\nChoose a photo from your library or take a new one. Photos with clear subjects against contrasting backgrounds work best.\n\n✂️ Step 2: Generate\nTap Remove Background and wait 2-5 seconds. Our AI will automatically detect your subject and remove the background, creating a transparent PNG.\n\n💾 Step 3: Save or Continue\nAfter processing, you can:\n• Save the transparent PNG to your library\n• Continue to replace the background with a new scene\n• Use the result in other apps\n\n🎯 Pro Tips\n• Photos with clear subject separation work best\n• Edge-aware AI preserves fine details like hair and fur\n• Perfect for product photos and portraits\n• Transparent PNGs are great for design projects\n• Works well with both simple and complex backgrounds`}
-            />
-
-            {/* Examples Tab */}
-            <ToolExamplesTab
-              title="Remove Background Examples"
-              examples={[
+              images={[
                 {
-                  id: '1',
-                  title: 'Portrait Photo',
-                  description: 'Clean background removal with detailed hair and edge detection',
-                  tags: ['Portrait', 'Hair Detail'],
-                },
-                {
-                  id: '2',
-                  title: 'Product Photo',
-                  description: 'Precise extraction perfect for e-commerce and design projects',
-                  tags: ['Product', 'E-commerce'],
-                },
-                {
-                  id: '3',
-                  title: 'Pet Photo',
-                  description: 'Even furry friends get clean edge detection and separation',
-                  tags: ['Pet', 'Fur Detail'],
-                },
+                  source: require('../../assets/images/remove-background/modelcard_removebg.png'),
+                  caption: 'Example of background removal'
+                }
               ]}
-              onExamplePress={(example) => {
-                haptic.light();
-                console.log('Example pressed:', example.title);
-              }}
             />
 
             {/* Info Tab */}
@@ -331,6 +318,11 @@ const RemoveBackgroundScreen = () => {
                 expandableHow={false}
               />
             </View>
+
+            <ToolCreditsTab
+              creditCost={0.1}
+              processingTime="2-5s"
+            />
           </TabView>
           
           {/* Extra bottom padding */}
@@ -344,26 +336,9 @@ const RemoveBackgroundScreen = () => {
 
       <ActionButtonBar
         visible={activeTopTab === 'tool' && !!localImageUri}
-        bottomContent={
-          <View style={[styles.timingInfo, {
-            backgroundColor: colors.surface,
-            paddingHorizontal: spacing.base,
-            paddingVertical: spacing.xs,
-            borderRadius: 20,
-          }]}>
-            <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
-            <Text style={[styles.timingText, {
-              color: colors.textSecondary,
-              fontSize: typography.scaled.xs,
-              marginLeft: spacing.xs,
-            }]}>
-              Usually takes 2–5 seconds
-            </Text>
-          </View>
-        }
       >
         <Button
-          title="Remove Background"
+          title="Remove Background (2-5s)"
           onPress={handleContinue}
           size="large"
           style={{ minHeight: 56, width: '100%' }}
@@ -488,6 +463,16 @@ const styles = StyleSheet.create({
   },
   timingText: {
     // Dynamic styles applied inline
+  },
+  removeButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

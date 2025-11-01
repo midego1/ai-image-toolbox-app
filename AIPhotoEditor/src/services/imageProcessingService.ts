@@ -10,6 +10,9 @@ import { ProfessionalHeadshotProcessor } from './processors/professionalHeadshot
 import { PopFigureProcessor } from './processors/popFigureProcessor';
 import { PixelArtGamerProcessor } from './processors/pixelArtGamerProcessor';
 import { StyleTransferProcessor } from './processors/styleTransferProcessor';
+import { GhiblifyProcessor } from './processors/ghiblifyProcessor';
+import { UpscaleProcessor } from './processors/upscaleProcessor';
+import { EnhanceProcessor } from './processors/enhanceProcessor';
 
 /**
  * Image Processing Service
@@ -32,8 +35,10 @@ export class ImageProcessingService {
       this.processors.set(EditMode.POP_FIGURE, new PopFigureProcessor());
       this.processors.set(EditMode.PIXEL_ART_GAMER, new PixelArtGamerProcessor());
       this.processors.set(EditMode.STYLE_TRANSFER, new StyleTransferProcessor());
+      this.processors.set(EditMode.GHIBLIFY, new GhiblifyProcessor());
+      this.processors.set(EditMode.UPSCALE, new UpscaleProcessor());
+      this.processors.set(EditMode.ENHANCE, new EnhanceProcessor());
       // Add more processors as they are implemented
-      // this.processors.set(EditMode.ENHANCE, new EnhanceProcessor());
       // this.processors.set(EditMode.FILTERS, new FilterProcessor());
     }
   }

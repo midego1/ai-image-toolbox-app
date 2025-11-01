@@ -18,9 +18,9 @@ import ColorPicker from '../components/ColorPicker';
 import { ToolStatsBar } from '../components/ToolStatsBar';
 import { TopTabSwitcher } from '../components/TopTabSwitcher';
 import { ToolGuideTab } from '../components/ToolGuideTab';
-import { ToolExamplesTab } from '../components/ToolExamplesTab';
 import { ToolHistoryTab } from '../components/ToolHistoryTab';
 import { TabView } from '../components/TabView';
+import { ToolCreditsTab } from '../components/ToolCreditsTab';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
 import { spacing as baseSpacing } from '../theme/spacing';
@@ -208,20 +208,30 @@ const PopFigureScreen = () => {
                 shadowOpacity: 0.1,
                 shadowRadius: 12,
                 elevation: 4,
-              }]}> 
+              }]}>
                 <Image
                   source={{ uri: localImageUri }}
                   style={styles.heroImage}
                   resizeMode="cover"
                 />
-                <View style={[styles.expandOverlay, { backgroundColor: 'transparent' }]}> 
-                  <View style={[styles.expandButton, { backgroundColor: colors.primary }]}> 
+                <View style={[styles.expandOverlay, { backgroundColor: 'transparent' }]}>
+                  <View style={[styles.expandButton, { backgroundColor: colors.primary }]}>
                     <Ionicons name="expand" size={18} color="#FFFFFF" />
                     <Text style={{ color: '#FFFFFF', fontSize: typography.scaled.sm, fontWeight: typography.weight.medium }}>
                       Tap to view full size
                     </Text>
                   </View>
                 </View>
+                <TouchableOpacity
+                  style={[styles.removeButton, { backgroundColor: colors.error }]}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    haptic.light();
+                    setLocalImageUri(undefined);
+                  }}
+                >
+                  <Ionicons name="close" size={16} color="#FFFFFF" />
+                </TouchableOpacity>
               </View>
             </TouchableOpacity>
           ) : (
@@ -264,7 +274,7 @@ const PopFigureScreen = () => {
           <View style={{ paddingHorizontal: spacing.base, marginTop: spacing.sm }}>
             <ToolStatsBar
               time="15-20 sec"
-              credits="1.0 credit"
+              cost="1.0 cost"
               rating="4.8/5"
               usage="520 today"
             />
@@ -274,142 +284,291 @@ const PopFigureScreen = () => {
         {/* Advanced Options */}
         <View style={{ paddingHorizontal: spacing.base, marginTop: spacing.lg }}>
           <CollapsibleSection
-            title="Advanced Options"
+            title="⚙️ Advanced Settings"
             defaultExpanded={true}
-            containerStyle={{ marginBottom: spacing.base }}
+            hideIcon={true}
           >
-            {/* Box Option Toggle */}
-            <AdvancedOptionsSelector
-              label="Box"
-              options={[
-                { id: 'with', label: 'With Box', icon: 'cube' },
-                { id: 'without', label: 'Without Box', icon: 'cube-outline' },
-              ]}
-              selectedId={includeBox ? 'with' : 'without'}
-              onSelect={(id) => setIncludeBox(id === 'with')}
-              layout="toggle"
-              showSeparator={true}
-            />
+            <View style={[styles.optionCard, {
+              backgroundColor: 'transparent',
+              borderWidth: 0,
+              paddingHorizontal: 0,
+              paddingBottom: spacing.xs,
+              marginTop: -spacing.xs,
+            }]}>
+              {/* Card Header */}
+              <View style={[styles.cardHeader, { marginBottom: spacing.xs }]}>
+                <Text style={[styles.cardHeaderText, {
+                  color: colors.textSecondary,
+                  fontSize: typography.scaled.sm,
+                  fontWeight: typography.weight.bold,
+                  letterSpacing: 1,
+                  textTransform: 'uppercase',
+                }]}>
+                  Style Options
+                </Text>
+              </View>
 
-            {/* Background Selection */}
-            <AdvancedOptionsSelector
-              label="Background"
-              labelIcon="🖼️"
-              options={[
-                { id: 'studio', label: 'Studio', icon: '🎬' },
-                { id: 'marble', label: 'Marble', icon: '🪨' },
-                { id: 'glossy', label: 'Glossy', icon: '✨' },
-                { id: 'simple', label: 'Simple', icon: '⬜' },
-                {
-                  id: 'color',
-                  label: 'Color',
-                  icon: '🎨',
-                  renderCustom: (isSelected: boolean, onPress: () => void) => (
-                    <TouchableOpacity
-                      onPress={onPress}
-                      style={[styles.bitDepthButton, {
-                        backgroundColor: isSelected ? colors.primary : colors.background,
-                        borderColor: isSelected ? colors.primary : colors.border,
-                      }]}
-                    >
-                      <View style={[styles.colorIndicator, { 
-                        backgroundColor: isTransparent ? 'transparent' : backgroundColor,
-                        borderWidth: isTransparent ? 1 : 0,
-                        borderColor: isSelected ? '#FFFFFF' : colors.border,
-                      }]} />
-                      <Text style={[styles.bitDepthText, {
-                        color: isSelected ? '#FFFFFF' : colors.text,
-                        fontSize: typography.scaled.xs,
-                        fontWeight: typography.weight.medium,
-                      }]}>
-                        Color
-                      </Text>
-                    </TouchableOpacity>
-                  ),
-                },
-              ]}
-              selectedId={backgroundType}
-              onSelect={(id) => {
-                if (id === 'color') {
-                  setBackgroundType('color');
-                } else {
-                  setBackgroundType(id as 'studio' | 'marble' | 'glossy' | 'simple' | 'color');
-                }
-              }}
-              layout="horizontal"
-            />
-
-            {/* Background Sub-options */}
-            {backgroundType === 'color' && (
-              <>
-                <View style={[styles.bitDepthContainer]}>
-                  <Text style={[styles.bitDepthLabel, {
-                    color: colors.text,
-                    fontSize: typography.scaled.xs,
-                    fontWeight: typography.weight.medium,
-                  }]}>
-                    🎨 Color
-                  </Text>
+              {/* Box Toggle */}
+              <View style={styles.inlineOption}>
+                <Text style={[styles.inlineLabel, {
+                  color: colors.textSecondary,
+                  fontSize: typography.scaled.sm,
+                  fontWeight: typography.weight.medium,
+                }]}>
+                  Box
+                </Text>
+                <View style={[styles.qualityToggle, {
+                  backgroundColor: colors.backgroundSecondary,
+                  borderRadius: 8,
+                }]}>
                   <TouchableOpacity
-                    style={[styles.colorPickerButton, {
-                      backgroundColor: colors.background,
-                      borderColor: colors.border,
-                      flex: 1,
-                      minHeight: 36,
-                    }]}
                     onPress={() => {
                       haptic.light();
-                      setShowColorPicker(true);
+                      setIncludeBox(true);
                     }}
+                    style={[styles.qualityToggleButton, {
+                      backgroundColor: includeBox ? colors.primary : 'transparent',
+                    }]}
                     activeOpacity={0.7}
                   >
-                    <View style={[styles.colorSwatchSmall, { 
-                      backgroundColor: isTransparent ? 'transparent' : backgroundColor,
-                      borderWidth: isTransparent ? 1 : 0,
-                      borderColor: colors.border,
-                    }]} />
-                    <Text style={[styles.compactChipLabel, {
-                      color: colors.text,
-                      fontSize: typography.scaled.xs * 0.9,
-                      fontWeight: typography.weight.medium,
-                      flex: 1,
+                    <Text style={[styles.qualityToggleText, {
+                      color: includeBox ? '#FFFFFF' : colors.text,
+                      fontSize: typography.scaled.sm,
+                      fontWeight: includeBox ? typography.weight.semibold : typography.weight.medium,
                     }]}>
-                      {isTransparent ? 'Transparent' : backgroundColor}
+                      With Box
                     </Text>
-                    <Ionicons name="color-palette-outline" size={14} color={colors.textSecondary} />
                   </TouchableOpacity>
-                </View>
-                {/* Transparent Toggle */}
-                <View style={[styles.bitDepthContainer]}>
-                  <Text style={[styles.bitDepthLabel, {
-                    color: colors.text,
-                    fontSize: typography.scaled.xs,
-                    fontWeight: typography.weight.medium,
-                  }]}>
-                    🔲 Transparent
-                  </Text>
                   <TouchableOpacity
                     onPress={() => {
                       haptic.light();
-                      setIsTransparent(!isTransparent);
+                      setIncludeBox(false);
                     }}
-                    style={[styles.bitDepthButton, {
-                      backgroundColor: isTransparent ? colors.primary : colors.background,
-                      borderColor: isTransparent ? colors.primary : colors.border,
-                      minWidth: 100,
+                    style={[styles.qualityToggleButton, {
+                      backgroundColor: !includeBox ? colors.primary : 'transparent',
                     }]}
+                    activeOpacity={0.7}
                   >
-                    <Text style={[styles.bitDepthText, {
-                      color: isTransparent ? '#FFFFFF' : colors.text,
-                      fontSize: typography.scaled.xs,
-                      fontWeight: typography.weight.medium,
+                    <Text style={[styles.qualityToggleText, {
+                      color: !includeBox ? '#FFFFFF' : colors.text,
+                      fontSize: typography.scaled.sm,
+                      fontWeight: !includeBox ? typography.weight.semibold : typography.weight.medium,
                     }]}>
-                      {isTransparent ? 'Enabled' : 'Disabled'}
+                      Without Box
                     </Text>
                   </TouchableOpacity>
                 </View>
-              </>
-            )}
+              </View>
+
+              {/* Background Type Tabs */}
+              <View style={styles.inlineOption}>
+                <Text style={[styles.inlineLabel, {
+                  color: colors.textSecondary,
+                  fontSize: typography.scaled.sm,
+                  fontWeight: typography.weight.medium,
+                  marginRight: spacing.base,
+                }]}>
+                  Background
+                </Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.gameStyleSlider}
+                  contentContainerStyle={{ gap: spacing.xs, paddingLeft: spacing.xs }}
+                >
+                  {[
+                    { id: 'studio', label: 'Studio', icon: '🎬' },
+                    { id: 'marble', label: 'Marble', icon: '🪨' },
+                    { id: 'glossy', label: 'Glossy', icon: '✨' },
+                    { id: 'simple', label: 'Simple', icon: '⬜' },
+                    { id: 'color', label: 'Color', icon: '🎨' },
+                  ].map((bg) => {
+                    const isSelected = backgroundType === bg.id;
+                    return (
+                      <TouchableOpacity
+                        key={bg.id}
+                        onPress={() => {
+                          haptic.light();
+                          setBackgroundType(bg.id as any);
+                        }}
+                        style={[styles.gameStyleSliderChip, {
+                          backgroundColor: isSelected ? colors.primary : colors.backgroundSecondary,
+                          borderColor: isSelected ? colors.primary : colors.border,
+                        }]}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={{ fontSize: 14 }}>{bg.icon}</Text>
+                        <Text style={[styles.gameStyleSliderLabel, {
+                          color: isSelected ? '#FFFFFF' : colors.text,
+                          fontSize: typography.scaled.sm,
+                          fontWeight: typography.weight.medium,
+                        }]}>
+                          {bg.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              {/* Color Options - Only show when Color is selected */}
+              {backgroundType === 'color' && (
+                <>
+                  {/* Transparent Background Toggle */}
+                  <View style={styles.inlineOption}>
+                    <Text style={[styles.inlineLabel, {
+                      color: colors.textSecondary,
+                      fontSize: typography.scaled.sm,
+                      fontWeight: typography.weight.medium,
+                    }]}>
+                      Transparent Background
+                    </Text>
+                    <View style={[styles.qualityToggle, {
+                      backgroundColor: colors.backgroundSecondary,
+                      borderRadius: 8,
+                    }]}>
+                      <TouchableOpacity
+                        onPress={() => {
+                          haptic.light();
+                          setIsTransparent(false);
+                        }}
+                        style={[styles.qualityToggleButton, {
+                          backgroundColor: !isTransparent ? colors.primary : 'transparent',
+                        }]}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.qualityToggleText, {
+                          color: !isTransparent ? '#FFFFFF' : colors.text,
+                          fontSize: typography.scaled.sm,
+                          fontWeight: !isTransparent ? typography.weight.semibold : typography.weight.medium,
+                        }]}>
+                          No
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => {
+                          haptic.light();
+                          setIsTransparent(true);
+                        }}
+                        style={[styles.qualityToggleButton, {
+                          backgroundColor: isTransparent ? colors.primary : 'transparent',
+                        }]}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.qualityToggleText, {
+                          color: isTransparent ? '#FFFFFF' : colors.text,
+                          fontSize: typography.scaled.sm,
+                          fontWeight: isTransparent ? typography.weight.semibold : typography.weight.medium,
+                        }]}>
+                          Yes
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  {/* Quick Color Presets */}
+                  <View style={styles.inlineOption}>
+                    <Text style={[styles.inlineLabel, {
+                      color: colors.textSecondary,
+                      fontSize: typography.scaled.sm,
+                      fontWeight: typography.weight.medium,
+                    }]}>
+                      Quick Colors
+                    </Text>
+                    <View style={styles.colorPresetsContainer}>
+                      {[
+                        { color: '#FFFFFF', label: 'White' },
+                        { color: '#000000', label: 'Black' },
+                        { color: '#FF6B6B', label: 'Red' },
+                        { color: '#4ECDC4', label: 'Teal' },
+                      ].map((preset) => {
+                        const isSelected = backgroundColor === preset.color && !isTransparent;
+                        return (
+                          <TouchableOpacity
+                            key={preset.color}
+                            onPress={() => {
+                              haptic.light();
+                              setBackgroundColor(preset.color);
+                              setIsTransparent(false);
+                            }}
+                            style={[styles.colorPresetButton, {
+                              backgroundColor: colors.backgroundSecondary,
+                              borderColor: isSelected ? colors.primary : colors.border,
+                              borderWidth: isSelected ? 2 : 1,
+                            }]}
+                            activeOpacity={0.7}
+                          >
+                            <View style={[styles.colorPresetSwatch, {
+                              backgroundColor: preset.color,
+                              borderWidth: 1,
+                              borderColor: preset.color === '#FFFFFF' ? colors.border : 'transparent',
+                            }]} />
+                            {isSelected && (
+                              <View style={styles.colorPresetCheckmark}>
+                                <Ionicons name="checkmark" size={12} color={colors.primary} />
+                              </View>
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                      <TouchableOpacity
+                        onPress={() => {
+                          haptic.light();
+                          setShowColorPicker(true);
+                        }}
+                        style={[styles.colorPresetButton, {
+                          backgroundColor: colors.backgroundSecondary,
+                          borderColor: colors.border,
+                          borderWidth: 1,
+                        }]}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="color-palette-outline" size={20} color={colors.primary} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  {/* Custom Color Display */}
+                  {!isTransparent && ![
+                    '#FFFFFF', '#000000', '#FF6B6B', '#4ECDC4'
+                  ].includes(backgroundColor) && (
+                    <View style={styles.inlineOption}>
+                      <Text style={[styles.inlineLabel, {
+                        color: colors.textSecondary,
+                        fontSize: typography.scaled.sm,
+                        fontWeight: typography.weight.medium,
+                      }]}>
+                        Custom Color
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => {
+                          haptic.light();
+                          setShowColorPicker(true);
+                        }}
+                        style={[styles.customColorDisplay, {
+                          backgroundColor: colors.backgroundSecondary,
+                          borderColor: colors.border,
+                        }]}
+                        activeOpacity={0.7}
+                      >
+                        <View style={[styles.colorSwatchInline, {
+                          backgroundColor: backgroundColor,
+                          borderWidth: 1,
+                          borderColor: colors.border,
+                        }]} />
+                        <Text style={[styles.colorPickerInlineText, {
+                          color: colors.text,
+                          fontSize: typography.scaled.sm,
+                          fontWeight: typography.weight.medium,
+                        }]}>
+                          {backgroundColor}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </>
+              )}
+            </View>
           </CollapsibleSection>
         </View>
       </ScrollView>
@@ -428,8 +587,8 @@ const PopFigureScreen = () => {
           <TabView
             tabs={[
               { id: 'guide', label: 'Guide', icon: 'book-outline' },
-              { id: 'examples', label: 'Examples', icon: 'images-outline' },
               { id: 'info', label: 'Info', icon: 'information-circle-outline' },
+              { id: 'cost', label: 'Cost', icon: 'card-outline' },
             ]}
             defaultTab="guide"
             containerStyle={{ marginHorizontal: spacing.base, marginTop: spacing.lg }}
@@ -438,35 +597,12 @@ const PopFigureScreen = () => {
             <ToolGuideTab
               title="How to Create Pop Figure"
               content={`Transform your photo into a detailed 3D render of a chibi pop figure.\n\n📸 Step 1: Select Your Photo\nChoose a portrait photo from your library or take a new one. Photos with clear faces work best.\n\n🎨 Step 2: Choose Options (Optional)\nYou can customize your pop figure:\n• Display box - Include a collectible display box\n• Without box - Standalone figure for digital use\n• Chibi proportions - Classic oversized head style\n\n✨ Step 3: Generate\nTap Create Pop Figure and wait 5-15 seconds. The AI will create a professional 3D render in authentic pop figure style, preserving your facial features and distinctive characteristics.\n\n🎯 Pro Tips\n• Portrait photos with clear faces produce the best results\n• Your identity is accurately represented\n• Display boxes are perfect for collectible looks\n• Standalone figures work great for digital avatars\n• Chibi proportions create the classic pop figure appearance`}
-            />
-
-            {/* Examples Tab */}
-            <ToolExamplesTab
-              title="Pop Figure Examples"
-              examples={[
+              images={[
                 {
-                  id: '1',
-                  title: 'With Display Box',
-                  description: 'Collectible pop figure with classic display box',
-                  tags: ['Box', 'Collectible'],
-                },
-                {
-                  id: '2',
-                  title: 'Without Box',
-                  description: 'Standalone pop figure for digital use',
-                  tags: ['Standalone', 'Digital'],
-                },
-                {
-                  id: '3',
-                  title: 'Chibi Style',
-                  description: 'Classic chibi proportions with oversized head',
-                  tags: ['Chibi', 'Cute'],
-                },
+                  source: require('../../assets/images/pop-figure/modelcard_popfigure.jpg'),
+                  caption: 'Example of a pop figure transformation'
+                }
               ]}
-              onExamplePress={(example) => {
-                haptic.light();
-                console.log('Example pressed:', example.title);
-              }}
             />
 
             {/* Info Tab */}
@@ -484,6 +620,11 @@ const PopFigureScreen = () => {
                 expandableHow={false}
               />
             </View>
+
+            <ToolCreditsTab
+              creditCost={1.0}
+              processingTime="15-20s"
+            />
           </TabView>
           
           {/* Extra bottom padding */}
@@ -497,26 +638,9 @@ const PopFigureScreen = () => {
 
       <ActionButtonBar
         visible={activeTopTab === 'tool' && !!localImageUri}
-        bottomContent={
-          <View style={[styles.timingInfo, {
-            backgroundColor: colors.surface,
-            paddingHorizontal: spacing.base,
-            paddingVertical: spacing.xs,
-            borderRadius: 20,
-          }]}>
-            <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
-            <Text style={[styles.timingText, {
-              color: colors.textSecondary,
-              fontSize: typography.scaled.xs,
-              marginLeft: spacing.xs,
-            }]}>
-              Usually takes 5–15 seconds
-            </Text>
-          </View>
-        }
       >
         <Button
-          title="Create Pop Figure"
+          title="Create Pop Figure (5-15s)"
           onPress={handleContinue}
           size="large"
           style={{ minHeight: 56, width: '100%' }}
@@ -758,6 +882,112 @@ const styles = StyleSheet.create({
   },
   compactChipLabel: {
     // Dynamic styles applied inline
+  },
+  optionCard: {
+    padding: baseSpacing.base,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  cardHeaderText: {
+    letterSpacing: 0.5,
+  },
+  inlineOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: baseSpacing.base,
+  },
+  inlineLabel: {
+    // Dynamic styles
+  },
+  qualityToggle: {
+    flexDirection: 'row',
+    padding: 3,
+    gap: 3,
+  },
+  qualityToggleButton: {
+    paddingVertical: baseSpacing.xs,
+    paddingHorizontal: baseSpacing.base,
+    borderRadius: 6,
+  },
+  qualityToggleText: {
+    // Dynamic styles
+  },
+  gameStyleSlider: {
+    flex: 1,
+  },
+  gameStyleSliderChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: baseSpacing.xs,
+    paddingHorizontal: baseSpacing.sm,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  gameStyleSliderLabel: {
+    // Dynamic styles
+  },
+  colorPresetsContainer: {
+    flexDirection: 'row',
+    gap: baseSpacing.xs,
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  colorPresetButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  colorPresetSwatch: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+  },
+  colorPresetCheckmark: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    width: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  customColorDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: baseSpacing.xs,
+    paddingVertical: baseSpacing.xs,
+    paddingHorizontal: baseSpacing.sm,
+    borderRadius: 8,
+    borderWidth: 1,
+    flex: 1,
+  },
+  colorSwatchInline: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+  },
+  colorPickerInlineText: {
+    flex: 1,
+  },
+  removeButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

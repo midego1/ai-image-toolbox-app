@@ -6,8 +6,8 @@ import { useTheme } from '../theme';
 export interface ToolStatsBarProps {
   /** Time it takes (e.g., "2-5 sec" or "2.5 sec") */
   time: string;
-  /** Credits cost (e.g., "0.1 credit" or "1 credit") */
-  credits: string;
+  /** Cost (e.g., "0.1 cost" or "1 cost") */
+  cost: string;
   /** Rating (e.g., "4.9/5" or "4.8/5") */
   rating: string;
   /** Usage count (e.g., "2.3k today" or "1.2k uses") */
@@ -22,7 +22,7 @@ export interface ToolStatsBarProps {
  */
 export const ToolStatsBar: React.FC<ToolStatsBarProps> = ({
   time,
-  credits,
+  cost,
   rating,
   usage,
   containerStyle,
@@ -55,7 +55,7 @@ export const ToolStatsBar: React.FC<ToolStatsBarProps> = ({
           color: colors.textSecondary,
           fontSize: typography.scaled.xs,
         }]}>
-          {credits}
+          {cost}
         </Text>
       </View>
       <View style={styles.statItem}>

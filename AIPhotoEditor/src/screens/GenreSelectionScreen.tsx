@@ -17,7 +17,6 @@ import { ZoomableImage } from '../components/ZoomableImage';
 import { ToolStatsBar } from '../components/ToolStatsBar';
 import { TopTabSwitcher } from '../components/TopTabSwitcher';
 import { ToolGuideTab } from '../components/ToolGuideTab';
-import { ToolExamplesTab } from '../components/ToolExamplesTab';
 import { ToolHistoryTab } from '../components/ToolHistoryTab';
 import { TabView } from '../components/TabView';
 import { useTheme } from '../theme';
@@ -30,6 +29,37 @@ const CARD_WIDTH = (width - 48) / 2; // 2 columns with 16px padding
 const FILTER_CARD_WIDTH = 120;
 const FILTER_CARD_SPACING = baseSpacing.sm; // 8px
 const FILTER_CARD_TOTAL = FILTER_CARD_WIDTH + FILTER_CARD_SPACING; // 128px
+
+// Get genre-specific example image (modelcard) if available
+const getGenreExampleImage = (genreId: string): number | null => {
+  const genreExampleMap: Record<string, () => number> = {
+    art_deco: () => require('../../assets/images/transform/modelcard_artdeco.jpg'),
+    cyberpunk: () => require('../../assets/images/transform/modelcard_cyberpunk.jpg'),
+    vintage: () => require('../../assets/images/transform/modelcard_vintage.jpg'),
+    pixar: () => require('../../assets/images/transform/modelcard_pixar.jpg'),
+    '90s': () => require('../../assets/images/transform/modelcard_90s.jpg'),
+    wild_west: () => require('../../assets/images/transform/modelcard_wildwest.jpg'),
+    medieval: () => require('../../assets/images/transform/modelcard_medieval.jpg'),
+    underwater: () => require('../../assets/images/transform/modelcard_underwater.jpg'),
+    steampunk: () => require('../../assets/images/transform/modelcard_steampunk.jpg'),
+    neon_tokyo: () => require('../../assets/images/transform/modelcard_neontokyo.jpg'),
+    anime: () => require('../../assets/images/transform/modelcard_anime.jpg'),
+    disco: () => require('../../assets/images/transform/modelcard_disco.jpg'),
+    gothic: () => require('../../assets/images/transform/modelcard_gothic.jpg'),
+    matrix: () => require('../../assets/images/transform/modelcard_matrix.jpg'),
+    oil_painting: () => require('../../assets/images/transform/modelcard_oilpainting.jpg'),
+    spy: () => require('../../assets/images/transform/modelcard_spy.jpg'),
+    zombie: () => require('../../assets/images/transform/modelcard_zombie.jpg'),
+    comic_book: () => require('../../assets/images/transform/modelcard_comicbook.jpg'),
+    sketch: () => require('../../assets/images/transform/modelcard_pencilsketch.jpg'),
+    renaissance: () => require('../../assets/images/transform/modelcard_renaissance.jpg'),
+    vaporwave: () => require('../../assets/images/transform/modelcard_vaporware.jpg'),
+    watercolor: () => require('../../assets/images/transform/modelcard_waterpainting.jpg'),
+  };
+  
+  const imageLoader = genreExampleMap[genreId];
+  return imageLoader ? imageLoader() : null;
+};
 
 // Mockup preview styles for each genre - color overlays and gradients
 const getGenrePreviewStyle = (genreId: string) => {
@@ -71,6 +101,7 @@ const GenreSelectionScreen = () => {
   const route = useRoute<RouteProp<'GenreSelection'>>();
   const { imageUri, editMode, preselectedGenreId } = (route.params as any) || {};
   const [showImagePreview, setShowImagePreview] = useState(false);
+  const [showGenreExampleFullscreen, setShowGenreExampleFullscreen] = useState(false);
   const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
   const [showWhatThisDoes, setShowWhatThisDoes] = useState(false);
   const cardScale = useRef(new Animated.Value(0.96)).current;
@@ -90,7 +121,10 @@ const GenreSelectionScreen = () => {
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const selectedUri = result.assets[0].uri;
         // Stay on the same page; just update params in-place
-        (navigation as any).setParams({ imageUri: selectedUri, editMode: editMode || EditMode.TRANSFORM });
+        // Clear any preselected genre when user uploads their own image
+        (navigation as any).setParams({ imageUri: selectedUri, editMode: editMode || EditMode.TRANSFORM, preselectedGenreId: undefined });
+        // Clear selected genre if one was previously selected
+        setSelectedGenreId(null);
       }
     } catch (error) {
       console.error('Error picking from library:', error);
@@ -104,13 +138,22 @@ const GenreSelectionScreen = () => {
   const [activeTopTab, setActiveTopTab] = useState<'tool' | 'guide' | 'history'>('tool');
   const carouselRef = useRef<FlatList>(null);
   const thumbnailsScrollRef = useRef<ScrollView>(null);
+  
+  // Get example image for selected genre (for main preview when no user image)
+  const selectedGenreExampleImage = useMemo(() => {
+    if (!selectedGenreId) return null;
+    return getGenreExampleImage(selectedGenreId);
+  }, [selectedGenreId]);
   const scrollX = useRef(new Animated.Value(0)).current;
   const previewSwipeStartX = useRef(0);
   const isPreviewSwiping = useRef(false);
 
   // When navigating back here after capturing/selecting an image, preserve the originally tapped style
+  // Only auto-select if preselectedGenreId is explicitly provided (e.g., from QuickCameraLocal)
+  // But don't auto-select when user just uploads an image themselves
   useEffect(() => {
-    if (preselectedGenreId && preselectedGenreId !== selectedGenreId) {
+    if (preselectedGenreId && preselectedGenreId !== selectedGenreId && !imageUri) {
+      // Only auto-select if there's no image yet - this handles the case when user clicks a style first
       setSelectedGenreId(preselectedGenreId);
       // Scroll to the selected genre in carousel
       if (viewMode === 'carousel') {
@@ -122,7 +165,7 @@ const GenreSelectionScreen = () => {
         }
       }
     }
-  }, [preselectedGenreId]);
+  }, [preselectedGenreId, imageUri, selectedGenreId, viewMode]);
 
   // Subtle animations for attention guidance when no image
   useEffect(() => {
@@ -347,6 +390,17 @@ const GenreSelectionScreen = () => {
                     </Text>
                   </View>
                 </View>
+                <TouchableOpacity
+                  style={[styles.removeButton, { backgroundColor: colors.error }]}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    haptic.light();
+                    (navigation as any).setParams({ imageUri: undefined, preselectedGenreId: undefined });
+                    setSelectedGenreId(null);
+                  }}
+                >
+                  <Ionicons name="close" size={16} color="#FFFFFF" />
+                </TouchableOpacity>
               </View>
             </TouchableOpacity>
           ) : (
@@ -421,7 +475,7 @@ const GenreSelectionScreen = () => {
           <View style={{ paddingHorizontal: spacing.base, marginTop: spacing.sm }}>
             <ToolStatsBar
               time="5-10 sec"
-              credits="0.5 credit"
+              cost="0.5 cost"
               rating="4.8/5"
               usage="1.2k today"
             />
@@ -480,13 +534,26 @@ const GenreSelectionScreen = () => {
             }]}>
               {/* Main Image Area */}
               <View style={styles.polaroidImageContainer}>
-                {imageUri ? (
-                  <View style={styles.polaroidImageWrapper}>
+                {selectedGenreExampleImage ? (
+                  <TouchableOpacity
+                    activeOpacity={0.95}
+                    onPress={() => {
+                      haptic.light();
+                      setShowGenreExampleFullscreen(true);
+                    }}
+                    style={styles.polaroidImageWrapper}
+                  >
                     <Image 
-                      source={{ uri: imageUri }} 
+                      source={selectedGenreExampleImage} 
                       style={styles.polaroidImage}
                       resizeMode="cover"
                     />
+                    {/* Expand Icon in Top Right */}
+                    <View style={[styles.expandIconButton, {
+                      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    }]}>
+                      <Ionicons name="expand" size={20} color="#FFFFFF" />
+                    </View>
                     {/* Info Overlay - Inside the image */}
                     {selectedGenreId && selectedGenre && (
                       <View style={styles.polaroidOverlay}>
@@ -518,75 +585,103 @@ const GenreSelectionScreen = () => {
                         </LinearGradient>
                       </View>
                     )}
-                    {/* Swipeable area */}
-                    <View 
-                      style={StyleSheet.absoluteFill}
-                      {...previewPanResponder.panHandlers}
-                      pointerEvents="box-only"
-                    />
-                  </View>
+                  </TouchableOpacity>
                 ) : (
                   <View style={[styles.polaroidImage, { 
                     backgroundColor: colors.backgroundSecondary,
-                    justifyContent: 'center',
-                    alignItems: 'center',
                     position: 'relative',
+                    overflow: 'hidden',
                   }]}>
-                    <Ionicons name="image-outline" size={48} color={colors.textSecondary} />
-                    <Text style={{ marginTop: spacing.sm, color: colors.textSecondary, fontSize: typography.scaled.sm }}>
-                      Select a photo to preview styles
-                    </Text>
-                    {/* Info Overlay - Show title and description even without image */}
-                    {selectedGenreId && selectedGenre && (
-                      <View style={[styles.polaroidOverlay, {
-                        position: 'absolute',
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                      }]}>
-                        <LinearGradient
-                          colors={['transparent', colors.surface + 'CC', colors.surface + 'E6']}
-                          style={styles.polaroidOverlayGradient}
-                        >
-                          <View style={styles.polaroidOverlayContent}>
-                            {/* Style Name */}
-                            <Text style={[styles.polaroidStyleName, {
-                              color: colors.text,
-                              fontSize: typography.scaled.lg,
-                              fontWeight: typography.weight.bold,
-                            }]}>
-                              {selectedGenre.icon} {selectedGenre.name}
-                            </Text>
-                            
-                            {/* Description */}
-                            <Text style={[styles.polaroidDescription, {
-                              color: colors.textSecondary,
-                              fontSize: typography.scaled.sm,
-                              marginTop: spacing.xs,
-                            }]} numberOfLines={2}>
-                              {selectedGenre.description}
-                            </Text>
+                    {selectedGenreExampleImage ? (
+                      <>
+                        <View style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
+                          <Image 
+                            source={selectedGenreExampleImage}
+                            style={{ width: '100%', height: '120%', position: 'absolute', top: 0 }}
+                            resizeMode="cover"
+                          />
+                        </View>
+                        {/* Info Overlay - Show title and description over example image */}
+                        {selectedGenreId && selectedGenre && (
+                          <View style={[styles.polaroidOverlay, {
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                          }]}>
+                            <LinearGradient
+                              colors={['transparent', 'rgba(0, 0, 0, 0.85)', 'rgba(0, 0, 0, 0.95)']}
+                              style={styles.polaroidOverlayGradient}
+                            >
+                              <View style={styles.polaroidOverlayContent}>
+                                {/* Style Name */}
+                                <Text style={[styles.polaroidStyleName, styles.polaroidTextShadow, {
+                                  color: '#FFFFFF',
+                                  fontSize: typography.scaled.lg,
+                                  fontWeight: typography.weight.bold,
+                                }]}>
+                                  {selectedGenre.icon} {selectedGenre.name}
+                                </Text>
+                                
+                                {/* Description */}
+                                <Text style={[styles.polaroidDescription, styles.polaroidTextShadow, {
+                                  color: '#FFFFFF',
+                                  fontSize: typography.scaled.sm,
+                                  marginTop: spacing.xs,
+                                }]} numberOfLines={2}>
+                                  {selectedGenre.description}
+                                </Text>
+                              </View>
+                            </LinearGradient>
                           </View>
-                        </LinearGradient>
+                        )}
+                      </>
+                    ) : (
+                      <View style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
+                        <Ionicons name="image-outline" size={48} color={colors.textSecondary} />
+                        <Text style={{ marginTop: spacing.sm, color: colors.textSecondary, fontSize: typography.scaled.sm, textAlign: 'center' }}>
+                          Select a photo to preview styles
+                        </Text>
+                        {/* Info Overlay - Show title and description */}
+                        {selectedGenreId && selectedGenre && (
+                          <View style={[styles.polaroidOverlay, {
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                          }]}>
+                            <LinearGradient
+                              colors={['transparent', colors.surface + 'CC', colors.surface + 'E6']}
+                              style={styles.polaroidOverlayGradient}
+                            >
+                              <View style={styles.polaroidOverlayContent}>
+                                {/* Style Name */}
+                                <Text style={[styles.polaroidStyleName, {
+                                  color: colors.text,
+                                  fontSize: typography.scaled.lg,
+                                  fontWeight: typography.weight.bold,
+                                }]}>
+                                  {selectedGenre.icon} {selectedGenre.name}
+                                </Text>
+                                
+                                {/* Description */}
+                                <Text style={[styles.polaroidDescription, {
+                                  color: colors.textSecondary,
+                                  fontSize: typography.scaled.sm,
+                                  marginTop: spacing.xs,
+                                }]} numberOfLines={2}>
+                                  {selectedGenre.description}
+                                </Text>
+                              </View>
+                            </LinearGradient>
+                          </View>
+                        )}
                       </View>
                     )}
                   </View>
                 )}
               </View>
 
-              {/* Swipe Hint - Outside the image */}
-              {imageUri && (
-                <View style={[styles.polaroidSwipeHint, { marginTop: spacing.sm }]}>
-                  <Ionicons name="swap-horizontal" size={16} color={colors.textSecondary} />
-                  <Text style={{
-                    color: colors.textSecondary,
-                    fontSize: typography.scaled.xs,
-                    marginLeft: spacing.xs,
-                  }}>
-                    Swipe horizontally to preview styles
-                  </Text>
-                </View>
-              )}
 
               {/* Bottom Thumbnails - Scrollable All Styles */}
               <View style={{ marginTop: spacing.base }}>
@@ -627,21 +722,30 @@ const GenreSelectionScreen = () => {
                           marginRight: spacing.sm,
                         }]}
                       >
-                        {imageUri ? (
-                          <Image 
-                            source={{ uri: imageUri }} 
-                            style={styles.polaroidThumbnailImage}
-                            resizeMode="cover"
-                          />
-                        ) : (
-                          <View style={[styles.polaroidThumbnailImage, {
-                            backgroundColor: colors.backgroundSecondary,
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                          }]}>
-                            <Text style={{ fontSize: 24 }}>{genre.icon}</Text>
-                          </View>
-                        )}
+                        {(() => {
+                          // Always show genre example images in thumbnails, not user's image
+                          const exampleImage = getGenreExampleImage(genre.id);
+                          return exampleImage ? (
+                            <View style={[styles.polaroidThumbnailImage, {
+                              overflow: 'hidden',
+                              position: 'relative',
+                            }]}>
+                              <Image 
+                                source={exampleImage}
+                                style={{ width: '100%', height: '120%', position: 'absolute', top: 0 }}
+                                resizeMode="cover"
+                              />
+                            </View>
+                          ) : (
+                            <View style={[styles.polaroidThumbnailImage, {
+                              backgroundColor: colors.backgroundSecondary,
+                              justifyContent: 'center',
+                              alignItems: 'center',
+                            }]}>
+                              <Text style={{ fontSize: 24 }}>{genre.icon}</Text>
+                            </View>
+                          );
+                        })()}
                         <Text style={[styles.polaroidThumbnailLabel, {
                           color: isSelected ? colors.primary : colors.text,
                           fontSize: typography.scaled.xs,
@@ -681,41 +785,70 @@ const GenreSelectionScreen = () => {
                       marginBottom: baseSpacing.sm,
                     }]}
                   >
-                    {imageUri ? (
-                      <View style={styles.gridThumbnail}>
-                        <Image 
-                          source={{ uri: imageUri }} 
-                          style={StyleSheet.absoluteFill}
-                          resizeMode="cover"
-                        />
-                      </View>
-                    ) : (
-                      <View style={[styles.gridThumbnail, { 
-                        backgroundColor: colors.backgroundSecondary,
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                      }]}>
-                        <Text style={{ fontSize: 28 }}>{genre.icon}</Text>
-                      </View>
-                    )}
-                    <View style={styles.gridLabelContainer}>
-                      <Text style={[styles.gridLabel, { 
-                        color: isSelected ? colors.primary : colors.text,
-                        fontSize: typography.scaled.xs,
-                        fontWeight: isSelected ? typography.weight.bold : typography.weight.medium,
-                      }]}>
-                        {genre.icon} {genre.name}
-                      </Text>
-                      {isSelected && (
-                        <Text style={[styles.gridDescription, {
-                          color: colors.textSecondary,
-                          fontSize: typography.scaled.xs * 0.85,
-                          marginTop: spacing.xs / 2,
-                        }]} numberOfLines={2}>
-                          {genre.description}
-                        </Text>
-                      )}
-                    </View>
+                    {(() => {
+                      // Always show genre example images in grid, not user's image
+                      const exampleImage = getGenreExampleImage(genre.id);
+                      return exampleImage ? (
+                        <View style={styles.gridThumbnail}>
+                          <Image 
+                            source={exampleImage}
+                            style={{ width: '100%', height: '100%' }}
+                            resizeMode="cover"
+                          />
+                          {/* Overlay Label on Image */}
+                          <LinearGradient
+                            colors={['transparent', 'rgba(0, 0, 0, 0.7)', 'rgba(0, 0, 0, 0.85)']}
+                            style={styles.gridLabelOverlay}
+                          >
+                            <Text style={[styles.gridLabel, { 
+                              color: '#FFFFFF',
+                              fontSize: typography.scaled.xs,
+                              fontWeight: isSelected ? typography.weight.bold : typography.weight.medium,
+                            }]}>
+                              {genre.icon} {genre.name}
+                            </Text>
+                            {isSelected && (
+                              <Text style={[styles.gridDescription, {
+                                color: '#FFFFFF',
+                                fontSize: typography.scaled.xs * 0.85,
+                                marginTop: spacing.xs / 2,
+                                opacity: 0.9,
+                              }]} numberOfLines={2}>
+                                {genre.description}
+                              </Text>
+                            )}
+                          </LinearGradient>
+                        </View>
+                      ) : (
+                        <View style={styles.gridThumbnail}>
+                          <View style={{ 
+                            width: '100%',
+                            height: '100%',
+                            backgroundColor: colors.backgroundSecondary,
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                          }}>
+                            <Text style={{ fontSize: 28 }}>{genre.icon}</Text>
+                          </View>
+                          {/* Label for no-image case */}
+                          <View style={[styles.gridLabelContainer, {
+                            backgroundColor: 'transparent',
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                          }]}>
+                            <Text style={[styles.gridLabel, { 
+                              color: colors.text,
+                              fontSize: typography.scaled.xs,
+                              fontWeight: isSelected ? typography.weight.bold : typography.weight.medium,
+                            }]}>
+                              {genre.icon} {genre.name}
+                            </Text>
+                          </View>
+                        </View>
+                      );
+                    })()}
                   </TouchableOpacity>
                 );
               })}
@@ -740,7 +873,6 @@ const GenreSelectionScreen = () => {
           <TabView
             tabs={[
               { id: 'guide', label: 'Guide', icon: 'book-outline' },
-              { id: 'examples', label: 'Examples', icon: 'images-outline' },
               { id: 'info', label: 'Info', icon: 'information-circle-outline' },
             ]}
             defaultTab="guide"
@@ -750,35 +882,12 @@ const GenreSelectionScreen = () => {
             <ToolGuideTab
               title="How to Transform Your Photo"
               content={`Transform your photo into stunning artistic styles while preserving your identity.\n\n📸 Step 1: Select Your Photo\nChoose a photo from your library or take a new one. Portrait photos work best.\n\n🎨 Step 2: Choose Art Style\nSelect from multiple artistic genres:\n• Cyberpunk - Futuristic neon aesthetics\n• Oil Painting - Classic artistic textures\n• Anime - Cartoon art style\n• Watercolor - Soft painted effects\n• And many more styles\n\n✨ Step 3: Generate\nTap Generate and wait 5-10 seconds. The AI will apply the selected style while preserving your facial features and identity.\n\n🎯 Pro Tips\n• Portrait photos produce the best transformations\n• Your identity and facial features are preserved\n• Each style has unique characteristics\n• Try different styles to find your favorite\n• Works great for profile pictures and artistic projects`}
-            />
-
-            {/* Examples Tab */}
-            <ToolExamplesTab
-              title="Transform Examples"
-              examples={[
+              images={[
                 {
-                  id: '1',
-                  title: 'Cyberpunk Style',
-                  description: 'Futuristic cyberpunk transformation with neon colors',
-                  tags: ['Cyberpunk', 'Futuristic'],
-                },
-                {
-                  id: '2',
-                  title: 'Oil Painting',
-                  description: 'Classic oil painting style with rich textures',
-                  tags: ['Oil Painting', 'Classic'],
-                },
-                {
-                  id: '3',
-                  title: 'Anime Style',
-                  description: 'Anime art style transformation',
-                  tags: ['Anime', 'Cartoon'],
-                },
+                  source: require('../../assets/images/transform/modelcard_transform.jpg'),
+                  caption: 'Example of artistic style transformation'
+                }
               ]}
-              onExamplePress={(example) => {
-                haptic.light();
-                console.log('Example pressed:', example.title);
-              }}
             />
 
             {/* Info Tab */}
@@ -809,26 +918,9 @@ const GenreSelectionScreen = () => {
 
       <ActionButtonBar
         visible={activeTopTab === 'tool' && !!(imageUri && selectedGenreId)}
-        bottomContent={
-          <View style={[styles.timingInfo, {
-            backgroundColor: colors.surface,
-            paddingHorizontal: spacing.base,
-            paddingVertical: spacing.xs,
-            borderRadius: 20,
-          }]}>
-            <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
-            <Text style={[styles.timingText, {
-              color: colors.textSecondary,
-              fontSize: typography.scaled.xs,
-              marginLeft: spacing.xs,
-            }]}>
-              5–10s
-            </Text>
-          </View>
-        }
       >
         <Button
-          title={selectedGenre ? `Generate ${selectedGenre.name}` : 'Generate'}
+          title={selectedGenre ? `Generate ${selectedGenre.name} (5–10s)` : 'Generate (5–10s)'}
           onPress={handleGenerate}
           size="large"
           style={{ minHeight: 56, width: '100%' }}
@@ -850,6 +942,47 @@ const GenreSelectionScreen = () => {
             setShowImagePreview(false);
           }}
         />
+      </Modal>
+
+      {/* Genre Example Image Fullscreen Modal */}
+      <Modal
+        visible={showGenreExampleFullscreen && !!selectedGenreExampleImage}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowGenreExampleFullscreen(false)}
+        statusBarTranslucent
+      >
+        <Pressable
+          style={[styles.previewModal, { backgroundColor: 'rgba(0, 0, 0, 0.96)' }]}
+          onPress={() => {
+            haptic.light();
+            setShowGenreExampleFullscreen(false);
+          }}
+        >
+          <SafeAreaView style={styles.previewModalSafeArea} edges={['top', 'bottom']}>
+            <View style={styles.imageContainer}>
+              <View style={[styles.imageWrapper, { backgroundColor: colors.surface + '10' }]}>
+                {selectedGenreExampleImage && (
+                  <Image 
+                    source={selectedGenreExampleImage} 
+                    style={styles.previewModalImage} 
+                    resizeMode="contain" 
+                  />
+                )}
+              </View>
+              {/* Close Button */}
+              <TouchableOpacity
+                style={[styles.closeButton, { backgroundColor: 'rgba(0, 0, 0, 0.6)' }]}
+                onPress={() => {
+                  haptic.light();
+                  setShowGenreExampleFullscreen(false);
+                }}
+              >
+                <Ionicons name="close" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+          </SafeAreaView>
+        </Pressable>
       </Modal>
     </SafeAreaView>
   );
@@ -897,6 +1030,17 @@ const styles = StyleSheet.create({
   },
   expandText: {
     // Dynamic styles applied inline
+  },
+  removeButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
   },
   badgesContainer: {
     flexDirection: 'row',
@@ -1026,6 +1170,22 @@ const styles = StyleSheet.create({
     height: height * 0.65,
     borderRadius: 16,
   },
+  closeButton: {
+    position: 'absolute',
+    top: baseSpacing.base + 44, // Safe area + spacing
+    right: baseSpacing.base,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
   ctaBubble: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1108,11 +1268,28 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 4,
     overflow: 'hidden',
+    position: 'relative',
   },
   polaroidImage: {
     width: '100%',
     height: '100%',
     borderRadius: 4,
+  },
+  expandIconButton: {
+    position: 'absolute',
+    top: baseSpacing.sm,
+    right: baseSpacing.sm,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
   polaroidOverlay: {
     position: 'absolute',
@@ -1214,7 +1391,19 @@ const styles = StyleSheet.create({
   },
   gridThumbnail: {
     width: '100%',
-    height: '75%',
+    height: '100%',
+    position: 'relative',
+  },
+  gridLabelOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: baseSpacing.xs,
+    paddingVertical: baseSpacing.xs,
+    paddingTop: baseSpacing.base,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
   },
   gridLabelContainer: {
     flex: 1,

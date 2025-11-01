@@ -116,9 +116,10 @@ export const OptionsUsed: React.FC<OptionsUsedProps> = ({
 
     const previewParts: string[] = [];
     for (const field of schema.fields) {
-      if (field.showInPreview !== false && config[field.key]) {
+      // Check if field should be in preview and if value exists (including false, 0, etc.)
+      if (field.showInPreview !== false && config[field.key] != null) {
         const value = config[field.key];
-        const preview = field.formatPreview 
+        const preview = field.formatPreview
           ? field.formatPreview(value, config)
           : field.formatValue
           ? field.formatValue(value, config)

@@ -115,9 +115,13 @@ export class KieAIService {
       
       if (!jobId) {
         // Check if response has immediate output (unlikely but possible)
-        if (response.data.output || response.data.image_url || response.data.url || response.data.data?.output) {
-          const resultImageUrl = response.data.output || response.data.image_url || response.data.url || response.data.data?.output;
-          console.log('[KieAIService] Received immediate output');
+        // Always use the latest image (last element if array)
+        const resultImageUrl = this.extractImageUrl(response.data.output) || 
+                               this.extractImageUrl(response.data.image_url) || 
+                               this.extractImageUrl(response.data.url) || 
+                               this.extractImageUrl(response.data.data?.output);
+        if (resultImageUrl) {
+          console.log('[KieAIService] Received immediate output (latest)');
           const localUri = await this.downloadImage(resultImageUrl);
           return {
             success: true,
@@ -331,9 +335,12 @@ export class KieAIService {
       
       if (!jobId) {
         // Check if response has immediate output (unlikely but possible)
-        if (response.data.output || response.data.image_url || response.data.url) {
-          const resultImageUrl = response.data.output || response.data.image_url || response.data.url;
-          console.log('[KieAIService] Received immediate output');
+        // Always use the latest image (last element if array)
+        const resultImageUrl = this.extractImageUrl(response.data.output) || 
+                               this.extractImageUrl(response.data.image_url) || 
+                               this.extractImageUrl(response.data.url);
+        if (resultImageUrl) {
+          console.log('[KieAIService] Received immediate output (latest)');
           const localUri = await this.downloadImage(resultImageUrl);
           return {
             success: true,
@@ -471,10 +478,14 @@ export class KieAIService {
       // Handle response - check if image is returned immediately or needs polling
       let resultImageUrl: string;
       
-      if (response.data.output || response.data.image_url || response.data.url) {
+      // Always use the latest image (last element if array)
+      const immediateOutput = this.extractImageUrl(response.data.output) || 
+                               this.extractImageUrl(response.data.image_url) || 
+                               this.extractImageUrl(response.data.url);
+      if (immediateOutput) {
         // Immediate response with image URL
-        resultImageUrl = response.data.output || response.data.image_url || response.data.url;
-        console.log('[KieAIService] Received immediate response with image URL');
+        resultImageUrl = immediateOutput;
+        console.log('[KieAIService] Received immediate response with image URL (latest)');
       } else if (response.data.id || response.data.job_id) {
         // Async response - need to poll
         console.log('[KieAIService] Received async job, polling for result...');
@@ -505,6 +516,20 @@ export class KieAIService {
         error: errorMessage,
       };
     }
+  }
+
+  /**
+   * Helper function to extract image URL from a value that might be a string or array
+   * Always returns the latest (last) element if it's an array
+   */
+  private static extractImageUrl(value: any): string | undefined {
+    if (!value) return undefined;
+    if (typeof value === 'string') return value;
+    if (Array.isArray(value) && value.length > 0) {
+      // Return the last element (latest image)
+      return value[value.length - 1];
+    }
+    return undefined;
   }
 
   /**
@@ -554,18 +579,19 @@ export class KieAIService {
 
         if (status === 'completed' || status === 'succeeded' || status === 'success') {
           // Extract image URL from response - check multiple possible fields
-          const imageUrl = response.data.output || 
-                          response.data.output_url || 
-                          response.data.image_url || 
-                          response.data.url ||
-                          response.data.result?.url ||
-                          response.data.result?.image_url ||
-                          response.data.result?.output ||
-                          response.data.data?.output ||
-                          response.data.data?.url;
+          // Always use the latest image (last element if array)
+          const imageUrl = this.extractImageUrl(response.data.output) || 
+                          this.extractImageUrl(response.data.output_url) || 
+                          this.extractImageUrl(response.data.image_url) || 
+                          this.extractImageUrl(response.data.url) ||
+                          this.extractImageUrl(response.data.result?.url) ||
+                          this.extractImageUrl(response.data.result?.image_url) ||
+                          this.extractImageUrl(response.data.result?.output) ||
+                          this.extractImageUrl(response.data.data?.output) ||
+                          this.extractImageUrl(response.data.data?.url);
           
           if (imageUrl) {
-            console.log(`[KieAIService] Job completed, image URL: ${imageUrl}`);
+            console.log(`[KieAIService] Job completed, image URL (latest): ${imageUrl}`);
             return imageUrl;
           }
           

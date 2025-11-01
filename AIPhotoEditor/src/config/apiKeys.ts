@@ -176,6 +176,57 @@ export async function validateReplicateApiKey(): Promise<ApiKeyValidationResult>
 }
 
 /**
+ * Get RevenueCat API key from app configuration
+ * This supports:
+ * - Local Development: .env file (REVENUE_CAT_API_KEY) - loaded via app.config.js
+ * - Local Development: app.config.js extra.revenueCatApiKey (can be set directly)
+ * - Production: EAS Environment Variables
+ * 
+ * EAS automatically maps:
+ * - Environment Variables: REVENUE_CAT_API_KEY -> extra.REVENUE_CAT_API_KEY (uppercase) or extra.revenueCatApiKey (camelCase)
+ * - Created via: eas env:create production --name REVENUE_CAT_API_KEY --value your-key --visibility secret --scope project
+ * 
+ * For local development, create a .env file in the AIPhotoEditor directory:
+ *   REVENUE_CAT_API_KEY=your-key-here
+ */
+export function getRevenueCatApiKey(): string {
+  // Try camelCase first (app.json and EAS Environment Variables)
+  let apiKey = Constants.expoConfig?.extra?.revenueCatApiKey;
+  
+  // If not found, try uppercase (EAS Environment Variables might use this)
+  if (!apiKey || typeof apiKey !== 'string' || apiKey.length === 0) {
+    apiKey = Constants.expoConfig?.extra?.REVENUE_CAT_API_KEY;
+  }
+  
+  // Also check process.env as fallback (some EAS setups)
+  if (!apiKey || typeof apiKey !== 'string' || apiKey.length === 0) {
+    // @ts-ignore - process.env might have the key in some contexts
+    const envKey = typeof process !== 'undefined' && process.env?.REVENUE_CAT_API_KEY;
+    if (envKey && typeof envKey === 'string') {
+      apiKey = envKey;
+    }
+  }
+  
+  if (apiKey && typeof apiKey === 'string' && apiKey.length > 0) {
+    // Validate that it's a real key (not empty placeholder)
+    if (apiKey !== 'YOUR_REVENUE_CAT_API_KEY' && apiKey.trim().length > 0) {
+      return apiKey.trim();
+    }
+  }
+  
+  // No key configured or invalid
+  return '';
+}
+
+/**
+ * Check if RevenueCat API key is configured
+ */
+export function isRevenueCatKeyConfigured(): boolean {
+  const key = getRevenueCatApiKey();
+  return key.length > 0 && key !== 'YOUR_REVENUE_CAT_API_KEY';
+}
+
+/**
  * Validate Kie.ai API key by making a test API call
  * Uses the correct API base URL: https://api.kie.ai/api/v1
  */

@@ -15,8 +15,8 @@ import { ActionButtonBar } from '../components/ActionButtonBar';
 import { ToolStatsBar } from '../components/ToolStatsBar';
 import { TopTabSwitcher } from '../components/TopTabSwitcher';
 import { ToolGuideTab } from '../components/ToolGuideTab';
-import { ToolExamplesTab } from '../components/ToolExamplesTab';
 import { ToolHistoryTab } from '../components/ToolHistoryTab';
+import { ToolCreditsTab } from '../components/ToolCreditsTab';
 import { TabView } from '../components/TabView';
 import { useTheme } from '../theme';
 import { haptic } from '../utils/haptics';
@@ -155,20 +155,30 @@ const ReplaceBackgroundScreen = () => {
                 shadowOpacity: 0.1,
                 shadowRadius: 12,
                 elevation: 4,
-              }]}> 
+              }]}>
                 <Image
                   source={{ uri: localImageUri }}
                   style={styles.heroImage}
                   resizeMode="cover"
                 />
-                <View style={[styles.expandOverlay, { backgroundColor: 'transparent' }]}> 
-                  <View style={[styles.expandButton, { backgroundColor: colors.primary }]}> 
+                <View style={[styles.expandOverlay, { backgroundColor: 'transparent' }]}>
+                  <View style={[styles.expandButton, { backgroundColor: colors.primary }]}>
                     <Ionicons name="expand" size={18} color="#FFFFFF" />
                     <Text style={{ color: '#FFFFFF', fontSize: typography.scaled.sm, fontWeight: typography.weight.medium }}>
                       Tap to view full size
                     </Text>
                   </View>
                 </View>
+                <TouchableOpacity
+                  style={[styles.removeButton, { backgroundColor: colors.error }]}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    haptic.light();
+                    setLocalImageUri(undefined);
+                  }}
+                >
+                  <Ionicons name="close" size={16} color="#FFFFFF" />
+                </TouchableOpacity>
               </View>
             </TouchableOpacity>
           ) : (
@@ -211,7 +221,7 @@ const ReplaceBackgroundScreen = () => {
           <View style={{ paddingHorizontal: spacing.base, marginTop: spacing.sm }}>
             <ToolStatsBar
               time="4-8 sec"
-              credits="0.3 credit"
+              cost="0.3 cost"
               rating="4.7/5"
               usage="1.2k today"
             />
@@ -265,8 +275,8 @@ const ReplaceBackgroundScreen = () => {
           <TabView
             tabs={[
               { id: 'guide', label: 'Guide', icon: 'book-outline' },
-              { id: 'examples', label: 'Examples', icon: 'images-outline' },
               { id: 'info', label: 'Info', icon: 'information-circle-outline' },
+              { id: 'cost', label: 'Cost', icon: 'card-outline' },
             ]}
             defaultTab="guide"
             containerStyle={{ marginHorizontal: spacing.base, marginTop: spacing.lg }}
@@ -275,35 +285,12 @@ const ReplaceBackgroundScreen = () => {
             <ToolGuideTab
               title="How to Replace Background"
               content={`Transform your photos by replacing the background with any scene you imagine.\n\n📸 Step 1: Select Your Photo\nChoose a photo from your library or take a new one. Photos with clear subjects work best.\n\n💭 Step 2: Describe the Background\nEnter a description of the background you want. For example:\n• "beach with sunset"\n• "modern office with white walls"\n• "professional studio with soft lighting"\n• "cozy coffee shop"\n\n✨ Step 3: Generate\nTap Replace Background and wait 4-8 seconds. Our AI will seamlessly blend your subject into the new background with realistic lighting and shadows.\n\n🎯 Pro Tips\n• Be specific in your description for better results\n• Studio backgrounds work great for professional headshots\n• Outdoor scenes like beaches or parks create natural looks\n• The AI automatically preserves realistic lighting and shadows\n• Subjects with clear edges blend more naturally`}
-            />
-
-            {/* Examples Tab */}
-            <ToolExamplesTab
-              title="Replace Background Examples"
-              examples={[
+              images={[
                 {
-                  id: '1',
-                  title: 'Studio Background',
-                  description: 'Professional studio setting with perfect lighting',
-                  tags: ['Studio', 'Professional'],
-                },
-                {
-                  id: '2',
-                  title: 'Beach Scene',
-                  description: 'Natural outdoor scene with realistic shadows',
-                  tags: ['Beach', 'Outdoor'],
-                },
-                {
-                  id: '3',
-                  title: 'Office Setting',
-                  description: 'Corporate office background for professional headshots',
-                  tags: ['Office', 'Corporate'],
-                },
+                  source: require('../../assets/images/replace-background/modelcard_replacebg.jpg'),
+                  caption: 'Example of background replacement'
+                }
               ]}
-              onExamplePress={(example) => {
-                haptic.light();
-                console.log('Example pressed:', example.title);
-              }}
             />
 
             {/* Info Tab */}
@@ -321,6 +308,12 @@ const ReplaceBackgroundScreen = () => {
                 expandableHow={false}
               />
             </View>
+
+            {/* Credits Tab */}
+            <ToolCreditsTab
+              creditCost={0.3}
+              processingTime="4-8 sec"
+            />
           </TabView>
           
           {/* Extra bottom padding */}
@@ -334,26 +327,9 @@ const ReplaceBackgroundScreen = () => {
 
       <ActionButtonBar
         visible={activeTopTab === 'tool' && !!(localImageUri && backgroundPrompt.trim())}
-        bottomContent={
-          <View style={[styles.timingInfo, {
-            backgroundColor: colors.surface,
-            paddingHorizontal: spacing.base,
-            paddingVertical: spacing.xs,
-            borderRadius: 20,
-          }]}>
-            <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
-            <Text style={[styles.timingText, {
-              color: colors.textSecondary,
-              fontSize: typography.scaled.xs,
-              marginLeft: spacing.xs,
-            }]}>
-              Usually takes 5–10 seconds
-            </Text>
-          </View>
-        }
       >
         <Button
-          title="Replace Background"
+          title="Replace Background (5-10s)"
           onPress={handleGenerate}
           size="large"
           style={{ minHeight: 56, width: '100%' }}
@@ -493,6 +469,16 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     minHeight: 44,
+  },
+  removeButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

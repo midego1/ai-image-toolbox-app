@@ -18,19 +18,15 @@ export const BottomTabNavigator = () => {
         headerShown: false,
         tabBarActiveTintColor: theme.colors.text,
         tabBarInactiveTintColor: theme.colors.textSecondary,
-        tabBarStyle: {
-          backgroundColor: theme.colors.background,
-          ...(Platform.OS === 'ios' && {
-            shadowColor: '#000',
-          }),
-        },
+        ...(Platform.OS === 'android' && {
+          tabBarStyle: {
+            backgroundColor: theme.colors.background,
+          },
+        }),
         tabBarLabelStyle: {
           fontSize: theme.typography.scaled.xs,
           fontWeight: '500',
         },
-        ...(Platform.OS === 'ios' && {
-          tabBarBlurEffect: 'systemMaterial',
-        }),
       }}
     >
       <Tab.Screen

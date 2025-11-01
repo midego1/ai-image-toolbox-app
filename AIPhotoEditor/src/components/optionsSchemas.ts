@@ -1,5 +1,6 @@
 import { OptionsSchema } from './OptionsUsed';
 import { EditMode } from '../constants/editModes';
+import { getGenreById } from '../constants/Genres';
 
 /**
  * Helper function to format labels (capitalize first letter)
@@ -38,6 +39,15 @@ const formatStylePreset = (presetId?: string): string => {
     'sketch': 'Sketch',
   };
   return presetMap[presetId] || formatLabel(presetId);
+};
+
+/**
+ * Format genre/transform style names (e.g., "cyberpunk" -> "Cyberpunk")
+ */
+const formatGenre = (genreId?: string): string => {
+  if (!genreId) return '';
+  const genre = getGenreById(genreId);
+  return genre ? genre.name : formatLabel(genreId);
 };
 
 /**
@@ -96,11 +106,11 @@ export const getOptionsSchema = (editMode: EditMode): OptionsSchema | null => {
       return {
         fields: [
           {
-            key: 'stylePreset',
+            key: 'genre',
             label: 'Style',
             icon: 'brush-outline',
-            formatValue: formatStylePreset,
-            formatPreview: formatStylePreset,
+            formatValue: formatGenre,
+            formatPreview: formatGenre,
           },
           {
             key: 'intensity',
@@ -108,7 +118,7 @@ export const getOptionsSchema = (editMode: EditMode): OptionsSchema | null => {
             icon: 'options-outline',
             formatValue: (v) => v != null ? `${Math.round(v * 100)}%` : '',
             formatPreview: (v) => v != null ? `${Math.round(v * 100)}%` : '',
-            showInPreview: false,
+            showInPreview: true, // Show intensity in preview if set
           },
         ],
       };
@@ -125,11 +135,11 @@ export const getOptionsSchema = (editMode: EditMode): OptionsSchema | null => {
           },
           {
             key: 'backgroundText',
-            label: 'Custom Text',
+            label: 'Prompt',
             icon: 'text-outline',
             formatValue: (v) => v || '',
-            formatPreview: (v) => v || '',
-            showInPreview: false,
+            formatPreview: (v) => v ? `"${v.substring(0, 30)}${v.length > 30 ? '...' : ''}"` : '',
+            showInPreview: true, // Now shows custom prompt in preview
           },
         ],
       };
@@ -149,8 +159,8 @@ export const getOptionsSchema = (editMode: EditMode): OptionsSchema | null => {
             label: 'Style Source',
             icon: 'image-outline',
             formatValue: (v, config) => v && !config.stylePreset ? 'Custom Image' : '',
-            formatPreview: () => '',
-            showInPreview: false,
+            formatPreview: (v, config) => v && !config.stylePreset ? 'Custom' : '',
+            showInPreview: true, // Show when using custom image
           },
           {
             key: 'styleStrength',
@@ -161,8 +171,12 @@ export const getOptionsSchema = (editMode: EditMode): OptionsSchema | null => {
               const strength = v > 0.75 ? 'Strong' : v > 0.5 ? 'Moderate' : v > 0.25 ? 'Subtle' : 'Light';
               return `${strength} (${Math.round(v * 100)}%)`;
             },
-            formatPreview: (v) => v != null ? `${Math.round(v * 100)}%` : '',
-            showInPreview: false,
+            formatPreview: (v) => {
+              if (v == null) return '';
+              const strength = v > 0.75 ? 'Strong' : v > 0.5 ? 'Moderate' : v > 0.25 ? 'Subtle' : 'Light';
+              return strength;
+            },
+            showInPreview: true, // Show strength in preview
           },
         ],
       };
@@ -183,7 +197,7 @@ export const getOptionsSchema = (editMode: EditMode): OptionsSchema | null => {
             icon: 'options-outline',
             formatValue: (v) => v != null ? `${Math.round(v * 100)}%` : '',
             formatPreview: (v) => v != null ? `${Math.round(v * 100)}%` : '',
-            showInPreview: false,
+            showInPreview: true, // Show intensity in preview
           },
         ],
       };
@@ -192,19 +206,26 @@ export const getOptionsSchema = (editMode: EditMode): OptionsSchema | null => {
       return {
         fields: [
           {
-            key: 'enhancementType',
-            label: 'Enhancement',
-            icon: 'sparkles-outline',
-            formatValue: formatLabel,
-            formatPreview: formatLabel,
+            key: 'outscale',
+            label: 'Upscale Factor',
+            icon: 'resize-outline',
+            formatValue: (v) => {
+              const scale = v != null ? Number(v) : 4;
+              return `${scale}x Upscale`;
+            },
+            formatPreview: (v) => {
+              const scale = v != null ? Number(v) : 4;
+              return `${scale}x`;
+            },
+            showInPreview: true,
           },
           {
-            key: 'strength',
-            label: 'Strength',
-            icon: 'options-outline',
-            formatValue: (v) => v != null ? `${Math.round(v * 100)}%` : '',
-            formatPreview: (v) => v != null ? `${Math.round(v * 100)}%` : '',
-            showInPreview: false,
+            key: 'faceEnhance',
+            label: 'Face Enhancement',
+            icon: 'person-outline',
+            formatValue: (v) => v ? 'Enabled' : 'Disabled',
+            formatPreview: (v) => v ? 'Face+' : '',
+            showInPreview: true, // Show when enabled
           },
         ],
       };
@@ -245,9 +266,14 @@ export const getOptionsSchema = (editMode: EditMode): OptionsSchema | null => {
             icon: 'image-outline',
             formatValue: formatLabel,
             formatPreview: formatLabel,
-            showInPreview: false,
+            showInPreview: true, // Now shows in preview
           },
         ],
+      };
+
+    case EditMode.GHIBLIFY:
+      return {
+        fields: [],
       };
 
     default:
